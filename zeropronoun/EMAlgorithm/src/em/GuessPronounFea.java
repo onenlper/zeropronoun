@@ -35,7 +35,7 @@ public class GuessPronounFea extends YYFeature {
 		return 0;
 	}
 
-	public void set(int previous, int next, CoNLLSentence s, CoNLLPart part) {
+	public void configure(int previous, int next, CoNLLSentence s, CoNLLPart part) {
 		this.next = next;
 		this.previous = previous;
 		this.s = s;
@@ -52,7 +52,7 @@ public class GuessPronounFea extends YYFeature {
 	public ArrayList<HashSet<String>> getStrFeatures() {
 		ArrayList<HashSet<String>> strs = new ArrayList<HashSet<String>>();
 		strs.addAll(getXueLexicalFea());
-//		strs.addAll(this.getLexicalFea());
+		strs.addAll(this.getLexicalFea());
 		return strs;
 	}
 	
@@ -97,10 +97,6 @@ public class GuessPronounFea extends YYFeature {
 		} else {
 			strs.add("-");
 		}
-		
-		
-		
-		
 
 		ArrayList<HashSet<String>> ret = new ArrayList<HashSet<String>>();
 		for (String str : strs) {
