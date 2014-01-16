@@ -87,7 +87,7 @@ public class EMLearn {
 
 	static FileWriter nbFeaWriter;
 
-	static GuessPronounFea fea;
+	static GuessPronounFea guessFea;
 
 	static SuperviseFea superFea;
 	static FileWriter superviseFw;
@@ -95,15 +95,15 @@ public class EMLearn {
 	public static void extractGuessPronounFea(Mention pronoun, CoNLLSentence s,
 			CoNLLPart part) {
 		try {
-			fea.set(pronoun.start - 1, pronoun.start + 1, s, part);
+			guessFea.configure(pronoun.start - 1, pronoun.start + 1, s, part);
 			int label = EMUtil.pronounList.indexOf(pronoun.extent) + 1;
 
 			// label = pronoun.animacy.ordinal() + 1;
 
-			String feaStr = fea.getSVMFormatString();
+			String feaStr = guessFea.getSVMFormatString();
 			feaWriter.write(label + " " + feaStr + "\n");
 
-			String nbFeaStr = fea.getMyBNFormatString();
+			String nbFeaStr = guessFea.getMyBNFormatString();
 			nbFeaWriter.write((label - 1) + " " + nbFeaStr + "\n");
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -487,7 +487,8 @@ public class EMLearn {
 						p_number * 
 						p_gender * 
 						p_animacy *
-						p_context * 1;
+						p_context * 
+						1;
 				norm += entry.p;
 			}
 
@@ -568,7 +569,7 @@ public class EMLearn {
 		EMUtil.train = true;
 		feaWriter = new FileWriter("guessPronoun.train.svm");
 		nbFeaWriter = new FileWriter("guessPronoun.train.nb");
-		fea = new GuessPronounFea(true, "guessPronoun");
+		guessFea = new GuessPronounFea(true, "guessPronoun");
 
 		superFea = new SuperviseFea(true, "supervise");
 		superviseFw = new FileWriter("supervise.train");
@@ -599,8 +600,8 @@ public class EMLearn {
 		out.writeObject(groups);
 		out.close();
 
-		fea.freeze();
-		fea.clear();
+		guessFea.freeze();
+		guessFea.clear();
 		nbFeaWriter.close();
 		feaWriter.close();
 
