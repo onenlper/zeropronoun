@@ -145,23 +145,22 @@ public class ApplyEM {
 			}
 			valses.put(id, vals);
 		}
-		
-		for(Integer id : ids) {
+
+		for (Integer id : ids) {
 			HashSet<Character> vals = valses.get(id);
-			for(Character val : vals) {
+			for (Character val : vals) {
 				double count = 0;
-				for(String context : allProbs.keySet()) {
-					if(context.charAt(id)==val) {
+				for (String context : allProbs.keySet()) {
+					if (context.charAt(id) == val) {
 						count++;
 					}
 				}
-			
-				
+
 				double p = 1;
-				for(String context : allProbs.keySet()) {
+				for (String context : allProbs.keySet()) {
 					double prob = allProbs.get(context);
-					if(context.charAt(id)==val) {
-						double mean = Math.pow(prob, 1/count);
+					if (context.charAt(id) == val) {
+						double mean = Math.pow(prob, 1 / count);
 						p *= mean;
 					}
 				}
@@ -330,6 +329,10 @@ public class ApplyEM {
 
 			ArrayList<Mention> cands = new ArrayList<Mention>();
 			boolean findFS = false;
+
+			ArrayList<String> taMSGs = new ArrayList<String>();
+			String taMSg = "";
+			String bestMSg = "";
 			for (int h = allCandidates.size() - 1; h >= 0; h--) {
 				Mention cand = allCandidates.get(h);
 				String antSpeaker = part.getWord(cand.start).speaker;
@@ -368,7 +371,7 @@ public class ApplyEM {
 			// }
 			// Common.bangErrorPOS("");
 			// }
-
+			int chose = -1;
 			double votes[] = new double[cands.size()];
 			for (int m = 0; m < EMUtil.pronounList.size(); m++) {
 				String pronoun = EMUtil.pronounList.get(m);
@@ -479,6 +482,13 @@ public class ApplyEM {
 					double p2nd = p_person * p_number * p_gender * p_animacy
 							* p_context * 1;
 
+					if (pronoun.equals("它")) {
+						String msg = p_person + "\t" + p_number + "\t"
+								+ p_gender + "\t" + p_animacy + "\t"
+								+ p_context;
+						taMSGs.add(msg);
+					}
+
 					double p = p2nd;
 					norm += p;
 					probs[i] = p;
@@ -491,6 +501,9 @@ public class ApplyEM {
 						antecedent = cand;
 						maxP = p;
 						overtPro = pronoun;
+						bestMSg = p_person + "\t" + p_number + "\t" + p_gender
+								+ "\t" + p_animacy + "\t" + p_context;
+						chose = i;
 					}
 					// if(coref) {
 					// antecedent = cand;
@@ -535,6 +548,7 @@ public class ApplyEM {
 				this.addEmptyCategoryNode(zero);
 				// System.out.println(zero.start);
 				// System.out.println(antecedent.extent);
+				taMSg = taMSGs.get(chose);
 			}
 			if (zero.antecedent != null
 					&& zero.antecedent.end != -1
@@ -543,6 +557,10 @@ public class ApplyEM {
 					&& chainMap.get(zero.toName()).intValue() == chainMap.get(
 							zero.antecedent.toName()).intValue()) {
 				good++;
+				String key = part.docName + ":" + part.getPartID() + ":"
+						+ zero.start + "-" + zero.antecedent.start + ","
+						+ zero.antecedent.end + ":GOOD";
+				corrects.add(key);
 				// if(antecedent.mType==MentionType.tmporal) {
 				// System.out.println(antecedent.extent + "GOOD!");
 				// }
@@ -557,8 +575,34 @@ public class ApplyEM {
 				// if (zero.antecedent.MI < 0) {
 				// System.out.println("Right!!! " + good + "/" + bad);
 				// System.out.println(zero.antecedent.msg);
+				// if(!zero.antecedent.isFS) {
+				System.out.println("==========");
+				System.out.println("Correct!!! " + good + "/" + bad);
+				if (zero.antecedent != null) {
+					System.out.println(zero.antecedent.extent + ":"
+							+ zero.antecedent.NE + "#" + zero.antecedent.number
+							+ "#" + zero.antecedent.gender + "#"
+							+ zero.antecedent.person + "#"
+							+ zero.antecedent.animacy);
+					System.out.println(zero);
+					printResult(zero, zero.antecedent, part);
+					System.out.println(overtPro + "#");
+				}
+				// System.out.println(overtPro + "#" + bestMSg);
+				// System.out.println("它: " + taMSg);
+				// }
 				// }
 			} else {
+				if(zero.antecedent==null) {
+					String key = part.docName + ":" + part.getPartID() + ":"
+							+ zero.start + "-NULL:BAD";
+					corrects.add(key);
+				} else {
+					String key = part.docName + ":" + part.getPartID() + ":"
+						+ zero.start + "-" + zero.antecedent.start + ","
+						+ zero.antecedent.end + ":BAD";
+					corrects.add(key);
+				}
 				// if(antecedent!=null && antecedent.mType==MentionType.tmporal)
 				// {
 				// System.out.println(antecedent.extent + "BAD !");
@@ -567,11 +611,15 @@ public class ApplyEM {
 				System.out.println("==========");
 				System.out.println("Error??? " + good + "/" + bad);
 				if (zero.antecedent != null) {
-					System.out.println(zero.antecedent.extent + ":" + zero.antecedent.NE + "#" + zero.antecedent.number + "#" +
-							zero.antecedent.gender + "#" + zero.antecedent.person + "#" + zero.antecedent.animacy);
+					System.out.println(zero.antecedent.extent + ":"
+							+ zero.antecedent.NE + "#" + zero.antecedent.number
+							+ "#" + zero.antecedent.gender + "#"
+							+ zero.antecedent.person + "#"
+							+ zero.antecedent.animacy);
 					System.out.println(zero);
 					printResult(zero, zero.antecedent, part);
-					System.out.println(overtPro + "#");
+					System.out.println(overtPro + "#" + bestMSg);
+					System.out.println("它: " + taMSg);
 				}
 			}
 			String conllPath = file;
@@ -621,10 +669,12 @@ public class ApplyEM {
 			sb.append(s.words.get(i).word).append(" ");
 		}
 		System.out.println(sb.toString() + " # " + zero.start);
-		System.out.println(systemAnte != null ? systemAnte.extent + "#" + part.getWord(systemAnte.end + 1).word : "");
+		System.out.println(systemAnte != null ? systemAnte.extent + "#"
+				+ part.getWord(systemAnte.end + 1).word : "");
+
 		// System.out.println("========");
 	}
-	
+
 	public double getMaxEntProb(Mention cand, Mention pro, boolean sameSpeaker,
 			Context context, CoNLLPart part) {
 		String pronoun = pro.extent;
@@ -763,13 +813,14 @@ public class ApplyEM {
 		System.out.println("F-score: " + f * 100);
 	}
 
+	static ArrayList<String> corrects = new ArrayList<String>();
+
 	public static void main(String args[]) {
 		if (args.length != 1) {
 			System.err.println("java ~ folder");
 			System.exit(1);
 		}
 		run(args[0]);
-
 		run("nw");
 		run("mz");
 		run("wb");
@@ -797,6 +848,7 @@ public class ApplyEM {
 		// System.out.println(Context.svoStat.unigramAll);
 		// System.out.println(Context.svoStat.svoAll);
 
-		Common.pause("!!");
+		Common.outputLines(corrects, "EM.correct.all");
+		Common.pause("!!#");
 	}
 }
