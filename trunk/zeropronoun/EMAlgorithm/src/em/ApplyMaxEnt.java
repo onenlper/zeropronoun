@@ -53,7 +53,7 @@ public class ApplyMaxEnt {
 
 	HashMap<String, Double> fracContextCount;
 
-	GuessPronounFea fea;
+	GuessPronounFea guessFea;
 
 	LinearClassifier<String, String> classifier;
 
@@ -95,7 +95,7 @@ public class ApplyMaxEnt {
 
 			// modelInput2.close();
 			loadGuessProb();
-			fea = new GuessPronounFea(false, "guessPronoun");
+			guessFea = new GuessPronounFea(false, "guessPronoun");
 
 			superFea = new SuperviseFea(false, "supervise");
 			EMUtil.loadPredictNE(folder, "dev");
@@ -357,8 +357,8 @@ public class ApplyMaxEnt {
 				
 				Common.outputLines(svmRanks, "svmRank.test");
 //				Common.pause("");
-//				String lineStr = runYasmet();
-				String lineStr = runSVMRank();
+				String lineStr = runYasmet();
+//				String lineStr = runSVMRank();
 				String tks[] = lineStr.split("\\s+");
 				
 				if(tks.length-1 != antCount) {
