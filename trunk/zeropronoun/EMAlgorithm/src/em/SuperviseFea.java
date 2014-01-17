@@ -59,10 +59,10 @@ public class SuperviseFea extends YYFeature {
 
 	public ArrayList<String> getFeas() {
 		ArrayList<String> strs = new ArrayList<String>();
-//		 strs.add(personStr);
-//		 strs.add(numberStr);
-//		 strs.add(genderStr);
-//		 strs.add(animacyStr);
+		 strs.add(personStr);
+		 strs.add(numberStr);
+		 strs.add(genderStr);
+		 strs.add(animacyStr);
 
 //				 strs.add(context.feaL);
 		strs.addAll(getEMLNLPStrFeatures());
