@@ -1,6 +1,7 @@
 package em;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -310,23 +311,19 @@ public class ApplyMaxEnt {
 			String tks[] = feaStr.split("\\s+");
 			int all = EMUtil.Number.values().length;
 			String nYSB = transform(tks, all, 0);
-			Common.outputLine(nYSB, "number.test");
-			double probNum[] = runAttri("number");
+			double probNum[] = runAttri("number", nYSB);
 
 			all = EMUtil.Gender.values().length;
 			String gYSB = transform(tks, all, 0);
-			Common.outputLine(gYSB, "gender.test");
-			double probGen[] = runAttri("gender");
+			double probGen[] = runAttri("gender", gYSB);
 
 			all = EMUtil.Person.values().length;
 			String pYSB = transform(tks, all, 0);
-			Common.outputLine(pYSB, "person.test");
-			double probPer[] = runAttri("person");
+			double probPer[] = runAttri("person", pYSB);
 
 			all = EMUtil.Animacy.values().length;
 			String aYSB = transform(tks, all, 0);
-			Common.outputLine(aYSB, "animacy.test");
-			double probAni[] = runAttri("animacy");
+			double probAni[] = runAttri("animacy", aYSB);
 			// TODO
 
 			// init yasmet
@@ -338,8 +335,6 @@ public class ApplyMaxEnt {
 			HashMap<Integer, String> genderMap = new HashMap<Integer, String>();
 			HashMap<Integer, String> personMap = new HashMap<Integer, String>();
 			HashMap<Integer, String> animacyMap = new HashMap<Integer, String>();
-
-			ArrayList<String> yasmetLines = new ArrayList<String>();
 
 			for (int m = 0; m < EMUtil.pronounList.size(); m++) {
 				String pronoun = EMUtil.pronounList.get(m);
@@ -416,10 +411,7 @@ public class ApplyMaxEnt {
 
 			if (antCount != 0) {
 				// run yasmet here
-				yasmetLines.add(Integer.toString(antCount));
-				yasmetLines.add(ysb.toString().trim());
-				Common.outputLines(yasmetLines, "yasmet.test");
-				String lineStr = runYasmet();
+				String lineStr = runYasmet(Integer.toString(antCount) + "\n" + ysb.toString());
 				tks = lineStr.split("\\s+");
 
 				// ILP here
@@ -769,24 +761,20 @@ public class ApplyMaxEnt {
 	// }
 	// }
 
-	private double[] runAttri(String attri) {
+	private double[] runAttri(String attri, String str) {
 		String lineStr = "";
-		String cmd = "";
-		if (attri.equals("number")) {
-			cmd = "./yasNumber.sh";
-		} else if (attri.equals("gender")) {
-			cmd = "./yasGender.sh";
-		} else if (attri.equals("person")) {
-			cmd = "./yasPerson.sh";
-		} else if (attri.equals("animacy")) {
-			cmd = "./yasAnimacy.sh";
-		} else {
-			Common.bangErrorPOS("No Such Attribute!!!");
-		}
-
+		String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/" + attri +".model";
+		
 		Runtime run = Runtime.getRuntime();
 		try {
 			Process p = run.exec(cmd);
+			
+			BufferedOutputStream out = new BufferedOutputStream(
+					p.getOutputStream());
+			out.write(str.getBytes());
+			out.flush();
+			out.close();
+			
 			BufferedInputStream in = new BufferedInputStream(p.getInputStream());
 			BufferedReader inBr = new BufferedReader(new InputStreamReader(in));
 			lineStr = inBr.readLine();
@@ -809,17 +797,23 @@ public class ApplyMaxEnt {
 		for (int i = 1; i < tks.length; i++) {
 			ret[i - 1] = Double.parseDouble(tks[i]);
 		}
-
 		return ret;
 	}
 
-	private String runYasmet() {
+	private String runYasmet(String str) {
 		String lineStr = "";
-		String cmd = "./yasmet.sh";
+		String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/WT";
 
 		Runtime run = Runtime.getRuntime();
 		try {
 			Process p = run.exec(cmd);
+			
+			BufferedOutputStream out = new BufferedOutputStream(
+					p.getOutputStream());
+			out.write(str.getBytes());
+			out.flush();
+			out.close();
+			
 			BufferedInputStream in = new BufferedInputStream(p.getInputStream());
 			BufferedReader inBr = new BufferedReader(new InputStreamReader(in));
 			lineStr = inBr.readLine();
