@@ -196,7 +196,6 @@ public class MaxEntLearn {
 			// label = pronoun.animacy.ordinal() + 1;
 
 			String feaStr = guessFea.getSVMFormatString();
-			genderWriter.write(label + " " + feaStr + "\n");
 
 			//TODO Yasmet format
 			// NUMBER, GENDER, PERSON, ANIMACY
