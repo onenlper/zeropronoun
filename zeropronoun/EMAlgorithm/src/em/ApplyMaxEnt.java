@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import lpsolve.LpSolveException;
 import mentionDetect.ParseTreeMention;
 import model.Entity;
 import model.Mention;
@@ -79,8 +80,8 @@ public class ApplyMaxEnt {
 			// Context.svoStat = (SVOStat)modelInput.readObject();
 			modelInput.close();
 
-//			classifier = LinearClassifier
-//					.readClassifier("stanfordClassifier.gz");
+			// classifier = LinearClassifier
+			// .readClassifier("stanfordClassifier.gz");
 			// ObjectInputStream modelInput2 = new ObjectInputStream(
 			// new FileInputStream("giga2/EMModel"));
 			// numberP = (Parameter) modelInput2.readObject();
@@ -233,9 +234,9 @@ public class ApplyMaxEnt {
 
 				findAntecedent(file, part, chainMap, corefResult, anaphorZeros,
 						candidates);
-				
-//				findSVMLight(file, part, chainMap, corefResult, anaphorZeros,
-//						candidates);
+
+				// findSVMLight(file, part, chainMap, corefResult, anaphorZeros,
+				// candidates);
 			}
 		}
 		System.out.println("Good: " + good);
@@ -244,7 +245,6 @@ public class ApplyMaxEnt {
 
 		evaluate(corefResults, goldEntities);
 	}
-	
 
 	private void findAntecedent(String file, CoNLLPart part,
 			HashMap<String, Integer> chainMap, ArrayList<Mention> corefResult,
@@ -295,15 +295,62 @@ public class ApplyMaxEnt {
 				}
 			}
 			findBest(zero, cands);
-			
+
+			// call yasmet to get Prob(gender|context) Prob(number|context)
+			// Prob(person|context) Prob(animacy|context)
+			guessFea.configure(zero.start - 1, zero.start,
+					part.getWord(zero.start).sentence, part);
+
+			// label = pronoun.animacy.ordinal() + 1;
+
+			String feaStr = guessFea.getSVMFormatString();
+
+			// Yasmet format
+			// NUMBER, GENDER, PERSON, ANIMACY
+			String tks[] = feaStr.split("\\s+");
+			int all = EMUtil.Number.values().length;
+			String nYSB = transform(tks, all, 0);
+			Common.outputLine(nYSB, "number.test");
+			double probNum[] = runAttri("number");
+
+			all = EMUtil.Gender.values().length;
+			String gYSB = transform(tks, all, 0);
+			Common.outputLine(gYSB, "gender.test");
+			double probGen[] = runAttri("gender");
+
+			all = EMUtil.Person.values().length;
+			String pYSB = transform(tks, all, 0);
+			Common.outputLine(pYSB, "person.test");
+			double probPer[] = runAttri("person");
+
+			all = EMUtil.Animacy.values().length;
+			String aYSB = transform(tks, all, 0);
+			Common.outputLine(aYSB, "animacy.test");
+			double probAni[] = runAttri("animacy");
+			// TODO
+
+			// init yasmet
+			StringBuilder ysb = new StringBuilder();
+			ysb.append("0 @ ");
+			int antCount = 0;
+			HashMap<Integer, Integer> map = new HashMap<Integer, Integer>();
+			HashMap<Integer, String> numberMap = new HashMap<Integer, String>();
+			HashMap<Integer, String> genderMap = new HashMap<Integer, String>();
+			HashMap<Integer, String> personMap = new HashMap<Integer, String>();
+			HashMap<Integer, String> animacyMap = new HashMap<Integer, String>();
+
+			ArrayList<String> yasmetLines = new ArrayList<String>();
+
 			for (int m = 0; m < EMUtil.pronounList.size(); m++) {
 				String pronoun = EMUtil.pronounList.get(m);
+
+				EMUtil.Number number = EMUtil.getNumber(pronoun);
+				EMUtil.Gender gender = EMUtil.getGender(pronoun);
+				EMUtil.Person person = EMUtil.getPerson(pronoun);
+				EMUtil.Animacy animacy = EMUtil.getAnimacy(pronoun);
+
 				zero.extent = pronoun;
-				StringBuilder ysb = new StringBuilder();
-				ysb.append("0 @ ");
-				int antCount = 0;
 				ArrayList<String> units = new ArrayList<String>();
-				
 				ArrayList<String> svmRanks = new ArrayList<String>();
 				for (int i = 0; i < cands.size(); i++) {
 					Mention cand = cands.get(i);
@@ -320,7 +367,7 @@ public class ApplyMaxEnt {
 							&& chainMap.get(zero.toName()).intValue() == chainMap
 									.get(cand.toName()).intValue();
 
-					// TODO
+					//
 					Context context = Context.buildContext(cand, zero, part,
 							cand.isFS);
 					cand.msg = Context.message;
@@ -334,53 +381,70 @@ public class ApplyMaxEnt {
 						}
 					}
 					boolean sameSpeaker = proSpeaker.equals(antSpeaker);
-					Entry entry = new Entry(cand, context, sameSpeaker, cand.isFS);
-					String unit = MaxEntLearn.getYamset(false, cand, zero, context, sameSpeaker, entry, superFea, 1, part);
-					
+					Entry entry = new Entry(cand, context, sameSpeaker,
+							cand.isFS);
+					String unit = MaxEntLearn.getYamset(false, cand, zero,
+							context, sameSpeaker, entry, superFea, 1, part);
+
 					ysb.append(unit);
 					units.add(unit);
-					if(cand.isFS) {
-						System.out.println(antCount + "###");
-						System.out.println(unit);
+					if (cand.isFS) {
+						// System.out.println(antCount + "###");
+						// System.out.println(unit);
 					}
+					map.put(antCount, i);
+
+					// TODO
+					numberMap.put(antCount, number.toString());
+					genderMap.put(antCount, gender.toString());
+					personMap.put(antCount, person.toString());
+					animacyMap.put(antCount, animacy.toString());
+
 					antCount++;
-					String svmRank = MaxEntLearn.getSVMRank(0, cand, zero, context, sameSpeaker, entry, superFea, part);
+					String svmRank = MaxEntLearn.getSVMRank(0, cand, zero,
+							context, sameSpeaker, entry, superFea, part);
 					svmRanks.add(svmRank);
 				}
-				if(antCount==0) {
+				if (antCount == 0) {
 					continue;
 				}
-				ArrayList<String> yasmetLines = new ArrayList<String>();
+
+				Common.outputLines(svmRanks, "svmRank.test");
+				// Common.pause("");
+				// break;
+			}
+
+			if (antCount != 0) {
+				// run yasmet here
 				yasmetLines.add(Integer.toString(antCount));
 				yasmetLines.add(ysb.toString().trim());
 				Common.outputLines(yasmetLines, "yasmet.test");
-				
-				Common.outputLines(svmRanks, "svmRank.test");
-//				Common.pause("");
 				String lineStr = runYasmet();
-//				String lineStr = runSVMRank();
-				String tks[] = lineStr.split("\\s+");
-				
-				if(tks.length-1 != antCount) {
-					Common.bangErrorPOS("GEEE");
+				tks = lineStr.split("\\s+");
+
+				// ILP here
+				// jklsdfjsld;
+				double probAnt[] = new double[tks.length - 1];
+				for (int i = 1; i < tks.length; i++) {
+					probAnt[i - 1] = Double.parseDouble(tks[i]);
 				}
-				
-				int antIdx = Integer.parseInt(tks[0]);
-				double p = Double.parseDouble(tks[antIdx+1]);
-				
-				System.out.println(units.get(antIdx));
-				System.out.println("===============");
-				
-				if (p > maxP) {
-					antecedent = cands.get(antIdx);
-					maxP = p;
-					overtPro = pronoun;
-				}	
-				//TODO
-				break;
+
+				int numberOfAnt = (tks.length - 1) / EMUtil.pronounList.size();
+				if ((tks.length - 1) % EMUtil.pronounList.size() != 0) {
+					Common.bangErrorPOS("!!");
+				}
+
+				ILP ilp = new ILP(numberOfAnt, probAnt, probNum, probGen,
+						probPer, probAni);
+				int antIdx = -1;
+				try {
+					antIdx = ilp.execute();
+				} catch (LpSolveException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				antecedent = cands.get(antIdx);
 			}
-
-
 			if (antecedent != null) {
 				if (antecedent.end != -1) {
 					zero.antecedent = antecedent;
@@ -467,232 +531,301 @@ public class ApplyMaxEnt {
 			}
 		}
 	}
-	
-	private void findSVMLight(String file, CoNLLPart part,
-			HashMap<String, Integer> chainMap, ArrayList<Mention> corefResult,
-			ArrayList<Mention> anaphorZeros, ArrayList<Mention> allCandidates) {
-		for (Mention zero : anaphorZeros) {
-			zero.sentenceID = part.getWord(zero.start).sentence
-					.getSentenceIdx();
-			zero.s = part.getWord(zero.start).sentence;
-			EMUtil.assignVNode(zero, part);
-			if (zero.notInChainZero) {
-				continue;
-			}
-			if (zero.V == null) {
-				continue;
-			}
-			Mention antecedent = null;
-			double maxP = -1;
-			Collections.sort(allCandidates);
-			String proSpeaker = part.getWord(zero.start).speaker;
-			String overtPro = "";
 
-			ArrayList<Mention> cands = new ArrayList<Mention>();
-			boolean findFS = false;
-			for (int h = allCandidates.size() - 1; h >= 0; h--) {
-				Mention cand = allCandidates.get(h);
-				cand.sentenceID = part.getWord(cand.start).sentence
-						.getSentenceIdx();
-				cand.s = part.getWord(cand.start).sentence;
-				cand.isFS = false;
-				cand.isBest = false;
-				cand.MI = Context.calMI(cand, zero);
-				if (cand.start < zero.start
-						&& zero.sentenceID - cand.sentenceID <= 2) {
-					if (!findFS && cand.gram == EMUtil.Grammatic.subject
-					// && !cand.s.getWord(cand.headInS).posTag.equals("NT")
-					// && MI>0
-					) {
-						cand.isFS = true;
-						findFS = true;
-					}
-					// if(cand.s==zero.s && cand.gram==Grammatic.object &&
-					// cand.end+2==zero.start &&
-					// part.getWord(cand.end+1).word.equals("，") && cand.MI>0){
-					// cand.isFS = true;
-					// findFS = true;
-					// }
-					cands.add(cand);
-				}
+	private static String transform(String[] tks, int all, int y) {
+		StringBuilder ysb = new StringBuilder();
+		ysb.append(all + "\n");
+		ysb.append(y);
+		ysb.append(" @ ");
+		for (int i = 0; i < all; i++) {
+			ysb.append("@ ");
+			if (i == y) {
+				ysb.append("1 ");
+			} else {
+				ysb.append("0 ");
 			}
-			findBest(zero, cands);
-			
-			for (int m = 0; m < EMUtil.pronounList.size(); m++) {
-				String pronoun = EMUtil.pronounList.get(m);
-				zero.extent = pronoun;
-				StringBuilder ysb = new StringBuilder();
-				ysb.append("0 @ ");
-				int antCount = 0;
-				ArrayList<String> units = new ArrayList<String>();
-				
-				ArrayList<String> svmRanks = new ArrayList<String>();
-				for (int i = 0; i < cands.size(); i++) {
-					Mention cand = cands.get(i);
-					if (cand.extent.isEmpty()) {
-						continue;
-					}
-					// if(!cand.isFS)
-					// continue;
-					String antSpeaker = part.getWord(cand.start).speaker;
-					cand.sentenceID = part.getWord(cand.start).sentence
-							.getSentenceIdx();
-					boolean coref = chainMap.containsKey(zero.toName())
-							&& chainMap.containsKey(cand.toName())
-							&& chainMap.get(zero.toName()).intValue() == chainMap
-									.get(cand.toName()).intValue();
-
-					// TODO
-					Context context = Context.buildContext(cand, zero, part,
-							cand.isFS);
-					cand.msg = Context.message;
-					cand.MI = Context.MI;
-
-					if (m == 0) {
-						if (coref) {
-							goods.add(Double.toString(cand.MI));
-						} else {
-							bads.add(Double.toString(cand.MI));
-						}
-					}
-					boolean sameSpeaker = proSpeaker.equals(antSpeaker);
-					Entry entry = new Entry(cand, context, sameSpeaker, cand.isFS);
-					String unit = MaxEntLearn.getYamset(false, cand, zero, context, sameSpeaker, entry, superFea, 1, part);
-					
-					ysb.append(unit);
-					units.add(unit);
-					if(cand.isFS) {
-						System.out.println(antCount + "###");
-						System.out.println(unit);
-					}
-					antCount++;
-					String svmRank = MaxEntLearn.getSVMRank(0, cand, zero, context, sameSpeaker, entry, superFea, part);
-					
-					int a1 = svmRank.indexOf(" ");
-					int a2 = svmRank.indexOf(" ", a1+1);
-					ArrayList<String> lines = new ArrayList<String>();
-					lines.add("0 " + svmRank.substring(a2+1));
-					Common.outputLines(lines, "svmlight.test");
-					double p = runSVMLight();
-					
-					if (p > maxP) {
-						antecedent = cand;
-						maxP = p;
-						overtPro = pronoun;
-					}	
-					
-					svmRanks.add(svmRank);
-				}
-				if(antCount==0) {
+			for (String tk : tks) {
+				if (tk.isEmpty()) {
 					continue;
 				}
-				
-				
-				//TODO
-				break;
+				int k = tk.indexOf(":");
+				String f = tk.substring(0, k);
+				String v = tk.substring(k + 1);
+				ysb.append(f + "_" + i).append(" ").append(v).append(" ");
 			}
-
-
-			if (antecedent != null) {
-				if (antecedent.end != -1) {
-					zero.antecedent = antecedent;
-				} else {
-					zero.antecedent = antecedent.antecedent;
-				}
-				zero.extent = antecedent.extent;
-				zero.head = antecedent.head;
-				zero.gram = Grammatic.subject;
-				zero.mType = antecedent.mType;
-				zero.NE = antecedent.NE;
-				this.addEmptyCategoryNode(zero);
-				// System.out.println(zero.start);
-				// System.out.println(antecedent.extent);
-			}
-			if (zero.antecedent != null
-					&& zero.antecedent.end != -1
-					&& chainMap.containsKey(zero.toName())
-					&& chainMap.containsKey(zero.antecedent.toName())
-					&& chainMap.get(zero.toName()).intValue() == chainMap.get(
-							zero.antecedent.toName()).intValue()) {
-				good++;
-				// if(antecedent.mType==MentionType.tmporal) {
-				// System.out.println(antecedent.extent + "GOOD!");
-				// }
-				// System.out.println(overtPro + "  " + zero.antecedent.extent);
-				// System.out.println("+++");
-				// printResult(zero, zero.antecedent, part);
-				// System.out.println("Predicate: " +
-				// this.getPredicate(zero.V));
-				// System.out.println("Object NP: " +
-				// this.getObjectNP(zero));
-				// System.out.println("===");
-				// if (zero.antecedent.MI < 0) {
-				// System.out.println("Right!!! " + good + "/" + bad);
-				// System.out.println(zero.antecedent.msg);
-				// }
-			} else {
-				// if(antecedent!=null && antecedent.mType==MentionType.tmporal)
-				// {
-				// System.out.println(antecedent.extent + "BAD !");
-				// }
-				bad++;
-				System.out.println("Error??? " + good + "/" + bad);
-				if (zero.antecedent != null) {
-					System.out.println(zero.antecedent.msg);
-				}
-			}
-			String conllPath = file;
-			int aa = conllPath.indexOf(anno);
-			int bb = conllPath.indexOf(".");
-			String middle = conllPath.substring(aa + anno.length(), bb);
-			String path = prefix + middle + suffix;
-			System.out.println(path);
-			// System.out.println("=== " + file);
-			EMUtil.addEmptyCategoryNode(zero);
-
-			// if (antecedent != null) {
-			// CoNLLWord candWord = part.getWord(antecedent.start);
-			// CoNLLWord zeroWord = part.getWord(zero.start);
-			//
-			// String zeroSpeaker = part.getWord(zero.start).speaker;
-			// String candSpeaker = part.getWord(antecedent.start).speaker;
-			// // if (!zeroSpeaker.equals(candSpeaker)) {
-			// // if (antecedent.source.equals("我") &&
-			// // zeroWord.toSpeaker.contains(candSpeaker)) {
-			// // zero.head = "你";
-			// // zero.source = "你";
-			// // } else if (antecedent.source.equals("你") &&
-			// // candWord.toSpeaker.contains(zeroSpeaker)) {
-			// // zero.head = "我";
-			// // zero.source = "我";
-			// // }
-			// // } else {
-			// zero.extent = antecedent.extent;
-			// zero.head = antecedent.head;
-			// // }
-			//
-			// }
+			ysb.append("# ");
 		}
-		for (Mention zero : anaphorZeros) {
-			if (zero.antecedent != null) {
-				corefResult.add(zero);
-			}
-		}
+		return ysb.toString();
 	}
 
-	private String runYasmet() {
+	// private void findSVMLight(String file, CoNLLPart part,
+	// HashMap<String, Integer> chainMap, ArrayList<Mention> corefResult,
+	// ArrayList<Mention> anaphorZeros, ArrayList<Mention> allCandidates) {
+	// for (Mention zero : anaphorZeros) {
+	// zero.sentenceID = part.getWord(zero.start).sentence
+	// .getSentenceIdx();
+	// zero.s = part.getWord(zero.start).sentence;
+	// EMUtil.assignVNode(zero, part);
+	// if (zero.notInChainZero) {
+	// continue;
+	// }
+	// if (zero.V == null) {
+	// continue;
+	// }
+	// Mention antecedent = null;
+	// double maxP = -1;
+	// Collections.sort(allCandidates);
+	// String proSpeaker = part.getWord(zero.start).speaker;
+	// String overtPro = "";
+	//
+	// ArrayList<Mention> cands = new ArrayList<Mention>();
+	// boolean findFS = false;
+	// for (int h = allCandidates.size() - 1; h >= 0; h--) {
+	// Mention cand = allCandidates.get(h);
+	// cand.sentenceID = part.getWord(cand.start).sentence
+	// .getSentenceIdx();
+	// cand.s = part.getWord(cand.start).sentence;
+	// cand.isFS = false;
+	// cand.isBest = false;
+	// cand.MI = Context.calMI(cand, zero);
+	// if (cand.start < zero.start
+	// && zero.sentenceID - cand.sentenceID <= 2) {
+	// if (!findFS && cand.gram == EMUtil.Grammatic.subject
+	// // && !cand.s.getWord(cand.headInS).posTag.equals("NT")
+	// // && MI>0
+	// ) {
+	// cand.isFS = true;
+	// findFS = true;
+	// }
+	// // if(cand.s==zero.s && cand.gram==Grammatic.object &&
+	// // cand.end+2==zero.start &&
+	// // part.getWord(cand.end+1).word.equals("，") && cand.MI>0){
+	// // cand.isFS = true;
+	// // findFS = true;
+	// // }
+	// cands.add(cand);
+	// }
+	// }
+	// findBest(zero, cands);
+	//
+	// for (int m = 0; m < EMUtil.pronounList.size(); m++) {
+	// String pronoun = EMUtil.pronounList.get(m);
+	// zero.extent = pronoun;
+	// StringBuilder ysb = new StringBuilder();
+	// ysb.append("0 @ ");
+	// int antCount = 0;
+	// ArrayList<String> units = new ArrayList<String>();
+	//
+	// ArrayList<String> svmRanks = new ArrayList<String>();
+	// for (int i = 0; i < cands.size(); i++) {
+	// Mention cand = cands.get(i);
+	// if (cand.extent.isEmpty()) {
+	// continue;
+	// }
+	// // if(!cand.isFS)
+	// // continue;
+	// String antSpeaker = part.getWord(cand.start).speaker;
+	// cand.sentenceID = part.getWord(cand.start).sentence
+	// .getSentenceIdx();
+	// boolean coref = chainMap.containsKey(zero.toName())
+	// && chainMap.containsKey(cand.toName())
+	// && chainMap.get(zero.toName()).intValue() == chainMap
+	// .get(cand.toName()).intValue();
+	//
+	// Context context = Context.buildContext(cand, zero, part,
+	// cand.isFS);
+	// cand.msg = Context.message;
+	// cand.MI = Context.MI;
+	//
+	// if (m == 0) {
+	// if (coref) {
+	// goods.add(Double.toString(cand.MI));
+	// } else {
+	// bads.add(Double.toString(cand.MI));
+	// }
+	// }
+	// boolean sameSpeaker = proSpeaker.equals(antSpeaker);
+	// Entry entry = new Entry(cand, context, sameSpeaker,
+	// cand.isFS);
+	// String unit = MaxEntLearn.getYamset(false, cand, zero,
+	// context, sameSpeaker, entry, superFea, 1, part);
+	//
+	// ysb.append(unit);
+	// units.add(unit);
+	// if (cand.isFS) {
+	// System.out.println(antCount + "###");
+	// System.out.println(unit);
+	// }
+	// antCount++;
+	// String svmRank = MaxEntLearn.getSVMRank(0, cand, zero,
+	// context, sameSpeaker, entry, superFea, part);
+	//
+	// int a1 = svmRank.indexOf(" ");
+	// int a2 = svmRank.indexOf(" ", a1 + 1);
+	// ArrayList<String> lines = new ArrayList<String>();
+	// lines.add("0 " + svmRank.substring(a2 + 1));
+	// Common.outputLines(lines, "svmlight.test");
+	// double p = runSVMLight();
+	//
+	// if (p > maxP) {
+	// antecedent = cand;
+	// maxP = p;
+	// overtPro = pronoun;
+	// }
+	//
+	// svmRanks.add(svmRank);
+	// }
+	// if (antCount == 0) {
+	// continue;
+	// }
+	//
+	// break;
+	// }
+	//
+	// if (antecedent != null) {
+	// if (antecedent.end != -1) {
+	// zero.antecedent = antecedent;
+	// } else {
+	// zero.antecedent = antecedent.antecedent;
+	// }
+	// zero.extent = antecedent.extent;
+	// zero.head = antecedent.head;
+	// zero.gram = Grammatic.subject;
+	// zero.mType = antecedent.mType;
+	// zero.NE = antecedent.NE;
+	// this.addEmptyCategoryNode(zero);
+	// // System.out.println(zero.start);
+	// // System.out.println(antecedent.extent);
+	// }
+	// if (zero.antecedent != null
+	// && zero.antecedent.end != -1
+	// && chainMap.containsKey(zero.toName())
+	// && chainMap.containsKey(zero.antecedent.toName())
+	// && chainMap.get(zero.toName()).intValue() == chainMap.get(
+	// zero.antecedent.toName()).intValue()) {
+	// good++;
+	// // if(antecedent.mType==MentionType.tmporal) {
+	// // System.out.println(antecedent.extent + "GOOD!");
+	// // }
+	// // System.out.println(overtPro + "  " + zero.antecedent.extent);
+	// // System.out.println("+++");
+	// // printResult(zero, zero.antecedent, part);
+	// // System.out.println("Predicate: " +
+	// // this.getPredicate(zero.V));
+	// // System.out.println("Object NP: " +
+	// // this.getObjectNP(zero));
+	// // System.out.println("===");
+	// // if (zero.antecedent.MI < 0) {
+	// // System.out.println("Right!!! " + good + "/" + bad);
+	// // System.out.println(zero.antecedent.msg);
+	// // }
+	// } else {
+	// // if(antecedent!=null && antecedent.mType==MentionType.tmporal)
+	// // {
+	// // System.out.println(antecedent.extent + "BAD !");
+	// // }
+	// bad++;
+	// System.out.println("Error??? " + good + "/" + bad);
+	// if (zero.antecedent != null) {
+	// System.out.println(zero.antecedent.msg);
+	// }
+	// }
+	// String conllPath = file;
+	// int aa = conllPath.indexOf(anno);
+	// int bb = conllPath.indexOf(".");
+	// String middle = conllPath.substring(aa + anno.length(), bb);
+	// String path = prefix + middle + suffix;
+	// System.out.println(path);
+	// // System.out.println("=== " + file);
+	// EMUtil.addEmptyCategoryNode(zero);
+	//
+	// // if (antecedent != null) {
+	// // CoNLLWord candWord = part.getWord(antecedent.start);
+	// // CoNLLWord zeroWord = part.getWord(zero.start);
+	// //
+	// // String zeroSpeaker = part.getWord(zero.start).speaker;
+	// // String candSpeaker = part.getWord(antecedent.start).speaker;
+	// // // if (!zeroSpeaker.equals(candSpeaker)) {
+	// // // if (antecedent.source.equals("我") &&
+	// // // zeroWord.toSpeaker.contains(candSpeaker)) {
+	// // // zero.head = "你";
+	// // // zero.source = "你";
+	// // // } else if (antecedent.source.equals("你") &&
+	// // // candWord.toSpeaker.contains(zeroSpeaker)) {
+	// // // zero.head = "我";
+	// // // zero.source = "我";
+	// // // }
+	// // // } else {
+	// // zero.extent = antecedent.extent;
+	// // zero.head = antecedent.head;
+	// // // }
+	// //
+	// // }
+	// }
+	// for (Mention zero : anaphorZeros) {
+	// if (zero.antecedent != null) {
+	// corefResult.add(zero);
+	// }
+	// }
+	// }
+
+	private double[] runAttri(String attri) {
 		String lineStr = "";
-		String cmd = "./yasmet.sh";
-		
+		String cmd = "";
+		if (attri.equals("number")) {
+			cmd = "./yasNumber.sh";
+		} else if (attri.equals("gender")) {
+			cmd = "./yasGender.sh";
+		} else if (attri.equals("person")) {
+			cmd = "./yasPerson.sh";
+		} else if (attri.equals("animacy")) {
+			cmd = "./yasAnimacy.sh";
+		} else {
+			Common.bangErrorPOS("No Such Attribute!!!");
+		}
+
 		Runtime run = Runtime.getRuntime();
 		try {
 			Process p = run.exec(cmd);
 			BufferedInputStream in = new BufferedInputStream(p.getInputStream());
 			BufferedReader inBr = new BufferedReader(new InputStreamReader(in));
-			lineStr=inBr.readLine();
-				System.out.println(lineStr);
-			if(p.waitFor()!=0) {
-				if(p.exitValue()==1) {
+			lineStr = inBr.readLine();
+			if (p.waitFor() != 0) {
+				if (p.exitValue() == 1) {
+					System.err.println("ERROR YASMET");
+					Common.bangErrorPOS("");
+				}
+			}
+			inBr.close();
+			in.close();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
+		String tks[] = lineStr.split("\\s+");
+		double ret[] = new double[tks.length - 1];
+		for (int i = 1; i < tks.length; i++) {
+			ret[i - 1] = Double.parseDouble(tks[i]);
+		}
+
+		return ret;
+	}
+
+	private String runYasmet() {
+		String lineStr = "";
+		String cmd = "./yasmet.sh";
+
+		Runtime run = Runtime.getRuntime();
+		try {
+			Process p = run.exec(cmd);
+			BufferedInputStream in = new BufferedInputStream(p.getInputStream());
+			BufferedReader inBr = new BufferedReader(new InputStreamReader(in));
+			lineStr = inBr.readLine();
+			// System.out.println(lineStr);
+			if (p.waitFor() != 0) {
+				if (p.exitValue() == 1) {
 					System.err.println("ERROR YASMET");
 					Common.bangErrorPOS("");
 				}
@@ -706,21 +839,21 @@ public class ApplyMaxEnt {
 		}
 		return lineStr;
 	}
-	
-//	dd
+
+	// dd
 	private String runSVMRank() {
 		String lineStr = "";
 		String cmd = "./svmRank.sh";
-		
+
 		Runtime run = Runtime.getRuntime();
 		try {
 			Process p = run.exec(cmd);
 			BufferedInputStream in = new BufferedInputStream(p.getInputStream());
 			BufferedReader inBr = new BufferedReader(new InputStreamReader(in));
-			lineStr=inBr.readLine();
-//				System.out.println(lineStr);
-			if(p.waitFor()!=0) {
-				if(p.exitValue()==1) {
+			lineStr = inBr.readLine();
+			// System.out.println(lineStr);
+			if (p.waitFor() != 0) {
+				if (p.exitValue() == 1) {
 					System.err.println("ERROR YASMET");
 					Common.bangErrorPOS("");
 				}
@@ -736,10 +869,10 @@ public class ApplyMaxEnt {
 		StringBuilder sb = new StringBuilder();
 		double maxP = Double.NEGATIVE_INFINITY;
 		int maxIdx = -1;
-		for(int i=0;i<lines.size();i++) {
+		for (int i = 0; i < lines.size(); i++) {
 			String line = lines.get(i);
 			double p = Double.parseDouble(line);
-			if(p>maxP) {
+			if (p > maxP) {
 				maxP = p;
 				maxIdx = i;
 			}
@@ -748,20 +881,20 @@ public class ApplyMaxEnt {
 		sb.insert(0, maxIdx + " ");
 		return sb.toString().trim();
 	}
-	
+
 	private double runSVMLight() {
 		String lineStr = "";
 		String cmd = "./svmlight.sh";
-		
+
 		Runtime run = Runtime.getRuntime();
 		try {
 			Process p = run.exec(cmd);
 			BufferedInputStream in = new BufferedInputStream(p.getInputStream());
 			BufferedReader inBr = new BufferedReader(new InputStreamReader(in));
-			lineStr=inBr.readLine();
-//				System.out.println(lineStr);
-			if(p.waitFor()!=0) {
-				if(p.exitValue()==1) {
+			lineStr = inBr.readLine();
+			// System.out.println(lineStr);
+			if (p.waitFor() != 0) {
+				if (p.exitValue() == 1) {
 					System.err.println("ERROR YASMET");
 					Common.bangErrorPOS("");
 				}
@@ -774,13 +907,12 @@ public class ApplyMaxEnt {
 			e.printStackTrace();
 		}
 		ArrayList<String> lines = Common.getLines("svmlight.result");
-		
-		
+
 		return Double.parseDouble(lines.get(0).split("\\s+")[0]);
 	}
 
-	public double getMaxEntProb(Mention cand, Mention pro,
-			boolean sameSpeaker, Context context, CoNLLPart part) {
+	public double getMaxEntProb(Mention cand, Mention pro, boolean sameSpeaker,
+			Context context, CoNLLPart part) {
 		String pronoun = pro.extent;
 		String pStr = "";
 		if (sameSpeaker) {
@@ -800,8 +932,9 @@ public class ApplyMaxEnt {
 
 		String svm = superFea.getSVMFormatString();
 		svm = "-1 " + svm;
-//		Datum<String, String> testIns = EMUtil.svmlightToStanford(svm);
-		Datum<String, String> testIns = EMUtil.svmlightToStanford(superFea.getFeas(), "-1");
+		// Datum<String, String> testIns = EMUtil.svmlightToStanford(svm);
+		Datum<String, String> testIns = EMUtil.svmlightToStanford(
+				superFea.getFeas(), "-1");
 		Counter<String> scores = classifier.scoresOf(testIns);
 		Distribution<String> distr = Distribution
 				.distributionFromLogisticCounter(scores);
@@ -922,7 +1055,7 @@ public class ApplyMaxEnt {
 			System.exit(1);
 		}
 		run(args[0]);
-		
+
 		run("nw");
 		run("mz");
 		run("wb");
