@@ -11,11 +11,26 @@ import lpsolve.LpSolveException;
 
 public class ILP {
 
-	static double a = 0.0000000000001;
-	static double b = 0.0000000000001;
-	static double c = 0.0000000000001;
-	static double d = 0.0000000000001;
+//	static double a = 0.001;
+//	static double b = 0.001;
+//	static double c = 0.001;
+//	static double d = 0.001;
 
+//	static double a = 0.005;
+//	static double b = 0.005;
+//	static double c = 0.005;
+//	static double d = 0.005;
+	
+//	static double a = 0.008;
+//	static double b = 0.008;
+//	static double c = 0.008;
+//	static double d = 0.008;
+	
+	static double a = 0.00;
+	static double b = 0.00;
+	static double c = 0.00;
+	static double d = 0.00;
+	
 	int numberOfAnts = 0;
 
 	double proAnte[];
@@ -44,7 +59,7 @@ public class ILP {
 		 */
 		Ncol = numberOfAnts * EMUtil.pronounList.size()
 				+ EMUtil.Person.values().length
-				+ EMUtil.Animacy.values().length
+				+ (EMUtil.Animacy.values().length - 1)
 				+ EMUtil.Gender.values().length + EMUtil.Number.values().length; /*
 																				 * number
 																				 * of
@@ -101,7 +116,7 @@ public class ILP {
 				probMap.put(name, this.proPer[i]);
 				lp.setColName(vNo++, name);
 			}
-			for (int i = 0; i < EMUtil.Animacy.values().length; i++) {
+			for (int i = 0; i < EMUtil.Animacy.values().length - 1; i++) {
 				String name = "Y_ani(" + EMUtil.Animacy.values()[i].name()
 						+ ")";
 				nameMap.put(name, vNo);
@@ -161,7 +176,7 @@ public class ILP {
 			// constraint 4: sum over all y_ani to 1
 			if (ret == 0) {
 				m = 0;
-				for (int i = 0; i < EMUtil.Animacy.values().length; i++) {
+				for (int i = 0; i < EMUtil.Animacy.values().length - 1; i++) {
 					String name = "Y_ani(" + EMUtil.Animacy.values()[i].name()
 							+ ")";
 					int y_ani = nameMap.get(name);
@@ -260,7 +275,7 @@ public class ILP {
 			}
 
 			// constraint 9: pronoun animacy consistency
-			for (int n = 0; n < EMUtil.Animacy.values().length; n++) {
+			for (int n = 0; n < EMUtil.Animacy.values().length - 1; n++) {
 				EMUtil.Animacy ani = EMUtil.Animacy.values()[n];
 				m = 0;
 				for (int i = 0; i < EMUtil.pronounList.size(); i++) {
@@ -323,7 +338,7 @@ public class ILP {
 				row[m++] = probMap.get(name) * c;
 			}
 
-			for (int i = 0; i < EMUtil.Animacy.values().length; i++) {
+			for (int i = 0; i < EMUtil.Animacy.values().length - 1; i++) {
 				String name = "Y_ani(" + EMUtil.Animacy.values()[i].name()
 						+ ")";
 				int y_ani = nameMap.get(name);
@@ -401,7 +416,7 @@ public class ILP {
 				}
 			}
 
-			for (int i = 0; i < EMUtil.Animacy.values().length; i++) {
+			for (int i = 0; i < EMUtil.Animacy.values().length - 1; i++) {
 				String name = "Y_ani(" + EMUtil.Animacy.values()[i].name() + ")";
 				double val = row[nameMap.get(name) - 1];
 				if (val != 0) {
