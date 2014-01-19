@@ -212,7 +212,7 @@ public class MaxEntLearn {
 			y = pronoun.person.ordinal();
 			String pYSB = transform(tks, all, y);
 			
-			all = EMUtil.Animacy.values().length;
+			all = EMUtil.Animacy.values().length -1;
 			y = pronoun.animacy.ordinal();
 			String aYSB = transform(tks, all, y);
 			
@@ -352,7 +352,7 @@ public class MaxEntLearn {
 		personWriter = new FileWriter("person.train");
 		personWriter.write(EMUtil.Person.values().length + "\n");
 		animacyWriter = new FileWriter("animacy.train");
-		animacyWriter.write(EMUtil.Animacy.values().length + "\n");
+		animacyWriter.write(EMUtil.Animacy.values().length - 1 + "\n");
 //		nbFeaWriter = new FileWriter("guessPronoun.train.nb");
 		guessFea = new GuessPronounFea(true, "guessPronoun");
 		
