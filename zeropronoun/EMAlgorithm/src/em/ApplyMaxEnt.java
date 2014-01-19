@@ -48,6 +48,12 @@ public class ApplyMaxEnt {
 
 	int overallGuessPronoun;
 
+	static int mode;
+
+	static final int classify = 0;
+	static final int load = 1;
+	static final int prepare = 2;
+
 	HashMap<Short, Double> pronounPrior;
 	HashMap<Integer, HashMap<Short, Integer>> counts;
 	HashMap<Integer, Integer> denomCounts;
@@ -60,6 +66,27 @@ public class ApplyMaxEnt {
 	LinearClassifier<String, String> classifier;
 
 	SuperviseFea superFea;
+
+	static int pronounID;
+
+	static ArrayList<String> numberTest = new ArrayList<String>();
+	static ArrayList<String> genderTest = new ArrayList<String>();
+	static ArrayList<String> personTest = new ArrayList<String>();
+	static ArrayList<String> animacyTest = new ArrayList<String>();
+
+	static ArrayList<String> anteTest = new ArrayList<String>();
+
+	static ArrayList<String> numberRS;
+	static ArrayList<String> genderRS;
+	static ArrayList<String> personRS;
+	static ArrayList<String> animacyRS;
+	static ArrayList<String> anteRS;
+
+	public static ArrayList<String> goods = new ArrayList<String>();
+	public static ArrayList<String> bads = new ArrayList<String>();
+
+	double good = 0;
+	double bad = 0;
 
 	@SuppressWarnings("unchecked")
 	public ApplyMaxEnt(String folder) {
@@ -170,12 +197,6 @@ public class ApplyMaxEnt {
 		}
 	}
 
-	public static ArrayList<String> goods = new ArrayList<String>();
-	public static ArrayList<String> bads = new ArrayList<String>();
-
-	double good = 0;
-	double bad = 0;
-
 	public void test() {
 		ArrayList<String> files = Common.getLines("chinese_list_" + folder
 				+ "_development");
@@ -227,7 +248,7 @@ public class ApplyMaxEnt {
 				if (!file.contains("/nw/")
 				// && !file.contains("/mz/")&& !file.contains("/wb/")
 				) {
-					candidates.addAll(anaphorZeros);
+					// candidates.addAll(anaphorZeros);
 				}
 				Collections.sort(candidates);
 
@@ -321,7 +342,7 @@ public class ApplyMaxEnt {
 			String pYSB = transform(tks, all, 0);
 			double probPer[] = runAttri("person", pYSB);
 
-			all = EMUtil.Animacy.values().length;
+			all = EMUtil.Animacy.values().length - 1;
 			String aYSB = transform(tks, all, 0);
 			double probAni[] = runAttri("animacy", aYSB);
 			// TODO
@@ -330,19 +351,9 @@ public class ApplyMaxEnt {
 			StringBuilder ysb = new StringBuilder();
 			ysb.append("0 @ ");
 			int antCount = 0;
-			HashMap<Integer, Integer> map = new HashMap<Integer, Integer>();
-			HashMap<Integer, String> numberMap = new HashMap<Integer, String>();
-			HashMap<Integer, String> genderMap = new HashMap<Integer, String>();
-			HashMap<Integer, String> personMap = new HashMap<Integer, String>();
-			HashMap<Integer, String> animacyMap = new HashMap<Integer, String>();
 
 			for (int m = 0; m < EMUtil.pronounList.size(); m++) {
 				String pronoun = EMUtil.pronounList.get(m);
-
-				EMUtil.Number number = EMUtil.getNumber(pronoun);
-				EMUtil.Gender gender = EMUtil.getGender(pronoun);
-				EMUtil.Person person = EMUtil.getPerson(pronoun);
-				EMUtil.Animacy animacy = EMUtil.getAnimacy(pronoun);
 
 				zero.extent = pronoun;
 				ArrayList<String> units = new ArrayList<String>();
@@ -387,13 +398,6 @@ public class ApplyMaxEnt {
 						// System.out.println(antCount + "###");
 						// System.out.println(unit);
 					}
-					map.put(antCount, i);
-
-					// TODO
-					numberMap.put(antCount, number.toString());
-					genderMap.put(antCount, gender.toString());
-					personMap.put(antCount, person.toString());
-					animacyMap.put(antCount, animacy.toString());
 
 					antCount++;
 					String svmRank = MaxEntLearn.getSVMRank(0, cand, zero,
@@ -408,21 +412,17 @@ public class ApplyMaxEnt {
 				// Common.pause("");
 				// break;
 			}
+			if (antCount > maximam) {
+				maximam = antCount;
+			}
+			double probAnt[] = runYasmet(ysb.toString(), antCount);
+			pronounID++;
 
-			if (antCount != 0) {
+			if (antCount != 0 && (mode == classify || mode == load)) {
 				// run yasmet here
-				String lineStr = runYasmet(Integer.toString(antCount) + "\n" + ysb.toString());
-				tks = lineStr.split("\\s+");
 
-				// ILP here
-				// jklsdfjsld;
-				double probAnt[] = new double[tks.length - 1];
-				for (int i = 1; i < tks.length; i++) {
-					probAnt[i - 1] = Double.parseDouble(tks[i]);
-				}
-
-				int numberOfAnt = (tks.length - 1) / EMUtil.pronounList.size();
-				if ((tks.length - 1) % EMUtil.pronounList.size() != 0) {
+				int numberOfAnt = probAnt.length / EMUtil.pronounList.size();
+				if (probAnt.length % EMUtil.pronounList.size() != 0) {
 					Common.bangErrorPOS("!!");
 				}
 
@@ -762,76 +762,186 @@ public class ApplyMaxEnt {
 	// }
 
 	private double[] runAttri(String attri, String str) {
-		String lineStr = "";
-		String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/" + attri +".model";
-		
-		Runtime run = Runtime.getRuntime();
-		try {
-			Process p = run.exec(cmd);
-			
-			BufferedOutputStream out = new BufferedOutputStream(
-					p.getOutputStream());
-			out.write(str.getBytes());
-			out.flush();
-			out.close();
-			
-			BufferedInputStream in = new BufferedInputStream(p.getInputStream());
-			BufferedReader inBr = new BufferedReader(new InputStreamReader(in));
-			lineStr = inBr.readLine();
-			if (p.waitFor() != 0) {
-				if (p.exitValue() == 1) {
-					System.err.println("ERROR YASMET");
-					Common.bangErrorPOS("");
+		switch (mode) {
+			case prepare: {
+				ArrayList<String> lines = null;
+				if (attri.equals("number")) {
+					lines = numberTest;
+				} else if (attri.equals("gender")) {
+					lines = genderTest;
+				} else if (attri.equals("person")) {
+					lines = personTest;
+				} else if (attri.equals("animacy")) {
+					lines = animacyTest;
 				}
+				String tks[] = str.split("\n");
+				if (lines.isEmpty()) {
+					lines.add(tks[0]);
+					lines.add(tks[1]);
+				} else {
+					lines.add(tks[1]);
+				}
+				return new double[0];
 			}
-			inBr.close();
-			in.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
+			case classify: {
+				String lineStr = "";
+				String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/" + attri
+						+ ".model";
+				Runtime run = Runtime.getRuntime();
+				try {
+					Process p = run.exec(cmd);
+	
+					BufferedOutputStream out = new BufferedOutputStream(
+							p.getOutputStream());
+					out.write(str.getBytes());
+					out.flush();
+					out.close();
+	
+					BufferedInputStream in = new BufferedInputStream(
+							p.getInputStream());
+					BufferedReader inBr = new BufferedReader(new InputStreamReader(
+							in));
+					lineStr = inBr.readLine();
+					if (p.waitFor() != 0) {
+						if (p.exitValue() == 1) {
+							System.err.println("ERROR YASMET");
+							Common.bangErrorPOS("");
+						}
+					}
+					System.out.println(lineStr);
+					inBr.close();
+					in.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+	
+				String tks[] = lineStr.split("\\s+");
+				double ret[] = new double[tks.length - 1];
+				for (int i = 1; i < tks.length; i++) {
+					ret[i - 1] = Double.parseDouble(tks[i]);
+				}
+				return ret;
+			}
+			case load: {
+				String lineStr = ""; 
+				if(attri.equals("number")) {
+					lineStr = numberRS.get(pronounID);
+				} else if(attri.equals("gender")) {
+					lineStr = genderRS.get(pronounID);
+				} else if(attri.equals("person")) {
+					lineStr = personRS.get(pronounID);
+				} else if(attri.equals("animacy")) {
+					lineStr = animacyRS.get(pronounID);
+				} else {
+					Common.bangErrorPOS("No Such Attri");
+				}
+				String tks[] = lineStr.split("\\s+");
+				double ret[] = new double[tks.length - 1];
+				for (int i = 1; i < tks.length; i++) {
+					ret[i - 1] = Double.parseDouble(tks[i]);
+				}
+				return ret;
+			}
+			default: {
+				Common.bangErrorPOS("WRONG MODE");
+			}
 		}
-
-		String tks[] = lineStr.split("\\s+");
-		double ret[] = new double[tks.length - 1];
-		for (int i = 1; i < tks.length; i++) {
-			ret[i - 1] = Double.parseDouble(tks[i]);
-		}
-		return ret;
+		return null;
 	}
 
-	private String runYasmet(String str) {
-		String lineStr = "";
-		String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/WT";
+	static int maxAnts = 1200;
 
-		Runtime run = Runtime.getRuntime();
-		try {
-			Process p = run.exec(cmd);
-			
-			BufferedOutputStream out = new BufferedOutputStream(
-					p.getOutputStream());
-			out.write(str.getBytes());
-			out.flush();
-			out.close();
-			
-			BufferedInputStream in = new BufferedInputStream(p.getInputStream());
-			BufferedReader inBr = new BufferedReader(new InputStreamReader(in));
-			lineStr = inBr.readLine();
-			// System.out.println(lineStr);
-			if (p.waitFor() != 0) {
-				if (p.exitValue() == 1) {
-					System.err.println("ERROR YASMET");
-					Common.bangErrorPOS("");
-				}
-			}
-			inBr.close();
-			in.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
+	private double[] runYasmet(String str, int antCount) {
+		String tks[] = str.split("@");
+		int numberOfUnit = tks.length - 2;
+		if (numberOfUnit > maxAnts) {
+			Common.bangErrorPOS("!!!MAX: " + numberOfUnit);
 		}
-		return lineStr;
+		for (int i = numberOfUnit; i < maxAnts; i++) {
+			str += "@ 0 NOCLASS 1 # ";
+		}
+
+		switch (mode) {
+		case prepare: {
+			if (anteTest.isEmpty()) {
+				anteTest.add(Integer.toString(maxAnts));
+			}
+			anteTest.add(str);
+			return new double[0];
+		}
+		case classify: {
+			String lineStr = "";
+			String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/WT";
+
+			Runtime run = Runtime.getRuntime();
+			double ret[] = new double[antCount];
+			try {
+				Process p = run.exec(cmd);
+
+				BufferedOutputStream out = new BufferedOutputStream(
+						p.getOutputStream());
+				out.write(Integer.toString(maxAnts).getBytes());
+				out.write(("\n" + str).getBytes());
+				out.flush();
+				out.close();
+
+				// BufferedInputStream errIn = new
+				// BufferedInputStream(p.getErrorStream());
+				// BufferedReader errBr = new BufferedReader(new
+				// InputStreamReader(errIn));
+
+				BufferedInputStream in = new BufferedInputStream(
+						p.getInputStream());
+				BufferedReader inBr = new BufferedReader(new InputStreamReader(
+						in));
+				lineStr = inBr.readLine();
+				if (p.waitFor() != 0) {
+					if (p.exitValue() == 1) {
+						System.err.println("ERROR YASMET");
+						Common.bangErrorPOS("");
+					}
+				}
+				inBr.close();
+				in.close();
+
+				tks = lineStr.split("\\s+");
+				double norm = 0;
+				for (int i = 0; i < antCount; i++) {
+					double conf = Double.parseDouble(tks[i + 1]);
+					norm += conf;
+					ret[i] = conf;
+				}
+				for (int i = 0; i < antCount; i++) {
+					ret[i] = ret[i] / norm;
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+			return ret;
+		}
+		case (load): {
+			double ret[] = new double[antCount];
+			String lineStr = anteRS.get(pronounID);
+			tks = lineStr.split("\\s+");
+			double norm = 0;
+			for (int i = 0; i < antCount; i++) {
+				double conf = Double.parseDouble(tks[i + 1]);
+				norm += conf;
+				ret[i] = conf;
+			}
+			for (int i = 0; i < antCount; i++) {
+				ret[i] = ret[i] / norm;
+			}
+			return ret;
+		}
+		default:
+			Common.bangErrorPOS("");
+		}
+		return null;
 	}
 
 	// dd
@@ -1043,11 +1153,31 @@ public class ApplyMaxEnt {
 		System.out.println("F-score: " + f * 100);
 	}
 
+	static int maximam = 0;
+
 	public static void main(String args[]) {
-		if (args.length != 1) {
-			System.err.println("java ~ folder");
+		if (args.length < 1) {
+			System.err.println("java ~ folder [mode]");
 			System.exit(1);
 		}
+		if (args[1].equals("prepare")) {
+			mode = prepare;
+		} else if (args[1].equals("load")) {
+			mode = load;
+		} else if (args[1].equals("classify")) {
+			mode = classify;
+		} else {
+			Common.bangErrorPOS("");
+		}
+
+		if (mode == load) {
+			personRS = Common.getLines("/users/yzcchen/tool/YASMET/person.rs");
+			genderRS = Common.getLines("/users/yzcchen/tool/YASMET/gender.rs");
+			numberRS = Common.getLines("/users/yzcchen/tool/YASMET/number.rs");
+			animacyRS = Common.getLines("/users/yzcchen/tool/YASMET/animacy.rs");
+			anteRS = Common.getLines("/users/yzcchen/tool/YASMET/ante.rs");
+		}
+
 		run(args[0]);
 
 		run("nw");
@@ -1073,6 +1203,16 @@ public class ApplyMaxEnt {
 
 		Common.outputHashSet(Context.ss, "miniS");
 		Common.outputHashSet(Context.vs, "miniV");
+
+		if (mode == prepare) {
+			Common.outputLines(numberTest, "number.testAll");
+			Common.outputLines(genderTest, "gender.testAll");
+			Common.outputLines(personTest, "person.testAll");
+			Common.outputLines(animacyTest, "animacy.testAll");
+			Common.outputLines(anteTest, "ante.testAll");
+			System.out.println("MAX: " + maximam);
+			System.exit(1);
+		}
 
 		Common.pause("!!");
 	}
