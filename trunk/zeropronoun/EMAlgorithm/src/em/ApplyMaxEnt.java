@@ -249,7 +249,7 @@ public class ApplyMaxEnt {
 				if (!file.contains("/nw/")
 				// && !file.contains("/mz/")&& !file.contains("/wb/")
 				) {
-//					candidates.addAll(anaphorZeros);
+					 candidates.addAll(anaphorZeros);
 				}
 				Collections.sort(candidates);
 
@@ -476,7 +476,7 @@ public class ApplyMaxEnt {
 			}
 			double probAnt[] = runYasmet(ysb.toString(), antCount);
 			pronounID++;
-//			System.err.println(cands.size());
+			// System.err.println(cands.size());
 			if (antCount != 0 && (mode == classify || mode == load)) {
 				// run yasmet here
 
@@ -487,72 +487,72 @@ public class ApplyMaxEnt {
 
 				// re-normalize?
 				for (Integer f : filters) {
-//					probAnt[f] = -1000000;
+					// probAnt[f] = -1000000;
 				}
 
 				// do re-normalize
 				double sumover = 0;
 				for (int i = 0; i < antCount; i++) {
 					if (!filters.contains(i)) {
-//						sumover += probAnt[i];
+						// sumover += probAnt[i];
 					}
 				}
 				for (int i = 0; i < antCount; i++) {
-//					probAnt[i] = probAnt[i] / sumover;
+					// probAnt[i] = probAnt[i] / sumover;
 				}
-				
-				HashSet<Integer> reranks = new HashSet<Integer>();
-				for (int i = 0; i < EMUtil.pronounList.size(); i++) {
-					double rankMax = 0;
-					int rerank = -1;
-					for (int j = 0; j < numberOfAnt; j++) {
-						double prob = probAnt[numberOfAnt * i + j];
-						if (prob > rankMax) {
-							rankMax = prob;
-							rerank = numberOfAnt * i + j;
-						}
-					}
-					reranks.add(rerank);
-				}
-				for(int i=0;i<antCount;i++) {
-					if(reranks.contains(i)) {
-						sumover += probAnt[i];
-					}
-				}
-				for(int i=0;i<antCount;i++) {
-					if(reranks.contains(i)) {
-						probAnt[i] = probAnt[i]/sumover;
-					} else {
-						probAnt[i] = -10000;
-					}
-				}
+
+//				HashSet<Integer> reranks = new HashSet<Integer>();
+//				for (int i = 0; i < EMUtil.pronounList.size(); i++) {
+//					double rankMax = 0;
+//					int rerank = -1;
+//					for (int j = 0; j < numberOfAnt; j++) {
+//						double prob = probAnt[numberOfAnt * i + j];
+//						if (prob > rankMax) {
+//							rankMax = prob;
+//							rerank = numberOfAnt * i + j;
+//						}
+//					}
+//					reranks.add(rerank);
+//				}
+//				for (int i = 0; i < antCount; i++) {
+//					if (reranks.contains(i)) {
+//						sumover += probAnt[i];
+//					}
+//				}
+//				for (int i = 0; i < antCount; i++) {
+//					if (reranks.contains(i)) {
+//						probAnt[i] = probAnt[i] / sumover;
+//					} else {
+//						probAnt[i] = -10000;
+//					}
+//				}
 
 				System.out.println(filters.size() + "###############"
 						+ antCount);
 				int rankID = -1;
 				double rankMax = 0;
-				for(int i=0;i<probAnt.length;i++) {
+				for (int i = 0; i < probAnt.length; i++) {
 					double prob = probAnt[i];
-					if(prob>rankMax) {
+					if (prob > rankMax) {
 						rankMax = prob;
 						rankID = i;
 					}
 				}
 				int antIdx = -1;
-				if(cands.get(idMap.get(rankID)).end==-1) {
-					antIdx = idMap.get(rankID);
-				} else {
-					ILP ilp = new ILP(numberOfAnt, probAnt, probNum, probGen,
-							probPer, probAni);
-					try {
-						antIdx = ilp.execute();
-					} catch (LpSolveException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
+				// if(cands.get(idMap.get(rankID)).end==-1) {
+				// antIdx = idMap.get(rankID);
+				// } else {
+				ILP ilp = new ILP(numberOfAnt, probAnt, probNum, probGen,
+						probPer, probAni);
+				try {
+					antIdx = ilp.execute();
+				} catch (LpSolveException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
+				// }
 				antecedent = cands.get(antIdx);
-				
+
 			}
 			if (antecedent != null) {
 				if (antecedent.end != -1) {
@@ -907,8 +907,8 @@ public class ApplyMaxEnt {
 		}
 		case classify: {
 			if (true) {
-//				 double ret[] = new double[all];
-//				 return ret;
+				// double ret[] = new double[all];
+				// return ret;
 				return selectRestriction(attri, all, v);
 			}
 			String lineStr = "";
@@ -971,9 +971,9 @@ public class ApplyMaxEnt {
 			// }
 			// return ret;
 			if (true) {
-//				double ret[] = new double[all];
-//				return ret;
-				 return selectRestriction(attri, all, v);
+				 double ret[] = new double[all];
+				 return ret;
+//				return selectRestriction(attri, all, v);
 			}
 			return selectRestriction(attri, all, v);
 		}
@@ -1350,14 +1350,18 @@ public class ApplyMaxEnt {
 		}
 
 		if (mode == load) {
-			personRS = Common.getLines("/users/yzcchen/tool/YASMET/person.rs");
-			genderRS = Common.getLines("/users/yzcchen/tool/YASMET/gender.rs");
-			numberRS = Common.getLines("/users/yzcchen/tool/YASMET/number.rs");
-			animacyRS = Common
-					.getLines("/users/yzcchen/tool/YASMET/animacy.rs");
-			anteRS = Common.getLines("/users/yzcchen/tool/YASMET/ante.rs");
+			personRS = Common.getLines("/users/yzcchen/tool/YASMET/person.rs"
+					+ args[0]);
+			genderRS = Common.getLines("/users/yzcchen/tool/YASMET/gender.rs"
+					+ args[0]);
+			numberRS = Common.getLines("/users/yzcchen/tool/YASMET/number.rs"
+					+ args[0]);
+			animacyRS = Common.getLines("/users/yzcchen/tool/YASMET/animacy.rs"
+					+ args[0]);
+			anteRS = Common.getLines("/users/yzcchen/tool/YASMET/ante.rs"
+					+ args[0]);
 		}
-		double para[] = { 0.008, 0.01, 0.02, 0.04, 0.06, 0.08 };
+		double para[] = { 0, 0.008, 0.01, 0.02, 0.04, 0.06, 0.08 };
 
 		String paras[] = { "0.008 0.01 0.06 0.01", "0.0075 0.01 0.06 0.01",
 				"0.0085 0.01 0.06 0.01", "0.008 0.005 0.06 0.01",
@@ -1369,37 +1373,41 @@ public class ApplyMaxEnt {
 				"0.009 0.01 0.06 0.01", "0.009 0.012 0.06 0.01",
 				"0.008 0.015 0.06 0.012" };
 
-		for (int a = 0; a < para.length; a++) {
-			for (int b = 0; b < para.length; b++) {
-				for (int c = 0; c < para.length; c++) {
-					for (int d = 0; d < para.length; d++) {
-						 ILP.a_num = para[a];
-						 ILP.b_gen = para[b];
-						 ILP.c_per = para[c];
-						 ILP.d_ani = para[d];
-//						 while(true) {
-						// for (String par : paras) {
-						// String tks[] = par.trim().split("\\s+");
-						// ILP.a_num = Double.parseDouble(tks[0]);
-						// ILP.b_gen = Double.parseDouble(tks[1]);
-						// ILP.c_per = Double.parseDouble(tks[2]);
-						// ILP.d_ani = Double.parseDouble(tks[3]);
-						 if(ILP.c_per>ILP.d_ani && ILP.c_per>ILP.b_gen)
-							 run(args[0]);
-//						Common.input("");
-						// System.exit(1);
-						// run("nw");
-						// run("mz");
-						// run("wb");
-						// run("bn");
-						// run("bc");
-						// run("tc");
-						// }
-						// System.exit(1);
-					}
-				}
-			}
-		}
+//		for (int a = 0; a < para.length; a++) {
+//			for (int b = 0; b < para.length; b++) {
+//				for (int c = 0; c < para.length; c++) {
+//					for (int d = 0; d < para.length; d++) {
+//						ILP.a_num = para[a];
+//						ILP.b_gen = para[b];
+//						ILP.c_per = para[c];
+//						ILP.d_ani = para[d];
+//						// while(true) {
+//						// for (String par : paras) {
+//						// String tks[] = par.trim().split("\\s+");
+//						// ILP.a_num = Double.parseDouble(tks[0]);
+//						// ILP.b_gen = Double.parseDouble(tks[1]);
+//						// ILP.c_per = Double.parseDouble(tks[2]);
+//						// ILP.d_ani = Double.parseDouble(tks[3]);
+//						// if(ILP.c_per>ILP.d_ani && ILP.c_per>ILP.b_gen)
+//
+//						if (para[a] <= 0.04 && para[a] > 0 && para[b] <= 0.01
+//								&& para[c] >= 0.04 && para[d] >= 0.02) {
+							run(args[0]);
+//						}
+//						// Common.input("");
+//						// System.exit(1);
+//						// run("nw");
+//						// run("mz");
+//						// run("wb");
+//						// run("bn");
+//						// run("bc");
+//						// run("tc");
+//						// }
+//						// System.exit(1);
+//					}
+//				}
+//			}
+//		}
 
 		// run("nw");
 		// run("mz");
@@ -1426,11 +1434,11 @@ public class ApplyMaxEnt {
 		Common.outputHashSet(Context.vs, "miniV");
 
 		if (mode == prepare) {
-			Common.outputLines(numberTest, "number.testAll");
-			Common.outputLines(genderTest, "gender.testAll");
-			Common.outputLines(personTest, "person.testAll");
-			Common.outputLines(animacyTest, "animacy.testAll");
-			Common.outputLines(anteTest, "ante.testAll");
+			Common.outputLines(numberTest, "number.test" + folder);
+			Common.outputLines(genderTest, "gender.test" + folder);
+			Common.outputLines(personTest, "person.test" + folder);
+			Common.outputLines(animacyTest, "animacy.test" + folder);
+			Common.outputLines(anteTest, "ante.test" + folder);
 			System.out.println("MAX: " + maximam);
 			System.exit(1);
 		}
