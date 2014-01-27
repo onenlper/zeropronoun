@@ -11,26 +11,44 @@ import lpsolve.LpSolveException;
 
 public class ILP {
 
-//	static double a = 0.001;
-//	static double b = 0.001;
-//	static double c = 0.001;
-//	static double d = 0.001;
+	// static double a = 0.001;
+	// static double b = 0.001;
+	// static double c = 0.001;
+	// static double d = 0.001;
 
-//	static double a = 0.005;
-//	static double b = 0.005;
-//	static double c = 0.005;
-//	static double d = 0.005;
+	// static double a = 0.005;
+	// static double b = 0.005;
+	// static double c = 0.005;
+	// static double d = 0.005;
+
+	// static double a = 0.008;
+	// static double b = 0.008;
+	// static double c = 0.008;
+	// static double d = 0.008;
+
+	// public static double a_num = 0.008;
+	// public static double b_gen = 0.008;
+	// public static double c_per = 0.06;
+	// public static double d_ani = 0.008;
+
+	// 0.008 0.01 0.04 0.008 = 47.06
+	// 0.008 0.01 0.06 0.008 = 47.30 806
+	// 0.006 0.01 0.06 0.008 = 47.00 801
+	// 0.009 0.01 0.06 0.008 = 47.30 806
+	// 0.009 0.01 0.07 0.008 = 46.77 797
+	// 0.009 0.01 0.05 0.008 = 47.06 802
+	// 0.008 0.01 0.06 0.01 = 47.47
+
+	// 0.008 0.01 0.06 0.012 R:0.47285464098073554 P: 0.4778761061946903 F:
+	// 0.47535211267605637
+
 	
-//	static double a = 0.008;
-//	static double b = 0.008;
-//	static double c = 0.008;
-//	static double d = 0.008;
-	
-	static double a = 0.00;
-	static double b = 0.00;
-	static double c = 0.00;
-	static double d = 0.00;
-	
+	// norm 0.02 0.008 0.08 0.06
+	public static double a_num = 0.008;
+	public static double b_gen = 0.01;
+	public static double c_per = 0.06;
+	public static double d_ani = 0.012;
+
 	int numberOfAnts = 0;
 
 	double proAnte[];
@@ -60,7 +78,7 @@ public class ILP {
 		Ncol = numberOfAnts * EMUtil.pronounList.size()
 				+ EMUtil.Person.values().length
 				+ (EMUtil.Animacy.values().length - 1)
-				+ EMUtil.Gender.values().length + EMUtil.Number.values().length; /*
+				+ (EMUtil.Gender.values().length-1) + EMUtil.Number.values().length; /*
 																				 * number
 																				 * of
 																				 * variables
@@ -104,7 +122,7 @@ public class ILP {
 				probMap.put(name, this.proNum[i]);
 				lp.setColName(vNo++, name);
 			}
-			for (int i = 0; i < EMUtil.Gender.values().length; i++) {
+			for (int i = 0; i < EMUtil.Gender.values().length-1; i++) {
 				String name = "Y_gen(" + EMUtil.Gender.values()[i].name() + ")";
 				nameMap.put(name, vNo);
 				probMap.put(name, this.proGen[i]);
@@ -162,7 +180,7 @@ public class ILP {
 			// constraint 3: sum over all y_gen to 1
 			if (ret == 0) {
 				m = 0;
-				for (int i = 0; i < EMUtil.Gender.values().length; i++) {
+				for (int i = 0; i < EMUtil.Gender.values().length-1; i++) {
 					String name = "Y_gen(" + EMUtil.Gender.values()[i].name()
 							+ ")";
 					int y_gen = nameMap.get(name);
@@ -227,7 +245,7 @@ public class ILP {
 			}
 
 			// constraint 7: pronoun gender consistency
-			for (int n = 0; n < EMUtil.Gender.values().length; n++) {
+			for (int n = 0; n < EMUtil.Gender.values().length-1; n++) {
 				EMUtil.Gender gen = EMUtil.Gender.values()[n];
 				m = 0;
 				for (int i = 0; i < EMUtil.pronounList.size(); i++) {
@@ -297,6 +315,20 @@ public class ILP {
 				/* add the row to lp_solve */
 				lp.addConstraintex(m, row, colno, LpSolve.EQ, 0);
 			}
+
+			// constraint 10: pronoun gender/animacy consistency
+			// if gender=male/female, then animacy= animate
+			// male + female - animate <= 0
+			m = 0;
+			colno[m] = nameMap.get("Y_gen(" + EMUtil.Gender.male.name() + ")");
+			row[m++] = 1;
+			colno[m] = nameMap.get("Y_gen(" + EMUtil.Gender.female.name() + ")");
+			row[m++] = 1;
+			colno[m] = nameMap.get("Y_ani(" + EMUtil.Animacy.animate.name() + ")");
+			row[m++] = -1;
+			lp.addConstraintex(m, row, colno, LpSolve.LE, 0);
+		} else {
+			Common.bangErrorPOS("!!!");
 		}
 
 		if (ret == 0) {
@@ -321,21 +353,21 @@ public class ILP {
 				String name = "Y_num(" + EMUtil.Number.values()[i].name() + ")";
 				int y_num = nameMap.get(name);
 				colno[m] = y_num;
-				row[m++] = probMap.get(name) * a;
+				row[m++] = probMap.get(name) * a_num;
 			}
 
-			for (int i = 0; i < EMUtil.Gender.values().length; i++) {
+			for (int i = 0; i < EMUtil.Gender.values().length-1; i++) {
 				String name = "Y_gen(" + EMUtil.Gender.values()[i].name() + ")";
 				int y_gen = nameMap.get(name);
 				colno[m] = y_gen;
-				row[m++] = probMap.get(name) * b;
+				row[m++] = probMap.get(name) * b_gen;
 			}
 
 			for (int i = 0; i < EMUtil.Person.values().length; i++) {
 				String name = "Y_per(" + EMUtil.Person.values()[i].name() + ")";
 				int y_per = nameMap.get(name);
 				colno[m] = y_per;
-				row[m++] = probMap.get(name) * c;
+				row[m++] = probMap.get(name) * c_per;
 			}
 
 			for (int i = 0; i < EMUtil.Animacy.values().length - 1; i++) {
@@ -343,11 +375,13 @@ public class ILP {
 						+ ")";
 				int y_ani = nameMap.get(name);
 				colno[m] = y_ani;
-				row[m++] = probMap.get(name) * d;
+				row[m++] = probMap.get(name) * d_ani;
 			}
 
 			/* set the objective in lp_solve */
 			lp.setObjFnex(m, row, colno);
+		} else {
+			Common.bangErrorPOS("!!!");
 		}
 
 		if (ret == 0) {
@@ -369,6 +403,8 @@ public class ILP {
 				ret = 0;
 			else
 				ret = 5;
+		} else {
+			Common.bangErrorPOS("!!!");
 		}
 
 		if (ret == 0) {
@@ -398,7 +434,7 @@ public class ILP {
 				}
 			}
 
-			for (int i = 0; i < EMUtil.Gender.values().length; i++) {
+			for (int i = 0; i < EMUtil.Gender.values().length-1; i++) {
 				String name = "Y_gen(" + EMUtil.Gender.values()[i].name() + ")";
 				double val = row[nameMap.get(name) - 1];
 				if (val != 0) {
@@ -417,7 +453,8 @@ public class ILP {
 			}
 
 			for (int i = 0; i < EMUtil.Animacy.values().length - 1; i++) {
-				String name = "Y_ani(" + EMUtil.Animacy.values()[i].name() + ")";
+				String name = "Y_ani(" + EMUtil.Animacy.values()[i].name()
+						+ ")";
 				double val = row[nameMap.get(name) - 1];
 				if (val != 0) {
 					ani = EMUtil.Animacy.values()[i];
@@ -437,16 +474,20 @@ public class ILP {
 						System.out.println(pronoun + ":" + num.name() + ","
 								+ gen.name() + "," + per.name() + ","
 								+ ani.name());
-						if(EMUtil.getNumber(pronoun)!=num || EMUtil.getGender(pronoun)!=gen || 
-						   EMUtil.getPerson(pronoun)!=per || EMUtil.getAnimacy(pronoun)!=ani) {
+						if (EMUtil.getNumber(pronoun) != num
+								|| EMUtil.getGender(pronoun) != gen
+								|| EMUtil.getPerson(pronoun) != per
+								|| EMUtil.getAnimacy(pronoun) != ani) {
 							Common.pause("GEEE!!");
 						}
 						return k;
 					}
 				}
 			}
-
 			/* we are done now */
+		} else {
+			System.out.println(ret);
+			Common.bangErrorPOS("!!!");
 		}
 
 		/* clean up such that all used memory by lp_solve is freeed */
