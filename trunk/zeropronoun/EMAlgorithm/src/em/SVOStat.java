@@ -26,6 +26,11 @@ public class SVOStat implements Serializable{
 	public HashMap<String, Integer> voCounts;
 	public int svoAll = 66724995;
 	
+	public HashMap<String, HashMap<Integer, Integer>> numberStat;
+	public HashMap<String, HashMap<Integer, Integer>> genderStat;
+	public HashMap<String, HashMap<Integer, Integer>> personStat;
+	public HashMap<String, HashMap<Integer, Integer>> animacyStat;
+	
 	public void loadMIInfo() {
 		try {
 			unigrams = new HashMap<String, Integer>();
@@ -46,6 +51,11 @@ public class SVOStat implements Serializable{
 			svoCounts = new HashMap<String, Integer>();
 			voCounts = new HashMap<String, Integer>();
 
+			numberStat = new HashMap<String, HashMap<Integer, Integer>>();
+			genderStat = new HashMap<String, HashMap<Integer, Integer>>();
+			personStat = new HashMap<String, HashMap<Integer, Integer>>();
+			animacyStat = new HashMap<String, HashMap<Integer, Integer>>();
+			
 			while ((line = br.readLine()) != null) {
 				int k = line.lastIndexOf(' ');
 				int count = Integer.parseInt(line.substring(k + 1));
@@ -56,6 +66,21 @@ public class SVOStat implements Serializable{
 
 				addMap(svCounts, s + " " + v, count);
 				addMap(vCounts, v, count);
+				
+				EMUtil.Number num = EMUtil.getAntNumber(s);
+				addAttri(v, numberStat, num.ordinal(), count);
+				
+				EMUtil.Gender gen = EMUtil.getAntGender(s);
+				if(gen!=EMUtil.Gender.unknown) {
+					addAttri(v, genderStat, gen.ordinal(), count);
+				}
+				EMUtil.Person per = EMUtil.getAntPerson(s);
+				addAttri(v, personStat, per.ordinal(), count);
+				
+				EMUtil.Animacy ani = EMUtil.getAntAnimacy(s);
+				if(ani!=EMUtil.Animacy.unknown) {
+					addAttri(v, animacyStat, ani.ordinal(), count);
+				}
 
 				if (tks.length == 3) {
 					String o = tks[2];
@@ -65,13 +90,26 @@ public class SVOStat implements Serializable{
 
 			}
 			br.close();
-
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		}
+	}
+	
+	public void addAttri(String s, HashMap<String, HashMap<Integer, Integer>> stat, int attrVal, int count) {
+		HashMap<Integer, Integer> map = stat.get(s);
+		if(map==null) {
+			map = new HashMap<Integer, Integer>();
+			stat.put(s, map);
+		}
+		Integer i = map.get(attrVal);
+		if(i==null) {
+			map.put(attrVal, count);
+		} else {
+			map.put(attrVal, count + i.intValue());
 		}
 	}
 	
