@@ -64,6 +64,7 @@ public class SuperviseFea extends YYFeature {
 		 strs.add(genderStr);
 		 strs.add(animacyStr);
 
+//		 strs.add(this.part.folder);
 //				 strs.add(context.feaL);
 		strs.addAll(getEMLNLPStrFeatures());
 		return strs;
