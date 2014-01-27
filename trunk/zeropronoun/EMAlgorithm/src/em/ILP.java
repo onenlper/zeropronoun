@@ -39,15 +39,21 @@ public class ILP {
 	// 0.009 0.01 0.05 0.008 = 47.06 802
 	// 0.008 0.01 0.06 0.01 = 47.47
 
-	// 0.008 0.01 0.06 0.012 R:0.47285464098073554 P: 0.4778761061946903 F:
+	// ***** 0.008 0.01 0.06 0.012 R:0.47285464098073554 P: 0.4778761061946903 F:
 	// 0.47535211267605637
-
-	
-	// norm 0.02 0.008 0.08 0.06
 	public static double a_num = 0.008;
 	public static double b_gen = 0.01;
 	public static double c_per = 0.06;
 	public static double d_ani = 0.012;
+	
+	
+	// norm 0.02 0.008 0.08 0.06
+	
+	// norm 10 0.015 0.001 0.09 0.04   R:0.46117921774664333 P: 0.46856465005931197 F: 0.4648426007649309
+//	public static double a_num = 0.015;
+//	public static double b_gen = 0.001;
+//	public static double c_per = 0.09;
+//	public static double d_ani = 0.04;
 
 	int numberOfAnts = 0;
 
