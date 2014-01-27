@@ -24,10 +24,10 @@ import edu.stanford.nlp.ling.Datum;
 public class EMUtil {
 
 	public static boolean train;
-	
+
 	public static double alpha = Math.pow(10, -5);
-//	0.0000001;
-//	-7
+	// 0.0000001;
+	// -7
 
 	public static HashSet<String> location = Common
 			.readFile2Set("location_suffix");
@@ -65,7 +65,7 @@ public class EMUtil {
 	};
 
 	public static enum Gender {
-		male, female, neuter
+		male, female, neuter, unknown
 	};
 
 	public static enum Animacy {
@@ -315,6 +315,30 @@ public class EMUtil {
 		zero.V = V;
 	}
 
+	public static Number getAntNumber(String str) {
+		boolean plura = false;
+		
+		if (str.contains("和")) {
+			plura = true;
+		}
+		if (str.contains("些")) {
+			plura = true;
+		}
+		if (str.contains("多")) {
+			plura = true;
+		}
+		
+		if (str.endsWith("们")) {
+			plura = true;
+		}
+
+		if (plura) {
+			return Number.plural;
+		} else {
+			return Number.single;
+		}
+	}
+	
 	public static Number getAntNumber(Mention mention) {
 		MyTreeNode np = mention.NP;
 		boolean plura = false;
@@ -453,7 +477,33 @@ public class EMUtil {
 				}
 			}
 		}
+
+//		changeStr(em);
+
 		return em;
+	}
+
+	private static void changeStr(Mention em) {
+		if (em.extent.equals("这些")) {
+			em.extent = "它们";
+			em.head = "它们";
+		}
+
+		if (em.extent.equals("这") || em.extent.equals("那")
+				|| em.extent.equals("这个")) {
+			em.extent = "它";
+			em.head = "它";
+		}
+
+		if (em.extent.equals("您")) {
+			em.extent = "你";
+			em.head = "你";
+		}
+
+		if (em.extent.equals("双方")) {
+			em.extent = "他们";
+			em.head = "他们";
+		}
 	}
 
 	public static String getFirstVerb(MyTreeNode vp) {
@@ -510,8 +560,8 @@ public class EMUtil {
 	public static int getBucket(int current, int overall, int buckets) {
 		double perBucket = (double) overall / (double) buckets;
 		int bucket = (int) (current * 1.0 / perBucket);
-		
-		if(bucket>4) {
+
+		if (bucket > 4) {
 			Common.bangErrorPOS(current + " " + overall);
 		}
 		return bucket;
@@ -720,6 +770,81 @@ public class EMUtil {
 		// System.out.println(head + " " + ret.name() + " " + mention.NE);
 		return ret;
 	}
+	
+	public static Animacy getAntAnimacy(String head) {
+		if (peopleness == null) {
+			loadMeassure();
+		}
+		if (pronouns.contains(head)) {
+			return getAnimacy(head);
+		}
+
+//		if (!peopleness.containsKey(head)
+//				&& mention.mType == MentionType.common) {
+//			head = head.substring(head.length() - 1);
+//		}
+//
+		Animacy ret;
+		if (head.endsWith("人") || head.equals("自己")) {
+			ret = Animacy.animate;
+		} 
+//		else if (mention.mType == MentionType.tmporal) {
+//			ret = Animacy.unanimate;
+//		} else if (!mention.NE.equalsIgnoreCase("OTHER")) {
+//			if (mention.NE.equals("PERSON")) {
+//				ret = Animacy.animate;
+//			} else {
+//				ret = Animacy.unanimate;
+//			}
+//		} 
+		else if (peopleness.containsKey(head)) {
+			HashMap<String, Integer> subMap = peopleness.get(head);
+			int anim = 0;
+			int unanim = 0;
+
+			for (String definitePerson : definitePersonMeasures) {
+				if (subMap.containsKey(definitePerson)) {
+					anim += subMap.get(definitePerson);
+				}
+			}
+
+			for (String key : subMap.keySet()) {
+				if (!definitePersonMeasures.contains(key) && !key.equals(ge)) {
+					unanim += subMap.get(key);
+				}
+			}
+			int geCount = 0;
+			if (subMap.containsKey(ge)) {
+				geCount += subMap.get(ge);
+			}
+			if (anim > unanim) {
+				ret = Animacy.animate;
+			}
+			// else if (anim != 0 && anim + geCount > unanim && anim>.5*unanim)
+			// {
+			// ret = Animacy.animate;
+			//
+			// }
+			else {
+				ret = Animacy.unanimate;
+			}
+			// System.out.println(head + " " + an.name());
+		} else {
+			// if (location.contains(head.substring(head.length() - 1))) {
+			// ret = Animacy.unanimate;
+			// } else if (mention.mType == MentionType.proper) {
+			// ret = Animacy.animate;
+			// // System.out.println(mention.extent);
+			// } else {
+			ret = Animacy.unknown;
+			// ret = Animacy.unanimate;
+			// System.out.println(head + " " + mention.NE);
+			missed.add(head);
+			// }
+		}
+		// System.out.println(head + " " + ret.name() + " " + mention.NE);
+		return ret;
+	}
 
 	public static Animacy getAntAnimacy(Mention mention) {
 		if (peopleness == null) {
@@ -844,6 +969,9 @@ public class EMUtil {
 	static HashMap<String, HashMap<String, Integer>> genderStat;
 
 	public static void loadGender() {
+		if(peopleness==null) {
+			loadMeassure();
+		}
 		genderStat = new HashMap<String, HashMap<String, Integer>>();
 		ArrayList<String> lines = Common.getLines("collectStats.giga.bak");
 		for (String line : lines) {
@@ -860,6 +988,42 @@ public class EMUtil {
 		}
 	}
 
+	public static Gender getAntGender(String head) {
+		if (genderStat == null) {
+			loadGender();
+		}
+		if (pronouns.contains(head)) {
+			return getGender(head);
+		}
+		Animacy anim = getAntAnimacy(head);
+		if (anim == Animacy.unanimate || anim == Animacy.unknown) {
+			return Gender.neuter;
+		}
+
+		HashMap<String, Integer> subMap = genderStat.get(head);
+		int male = 0;
+		int female = 0;
+		if (subMap != null) {
+			for (String malePronoun : EMUtil.males) {
+				if (subMap.containsKey(malePronoun)) {
+					male += subMap.get(malePronoun);
+				}
+			}
+			for (String femalePronoun : EMUtil.females) {
+				if (subMap.containsKey(femalePronoun)) {
+					female += subMap.get(femalePronoun);
+				}
+			}
+		}
+		if (female > male) {
+			// System.out.println(head + " : FEMALE");
+			return Gender.female;
+		} else {
+			// System.out.println(head + " : MALE " + m.animacy + " " + m.NE);
+			return Gender.male;
+		}
+	}
+	
 	public static Gender getAntGender(Mention m) {
 		if (genderStat == null) {
 			loadGender();
@@ -892,7 +1056,7 @@ public class EMUtil {
 			// System.out.println(head + " : FEMALE");
 			return Gender.female;
 		} else {
-//			 System.out.println(head + " : MALE " + m.animacy + " " + m.NE);
+			// System.out.println(head + " : MALE " + m.animacy + " " + m.NE);
 			return Gender.male;
 		}
 	}
@@ -1109,8 +1273,9 @@ public class EMUtil {
 		}
 		return "";
 	}
-	
-	public static Datum<String, String> svmlightToStanford(ArrayList<String> feas, String label) {
+
+	public static Datum<String, String> svmlightToStanford(
+			ArrayList<String> feas, String label) {
 		return new BasicDatum<String, String>(feas, label);
 	}
 
@@ -1118,11 +1283,11 @@ public class EMUtil {
 		String tks[] = svmlight.split("\\s+");
 		String label = tks[0];
 		List<String> features = new ArrayList<String>();
-		for(int i=1;i<tks.length;i++) {
+		for (int i = 1; i < tks.length; i++) {
 			int k = tks[i].indexOf(":");
 			String idx = tks[i].substring(0, k);
-			int val = Integer.parseInt(tks[i].substring(k+1));
-			if(val!=1) {
+			int val = Integer.parseInt(tks[i].substring(k + 1));
+			if (val != 1) {
 				Common.bangErrorPOS("Binary expected!");
 			}
 			features.add(idx);
