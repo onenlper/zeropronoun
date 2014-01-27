@@ -73,6 +73,8 @@ public class MaxEntLearn {
 		return goldPart.getNameEntities();
 	}
 
+	static HashMap<String, Integer> map = new HashMap<String, Integer>();
+
 	public static void extractGroups(CoNLLPart part) {
 		// ArrayList<Element> goldNE = getChGoldNE(part);
 		HashMap<String, Integer> chainMap = EMUtil.formChainMap(part
@@ -82,6 +84,17 @@ public class MaxEntLearn {
 		EMUtil.assignNE(allMentions, part.getNameEntities());
 		for (int i = 0; i < allMentions.size(); i++) {
 			Mention m = allMentions.get(i);
+
+			if (m.gram == EMUtil.Grammatic.subject && m.start == m.end
+					&& part.getWord(m.end).posTag.equals("PN")) {
+				String ext = m.extent;
+				if(map.containsKey(ext)) {
+					map.put(ext, map.get(ext)+1);
+				} else {
+					map.put(ext, 1);
+				}
+			}
+
 			if (m.gram == EMUtil.Grammatic.subject
 					&& EMUtil.pronouns.contains(m.extent)
 			// && chainMap.containsKey(m.toName())
@@ -155,6 +168,22 @@ public class MaxEntLearn {
 						rank = -1;
 					}
 					// coref = coref && m.extent.equals(goldPro);
+					
+//					//
+//					if (sameSpeaker) {
+//						pStr = entry.person.name() + "=" + EMUtil.getPerson(pronoun).name();
+//					} else {
+//						pStr = entry.person.name() + "!="
+//								+ EMUtil.getPerson(pronoun).name();
+//					}
+//					String nStr = entry.number.name() + "="
+//							+ EMUtil.getNumber(pronoun).name();
+//					String gStr = entry.gender.name() + "="
+//							+ EMUtil.getGender(pronoun).name();
+//					String aStr = entry.animacy.name() + "="
+//							+ EMUtil.getAnimacy(pronoun).name();
+					
+					
 					ysb.append(getYamset(coref, ant, m, context, sameSpeaker,
 							entry, superFea, corefCount, part));
 					svmRanks.add(getSVMRank(rank, ant, m, context, sameSpeaker,
@@ -169,24 +198,24 @@ public class MaxEntLearn {
 				// }
 				// m.extent = goldPro;
 				CoNLLSentence s = part.getWord(m.start).sentence;
-//				try {
-					extractGuessPronounFea(m, s, part);
-//				} catch (Exception e) {
-//					System.out.println(s.getText());
-//					System.out.println(m.extent);
-//					Common.bangErrorPOS("");
-//				}
+				// try {
+				extractGuessPronounFea(m, s, part);
+				// } catch (Exception e) {
+				// System.out.println(s.getText());
+				// System.out.println(m.extent);
+				// Common.bangErrorPOS("");
+				// }
 			}
 		}
 	}
-	
+
 	static FileWriter genderWriter;
 	static FileWriter numberWriter;
 	static FileWriter personWriter;
 	static FileWriter animacyWriter;
-//	static FileWriter nbFeaWriter;
+	// static FileWriter nbFeaWriter;
 	static GuessPronounFea guessFea;
-	
+
 	public static void extractGuessPronounFea(Mention pronoun, CoNLLSentence s,
 			CoNLLPart part) {
 		try {
@@ -196,57 +225,67 @@ public class MaxEntLearn {
 			// label = pronoun.animacy.ordinal() + 1;
 
 			String feaStr = guessFea.getSVMFormatString();
+			String v = EMUtil.getFirstVerb(pronoun.V);
+			
 
-			//TODO Yasmet format
+			// TODO Yasmet format
 			// NUMBER, GENDER, PERSON, ANIMACY
 			String tks[] = feaStr.split("\\s+");
 			int all = EMUtil.Number.values().length;
 			int y = pronoun.number.ordinal();
-			String nYSB = transform(tks, all, y);
-			
-			all = EMUtil.Gender.values().length;
+			double[] numberProbs = ApplyMaxEnt.selectRestriction("number", all, v);
+			String nYSB = transform(tks, all, y, numberProbs);
+
+			all = EMUtil.Gender.values().length - 1;
 			y = pronoun.gender.ordinal();
-			String gYSB = transform(tks, all, y);
-			
+			double[] genderProbs = ApplyMaxEnt.selectRestriction("gender", all, v);
+			String gYSB = transform(tks, all, y, genderProbs);
+
 			all = EMUtil.Person.values().length;
 			y = pronoun.person.ordinal();
-			String pYSB = transform(tks, all, y);
-			
-			all = EMUtil.Animacy.values().length -1;
+			double[] personProbs = ApplyMaxEnt.selectRestriction("person", all, v);
+			String pYSB = transform(tks, all, y, personProbs);
+
+			all = EMUtil.Animacy.values().length - 1;
 			y = pronoun.animacy.ordinal();
-			String aYSB = transform(tks, all, y);
-			
+			double[] animacyProbs = ApplyMaxEnt.selectRestriction("animacy", all, v);
+			String aYSB = transform(tks, all, y, animacyProbs);
+
 			numberWriter.write(nYSB + "\n");
 			genderWriter.write(gYSB + "\n");
 			personWriter.write(pYSB + "\n");
 			animacyWriter.write(aYSB + "\n");
-			
-//			String nbFeaStr = guessFea.getMyBNFormatString();
-//			nbFeaWriter.write((label - 1) + " " + nbFeaStr + "\n");
+
+			// String nbFeaStr = guessFea.getMyBNFormatString();
+			// nbFeaWriter.write((label - 1) + " " + nbFeaStr + "\n");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 
-	private static String transform(String[] tks, int all, int y) {
+	private static String transform(String[] tks, int all, int y, double probs[]) {
 		StringBuilder ysb = new StringBuilder();
 		ysb.append(y);
 		ysb.append(" @ ");
-		for(int i=0;i<all;i++) {
+		for (int i = 0; i < all; i++) {
 			ysb.append("@ ");
-			if(i==y) {
+			if (i == y) {
 				ysb.append("1 ");
 			} else {
 				ysb.append("0 ");
 			}
 			for (String tk : tks) {
-				if(tk.isEmpty()) {
+				if (tk.isEmpty()) {
 					continue;
 				}
 				int k = tk.indexOf(":");
 				String f = tk.substring(0, k);
 				String v = tk.substring(k + 1);
-				ysb.append(f+"_"+i).append(" ").append(v).append(" ");
+				ysb.append(f + "_" + i).append(" ").append(v).append(" ");
+			}
+			
+			for(int j=0;j<probs.length;j++) {
+				ysb.append(j + "_" + i).append(" ").append(probs[j]).append(" ");
 			}
 			ysb.append("# ");
 		}
@@ -325,9 +364,9 @@ public class MaxEntLearn {
 			String f = tk.substring(0, k);
 			String v = tk.substring(k + 1);
 			ysb.append(f).append(" ").append(v).append(" ");
+//			System.out.println(part.folder);
 		}
 		ysb.append("# ");
-
 		return ysb.toString();
 	}
 
@@ -344,7 +383,7 @@ public class MaxEntLearn {
 
 	public static void main(String args[]) throws Exception {
 		EMUtil.train = true;
-		
+
 		genderWriter = new FileWriter("gender.train");
 		genderWriter.write(EMUtil.Gender.values().length + "\n");
 		numberWriter = new FileWriter("number.train");
@@ -353,9 +392,9 @@ public class MaxEntLearn {
 		personWriter.write(EMUtil.Person.values().length + "\n");
 		animacyWriter = new FileWriter("animacy.train");
 		animacyWriter.write(EMUtil.Animacy.values().length - 1 + "\n");
-//		nbFeaWriter = new FileWriter("guessPronoun.train.nb");
+		// nbFeaWriter = new FileWriter("guessPronoun.train.nb");
 		guessFea = new GuessPronounFea(true, "guessPronoun");
-		
+
 		superFea = new SuperviseFea(true, "supervise");
 
 		ArrayList<ResolveGroup> groups = new ArrayList<ResolveGroup>();
@@ -371,14 +410,18 @@ public class MaxEntLearn {
 		Common.outputLines(svmRanks, "svmRank.train");
 
 		System.out.println("Qid: " + qid);
-		
+
 		guessFea.freeze();
 		guessFea.clear();
-//		nbFeaWriter.close();
+		// nbFeaWriter.close();
 		genderWriter.close();
 		numberWriter.close();
 		personWriter.close();
 		animacyWriter.close();
+		
+		for(String k : map.keySet()) {
+			System.out.println(k + ":" + map.get(k));
+		}
 	}
 
 }
