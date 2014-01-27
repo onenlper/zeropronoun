@@ -55,6 +55,8 @@ public class CoNLLPart {
 
 	private ArrayList<Mention> mentions;
 
+	public String folder;
+	
 	public CoNLLPart() {
 		this.sentences = new ArrayList<CoNLLSentence>();
 		this.nameEntities = new ArrayList<Element>();
