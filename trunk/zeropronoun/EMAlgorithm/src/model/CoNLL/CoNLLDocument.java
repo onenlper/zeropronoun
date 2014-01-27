@@ -65,6 +65,7 @@ public class CoNLLDocument {
 		}
 		this.parts = new ArrayList<CoNLLPart>();
 		this.parseFile();
+		
 	}
 
 	/*
@@ -122,6 +123,9 @@ public class CoNLLDocument {
 			word.sourceLine = line;
 
 			// 1 Document ID
+			int a = tokens[0].indexOf("/");
+			part.folder = tokens[0].substring(0, a);
+			
 			this.documentID = tokens[0];
 			// 2 Part number
 			part.setPartID(Integer.valueOf(tokens[1]));
