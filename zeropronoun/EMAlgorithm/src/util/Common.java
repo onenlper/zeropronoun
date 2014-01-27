@@ -1,5 +1,6 @@
 package util;
 
+import em.ILP;
 import gigaword.ConvertZYParser;
 
 import java.io.BufferedReader;
@@ -1078,12 +1079,39 @@ public class Common {
 		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 		try {
 			String line = "";
-			while(!(line.equalsIgnoreCase("g"))) {
+			while (!(line.equalsIgnoreCase("g"))) {
 				line = br.readLine();
 			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		}
+	}
+
+	public static void input(Object message) {
+		try {
+			System.err.println("Pause: " + message.toString());
+			System.err.println("Input Parameters: ");
+			throw new Exception();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		// ToDO
+		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+		String line = "";
+		while (true) {
+			try {
+				line = br.readLine().trim();
+				String tks[] = line.split("\\s+");
+				ILP.a_num = Double.parseDouble(tks[0]);
+				ILP.b_gen = Double.parseDouble(tks[1]);
+				ILP.c_per = Double.parseDouble(tks[2]);
+				ILP.d_ani = Double.parseDouble(tks[3]);
+			} catch (Exception e) {
+				e.printStackTrace();
+				continue;
+			}
+			break;
 		}
 	}
 }
