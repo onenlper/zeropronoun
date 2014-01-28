@@ -246,7 +246,9 @@ public class ApplyMaxEnt {
 				ArrayList<Mention> candidates = new ArrayList<Mention>();
 				candidates.addAll(goldBoundaryNPMentions);
 
-				if (!file.contains("/nw/") && !file.contains("/mz/")&& !file.contains("/bn/")
+				if (!file.contains("/nw/") 
+//						&& !file.contains("/mz/")
+//						&& !file.contains("/bn/")
 				// && !file.contains("/mz/")&& !file.contains("/wb/")
 				) {
 					candidates.addAll(anaphorZeros);
@@ -539,44 +541,8 @@ public class ApplyMaxEnt {
 					}
 				}
 				int antIdx = -1;
-				
-				if (part.folder.equalsIgnoreCase("BN")) {
-					ILP.a_num = 0.008;
-					ILP.b_gen = 0.008;
-					ILP.c_per = 0.08;
-					ILP.d_ani = 0.01;
-				} else if (part.folder.equalsIgnoreCase("TC")) {
-//					ILP.a_num = 0.008;
-//					ILP.b_gen = 0.02;
-//					ILP.c_per = 0.04;
-//					ILP.d_ani = 0.04;
-					ILP.a_num = 0.008;
-					ILP.b_gen = 0.01;
-					ILP.c_per = 0.06;
-					ILP.d_ani = 0.012;
-				} else if (part.folder.equalsIgnoreCase("NW")) {
-					ILP.a_num = 0.008;
-					ILP.b_gen = 0.01;
-					ILP.c_per = 0.06;
-					ILP.d_ani = 0.012;
-				} else if (part.folder.equalsIgnoreCase("BC")) {
-					ILP.a_num = 0.008;
-					ILP.b_gen = 0.01;
-					ILP.c_per = 0.06;
-					ILP.d_ani = 0.012;
-				} else if (part.folder.equalsIgnoreCase("WB")) {
-					ILP.a_num = 0.008;
-					ILP.b_gen = 0.01;
-					ILP.c_per = 0.06;
-					ILP.d_ani = 0.012;
-				} else if (part.folder.equalsIgnoreCase("MZ")) {
-					ILP.a_num = 0.008;
-					ILP.b_gen = 0.02;
-					ILP.c_per = 0.06;
-					ILP.d_ani = 0.01;
-				} else {
-					Common.bangErrorPOS("Wrong Folder!!!" + part.folder);
-				}
+
+				setParas(part);
 
 				ILP ilp = new ILP(numberOfAnt, probAnt, probNum, probGen,
 						probPer, probAni);
@@ -674,6 +640,45 @@ public class ApplyMaxEnt {
 			if (zero.antecedent != null) {
 				corefResult.add(zero);
 			}
+		}
+	}
+
+	private void setParas(CoNLLPart part) {
+		if (part.folder.equalsIgnoreCase("BN")) {
+//			0.008 0.008 0.02 0.01   R:0.45897435897435895 P: 0.45897435897435895 F: 0.45897435897435895
+			ILP.a_num = 0.008;
+			ILP.b_gen = 0.008;
+			ILP.c_per = 0.02;
+			ILP.d_ani = 0.01;
+		} else if (part.folder.equalsIgnoreCase("TC")) {
+//			0.02 0.008 0.02 0.04    R:0.5371024734982333 P: 0.5608856088560885 F: 0.5487364620938627
+			ILP.a_num = 0.008;
+			ILP.b_gen = 0.01;
+			ILP.c_per = 0.06;
+			ILP.d_ani = 0.012;
+		} else if (part.folder.equalsIgnoreCase("NW")) {
+			ILP.a_num = 0.008;
+			ILP.b_gen = 0.01;
+			ILP.c_per = 0.06;
+			ILP.d_ani = 0.012;
+		} else if (part.folder.equalsIgnoreCase("BC")) {
+			ILP.a_num = 0.008;
+			ILP.b_gen = 0.01;
+			ILP.c_per = 0.06;
+			ILP.d_ani = 0.012;
+		} else if (part.folder.equalsIgnoreCase("WB")) {
+			ILP.a_num = 0.008;
+			ILP.b_gen = 0.01;
+			ILP.c_per = 0.06;
+			ILP.d_ani = 0.012;
+		} else if (part.folder.equalsIgnoreCase("MZ")) {
+//			0.02 0.008 0.06 0.008
+			ILP.a_num = 0.02;
+			ILP.b_gen = 0.008;
+			ILP.c_per = 0.06;
+			ILP.d_ani = 0.008;
+		} else {
+			Common.bangErrorPOS("Wrong Folder!!!" + part.folder);
 		}
 	}
 
@@ -1370,6 +1375,93 @@ public class ApplyMaxEnt {
 
 	static int maximam = 0;
 
+	static String[] tuneBN = { "0.008 0.008 0.04 0.008",
+			"0.008 0.008 0.04 0.01", "0.008 0.008 0.06 0.01",
+			"0.008 0.008 0.08 0.008", "0.008 0.008 0.08 0.01",
+			"0.008 0.01 0.04 0.008", "0.008 0.01 0.04 0.01",
+			"0.008 0.01 0.08 0.008", "0.008 0.01 0.08 0.01",
+			"0.008 0.008 0.008 0.008", "0.008 0.008 0.008 0.01",
+			"0.008 0.008 0.01 0.008", "0.008 0.008 0.01 0.01",
+			"0.008 0.008 0.02 0.008", "0.008 0.008 0.02 0.01",
+			"0.008 0.008 0.06 0.008", "0.008 0.01 0.008 0.008",
+			"0.008 0.01 0.008 0.01", "0.008 0.01 0.01 0.008",
+			"0.008 0.01 0.01 0.01", "0.008 0.01 0.02 0.008",
+			"0.008 0.01 0.02 0.01", "0.008 0.01 0.06 0.008",
+			"0.008 0.01 0.06 0.01", "0.01 0.008 0.008 0.008",
+			"0.01 0.008 0.008 0.01", "0.01 0.008 0.01 0.008",
+			"0.01 0.008 0.01 0.01", "0.01 0.008 0.02 0.008",
+			"0.01 0.008 0.02 0.01", "0.01 0.008 0.04 0.008",
+			"0.01 0.008 0.04 0.01", "0.01 0.008 0.06 0.008",
+			"0.01 0.008 0.06 0.01", "0.01 0.008 0.08 0.008",
+			"0.01 0.008 0.08 0.01", "0.01 0.01 0.008 0.008",
+			"0.01 0.01 0.008 0.01", "0.01 0.01 0.01 0.008",
+			"0.01 0.01 0.02 0.008", "0.01 0.01 0.02 0.01",
+			"0.01 0.01 0.04 0.008", "0.01 0.01 0.04 0.01",
+			"0.01 0.01 0.06 0.008", "0.01 0.01 0.06 0.01",
+			"0.01 0.01 0.08 0.008", "0.01 0.01 0.08 0.01" };
+
+	static String[] tuneMZ = { "0.008 0.02 0.04 0.008", "0.008 0.02 0.04 0.01",
+			"0.02 0.008 0.01 0.008", "0.02 0.008 0.02 0.008",
+			"0.02 0.008 0.04 0.008", "0.02 0.008 0.06 0.008",
+			"0.02 0.008 0.06 0.01", "0.02 0.008 0.08 0.008",
+			"0.02 0.01 0.01 0.008", "0.02 0.01 0.02 0.008",
+			"0.02 0.01 0.04 0.008", "0.02 0.01 0.06 0.008",
+			"0.02 0.01 0.06 0.01", "0.02 0.01 0.08 0.008",
+			"0.02 0.02 0.02 0.008", "0.02 0.02 0.02 0.01",
+			"0.02 0.02 0.04 0.008", "0.02 0.02 0.04 0.01",
+			"0.008 0.02 0.02 0.01", "0.008 0.02 0.06 0.008",
+			"0.008 0.02 0.06 0.01", "0.008 0.02 0.08 0.008",
+			"0.008 0.02 0.08 0.01", "0.01 0.01 0.02 0.01",
+			"0.01 0.01 0.04 0.01", "0.01 0.01 0.06 0.01",
+			"0.01 0.02 0.02 0.008", "0.01 0.02 0.02 0.01",
+			"0.01 0.02 0.04 0.008", "0.01 0.02 0.04 0.01",
+			"0.02 0.008 0.008 0.008", "0.02 0.008 0.008 0.01",
+			"0.02 0.008 0.01 0.01", "0.02 0.008 0.02 0.01",
+			"0.02 0.008 0.04 0.01", "0.02 0.008 0.08 0.01",
+			"0.02 0.01 0.008 0.008", "0.02 0.01 0.008 0.01",
+			"0.02 0.01 0.01 0.01", "0.02 0.01 0.02 0.01",
+			"0.02 0.01 0.04 0.01", "0.02 0.01 0.08 0.01",
+			"0.02 0.02 0.008 0.01", "0.02 0.02 0.01 0.008",
+			"0.02 0.02 0.06 0.008", "0.02 0.02 0.06 0.01",
+			"0.02 0.02 0.08 0.008", "0.02 0.02 0.08 0.01",
+			"0.04 0.008 0.06 0.008", "0.04 0.01 0.06 0.008" };
+
+	static String[] tuneTC = { "0.008 0.008 0.02 0.04",
+			"0.008 0.008 0.02 0.06", "0.008 0.008 0.04 0.04",
+			"0.008 0.008 0.06 0.02", "0.008 0.01 0.02 0.04",
+			"0.008 0.01 0.02 0.06", "0.008 0.01 0.04 0.04",
+			"0.008 0.01 0.06 0.02", "0.008 0.02 0.04 0.008",
+			"0.008 0.02 0.04 0.01", "0.008 0.02 0.04 0.02",
+			"0.008 0.02 0.04 0.04", "0.008 0.02 0.04 0.06",
+			"0.008 0.02 0.06 0.02", "0.008 0.04 0.04 0.04",
+			"0.008 0.04 0.06 0.02", "0.01 0.008 0.02 0.04",
+			"0.01 0.008 0.02 0.06", "0.01 0.008 0.04 0.04",
+			"0.01 0.008 0.06 0.02", "0.01 0.01 0.02 0.04",
+			"0.01 0.01 0.02 0.06", "0.01 0.01 0.04 0.04",
+			"0.01 0.01 0.06 0.02", "0.01 0.02 0.04 0.008",
+			"0.01 0.02 0.04 0.01", "0.01 0.02 0.04 0.02",
+			"0.01 0.02 0.04 0.04", "0.01 0.02 0.04 0.06",
+			"0.01 0.02 0.06 0.02", "0.01 0.04 0.04 0.04",
+			"0.01 0.04 0.06 0.02", "0.02 0.008 0.02 0.04",
+			"0.02 0.008 0.02 0.06", "0.02 0.008 0.04 0.04",
+			"0.02 0.01 0.02 0.04", "0.02 0.01 0.02 0.06",
+			"0.02 0.01 0.04 0.04", "0.02 0.02 0.04 0.008",
+			"0.02 0.02 0.04 0.01", "0.02 0.02 0.04 0.04",
+			"0.02 0.02 0.04 0.02", "0.02 0.02 0.04 0.06",
+			"0.02 0.02 0.06 0.02", "0.02 0.04 0.04 0.04",
+			"0.02 0.04 0.06 0.02", "0.02 0.06 0.008 0.06",
+			"0.02 0.06 0.01 0.06", "0.02 0.06 0.04 0.04",
+			"0.02 0.08 0.06 0.02", "0.04 0.008 0.02 0.04",
+			"0.04 0.008 0.02 0.06", "0.04 0.01 0.02 0.04",
+			"0.04 0.01 0.02 0.06", "0.04 0.02 0.04 0.008",
+			"0.04 0.02 0.04 0.01", "0.04 0.02 0.04 0.02",
+			"0.04 0.02 0.04 0.04", "0.04 0.04 0.008 0.08",
+			"0.04 0.04 0.01 0.08", "0.04 0.04 0.06 0.02",
+			"0.04 0.06 0.008 0.06", "0.04 0.06 0.01 0.06",
+			"0.04 0.06 0.02 0.06", "0.04 0.08 0.008 0.06",
+			"0.04 0.08 0.02 0.04", "0.06 0.06 0.008 0.06",
+			"0.06 0.06 0.01 0.06" };
+
 	public static void main(String args[]) {
 		if (args.length < 1) {
 			System.err.println("java ~ folder [mode]");
@@ -1383,8 +1475,8 @@ public class ApplyMaxEnt {
 			mode = load;
 		} else if (args[1].equals("classify")) {
 			mode = classify;
-//			run(args[0]);
-//			return;
+			run(args[0]);
+			return;
 		} else {
 			Common.bangErrorPOS("");
 		}
@@ -1413,44 +1505,55 @@ public class ApplyMaxEnt {
 				"0.009 0.01 0.06 0.01", "0.009 0.012 0.06 0.01",
 				"0.008 0.015 0.06 0.012" };
 
-		for (int a = 0; a < para.length; a++) {
-			for (int b = 0; b < para.length; b++) {
-				for (int c = 0; c < para.length; c++) {
-					for (int d = 0; d < para.length; d++) {
-						ILP.a_num = para[a];
-						ILP.b_gen = para[b];
-						ILP.c_per = para[c];
-						ILP.d_ani = para[d];
-						// // while(true) {
-						// // for (String par : paras) {
-						// // String tks[] = par.trim().split("\\s+");
-						// ILP.a_num = Double.parseDouble(tks[0]);
-						// ILP.b_gen = Double.parseDouble(tks[1]);
-						// ILP.c_per = Double.parseDouble(tks[2]);
-						// ILP.d_ani = Double.parseDouble(tks[3]);
-						// // if(ILP.c_per>ILP.d_ani && ILP.c_per>ILP.b_gen)
-						//
-						// if (para[a] <= 0.04 && para[a] > 0 && para[b] <= 0.01
-						// && para[c] >= 0.04 && para[d] >= 0.02) {
-						if (ILP.a_num + ILP.b_gen + ILP.c_per + ILP.d_ani == 0
-								|| ILP.a_num * ILP.b_gen * ILP.c_per
-										* ILP.d_ani != 0)
-							run(args[0]);
-						// }
-						// // Common.input("");
-						// // System.exit(1);
-						// // run("nw");
-						// // run("mz");
-						// // run("wb");
-						// // run("bn");
-						// // run("bc");
-						// // run("tc");
-						// // }
-						// // System.exit(1);
-					}
-				}
-			}
+		// for (int a = 0; a < para.length; a++) {
+		// for (int b = 0; b < para.length; b++) {
+		// for (int c = 0; c < para.length; c++) {
+		// for (int d = 0; d < para.length; d++) {
+		// ILP.a_num = para[a];
+		// ILP.b_gen = para[b];
+		// ILP.c_per = para[c];
+		// ILP.d_ani = para[d];
+		// // while(true) {
+		
+		if(args[0].equalsIgnoreCase("bn")) {
+			paras = tuneBN;
+		} else if(args[0].equalsIgnoreCase("tc")) {
+			paras = tuneTC;
+		} else if(args[0].equalsIgnoreCase("mz")) {
+			paras = tuneMZ;
 		}
+		
+		for (int i=0;i<paras.length;i++) {
+			String par = paras[i];
+			String tks[] = par.trim().split("\\s+");
+			ILP.a_num = Double.parseDouble(tks[0]);
+			ILP.b_gen = Double.parseDouble(tks[1]);
+			ILP.c_per = Double.parseDouble(tks[2]);
+			ILP.d_ani = Double.parseDouble(tks[3]);
+			System.err.println(i + "/" + paras.length);
+			run(args[0]);
+			// // if(ILP.c_per>ILP.d_ani && ILP.c_per>ILP.b_gen)
+			//
+			// if (para[a] <= 0.04 && para[a] > 0 && para[b] <= 0.01
+			// && para[c] >= 0.04 && para[d] >= 0.02) {
+//			if (ILP.a_num + ILP.b_gen + ILP.c_per + ILP.d_ani == 0
+//					|| ILP.a_num * ILP.b_gen * ILP.c_per * ILP.d_ani != 0)
+				
+			// }
+			// // Common.input("");
+			// // System.exit(1);
+			// // run("nw");
+			// // run("mz");
+			// // run("wb");
+			// // run("bn");
+			// // run("bc");
+			// // run("tc");
+			// // }
+			// // System.exit(1);
+		}
+		// }
+		// }
+		// }
 
 		// run("nw");
 		// run("mz");
