@@ -41,11 +41,24 @@ public class ILP {
 
 	// ***** 0.008 0.01 0.06 0.012 R:0.47285464098073554 P: 0.4778761061946903 F:
 	// 0.47535211267605637
-	public static double a_num = 0.008;
-	public static double b_gen = 0.01;
-	public static double c_per = 0.06;
-	public static double d_ani = 0.012;
 	
+	// TC: 0.008 0.02 0.04 0.04
+//	public static double a_num = 0.008;
+//	public static double b_gen = 0.02;
+//	public static double c_per = 0.04;
+//	public static double d_ani = 0.04;
+	
+	// MZ: 0.008 0.02 0.06 0.008
+//	public static double a_num = 0.008;
+//	public static double b_gen = 0.02;
+//	public static double c_per = 0.06;
+//	public static double d_ani = 0.008;
+	
+	// BN: 0.008 0.008 0.08 0.01
+	public static double a_num = 0.008;
+	public static double b_gen = 0.008;
+	public static double c_per = 0.08;
+	public static double d_ani = 0.01;
 	
 	// norm 0.02 0.008 0.08 0.06
 	
