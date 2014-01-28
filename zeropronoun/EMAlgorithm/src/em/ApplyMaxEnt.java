@@ -246,10 +246,10 @@ public class ApplyMaxEnt {
 				ArrayList<Mention> candidates = new ArrayList<Mention>();
 				candidates.addAll(goldBoundaryNPMentions);
 
-				if (!file.contains("/nw/")
+				if (!file.contains("/nw/") && !file.contains("/mz/")&& !file.contains("/bn/")
 				// && !file.contains("/mz/")&& !file.contains("/wb/")
 				) {
-					 candidates.addAll(anaphorZeros);
+					candidates.addAll(anaphorZeros);
 				}
 				Collections.sort(candidates);
 
@@ -501,31 +501,31 @@ public class ApplyMaxEnt {
 					// probAnt[i] = probAnt[i] / sumover;
 				}
 
-//				HashSet<Integer> reranks = new HashSet<Integer>();
-//				for (int i = 0; i < EMUtil.pronounList.size(); i++) {
-//					double rankMax = 0;
-//					int rerank = -1;
-//					for (int j = 0; j < numberOfAnt; j++) {
-//						double prob = probAnt[numberOfAnt * i + j];
-//						if (prob > rankMax) {
-//							rankMax = prob;
-//							rerank = numberOfAnt * i + j;
-//						}
-//					}
-//					reranks.add(rerank);
-//				}
-//				for (int i = 0; i < antCount; i++) {
-//					if (reranks.contains(i)) {
-//						sumover += probAnt[i];
-//					}
-//				}
-//				for (int i = 0; i < antCount; i++) {
-//					if (reranks.contains(i)) {
-//						probAnt[i] = probAnt[i] / sumover;
-//					} else {
-//						probAnt[i] = -10000;
-//					}
-//				}
+				// HashSet<Integer> reranks = new HashSet<Integer>();
+				// for (int i = 0; i < EMUtil.pronounList.size(); i++) {
+				// double rankMax = 0;
+				// int rerank = -1;
+				// for (int j = 0; j < numberOfAnt; j++) {
+				// double prob = probAnt[numberOfAnt * i + j];
+				// if (prob > rankMax) {
+				// rankMax = prob;
+				// rerank = numberOfAnt * i + j;
+				// }
+				// }
+				// reranks.add(rerank);
+				// }
+				// for (int i = 0; i < antCount; i++) {
+				// if (reranks.contains(i)) {
+				// sumover += probAnt[i];
+				// }
+				// }
+				// for (int i = 0; i < antCount; i++) {
+				// if (reranks.contains(i)) {
+				// probAnt[i] = probAnt[i] / sumover;
+				// } else {
+				// probAnt[i] = -10000;
+				// }
+				// }
 
 				System.out.println(filters.size() + "###############"
 						+ antCount);
@@ -539,9 +539,45 @@ public class ApplyMaxEnt {
 					}
 				}
 				int antIdx = -1;
-				// if(cands.get(idMap.get(rankID)).end==-1) {
-				// antIdx = idMap.get(rankID);
-				// } else {
+				
+				if (part.folder.equalsIgnoreCase("BN")) {
+					ILP.a_num = 0.008;
+					ILP.b_gen = 0.008;
+					ILP.c_per = 0.08;
+					ILP.d_ani = 0.01;
+				} else if (part.folder.equalsIgnoreCase("TC")) {
+//					ILP.a_num = 0.008;
+//					ILP.b_gen = 0.02;
+//					ILP.c_per = 0.04;
+//					ILP.d_ani = 0.04;
+					ILP.a_num = 0.008;
+					ILP.b_gen = 0.01;
+					ILP.c_per = 0.06;
+					ILP.d_ani = 0.012;
+				} else if (part.folder.equalsIgnoreCase("NW")) {
+					ILP.a_num = 0.008;
+					ILP.b_gen = 0.01;
+					ILP.c_per = 0.06;
+					ILP.d_ani = 0.012;
+				} else if (part.folder.equalsIgnoreCase("BC")) {
+					ILP.a_num = 0.008;
+					ILP.b_gen = 0.01;
+					ILP.c_per = 0.06;
+					ILP.d_ani = 0.012;
+				} else if (part.folder.equalsIgnoreCase("WB")) {
+					ILP.a_num = 0.008;
+					ILP.b_gen = 0.01;
+					ILP.c_per = 0.06;
+					ILP.d_ani = 0.012;
+				} else if (part.folder.equalsIgnoreCase("MZ")) {
+					ILP.a_num = 0.008;
+					ILP.b_gen = 0.02;
+					ILP.c_per = 0.06;
+					ILP.d_ani = 0.01;
+				} else {
+					Common.bangErrorPOS("Wrong Folder!!!" + part.folder);
+				}
+
 				ILP ilp = new ILP(numberOfAnt, probAnt, probNum, probGen,
 						probPer, probAni);
 				try {
@@ -971,9 +1007,9 @@ public class ApplyMaxEnt {
 			// }
 			// return ret;
 			if (true) {
-				 double ret[] = new double[all];
-				 return ret;
-//				return selectRestriction(attri, all, v);
+				// double ret[] = new double[all];
+				// return ret;
+				return selectRestriction(attri, all, v);
 			}
 			return selectRestriction(attri, all, v);
 		}
@@ -1341,10 +1377,14 @@ public class ApplyMaxEnt {
 		}
 		if (args[1].equals("prepare")) {
 			mode = prepare;
+			run(args[0]);
+			return;
 		} else if (args[1].equals("load")) {
 			mode = load;
 		} else if (args[1].equals("classify")) {
 			mode = classify;
+//			run(args[0]);
+//			return;
 		} else {
 			Common.bangErrorPOS("");
 		}
@@ -1373,41 +1413,44 @@ public class ApplyMaxEnt {
 				"0.009 0.01 0.06 0.01", "0.009 0.012 0.06 0.01",
 				"0.008 0.015 0.06 0.012" };
 
-//		for (int a = 0; a < para.length; a++) {
-//			for (int b = 0; b < para.length; b++) {
-//				for (int c = 0; c < para.length; c++) {
-//					for (int d = 0; d < para.length; d++) {
-//						ILP.a_num = para[a];
-//						ILP.b_gen = para[b];
-//						ILP.c_per = para[c];
-//						ILP.d_ani = para[d];
-//						// while(true) {
-//						// for (String par : paras) {
-//						// String tks[] = par.trim().split("\\s+");
-//						// ILP.a_num = Double.parseDouble(tks[0]);
-//						// ILP.b_gen = Double.parseDouble(tks[1]);
-//						// ILP.c_per = Double.parseDouble(tks[2]);
-//						// ILP.d_ani = Double.parseDouble(tks[3]);
-//						// if(ILP.c_per>ILP.d_ani && ILP.c_per>ILP.b_gen)
-//
-//						if (para[a] <= 0.04 && para[a] > 0 && para[b] <= 0.01
-//								&& para[c] >= 0.04 && para[d] >= 0.02) {
+		for (int a = 0; a < para.length; a++) {
+			for (int b = 0; b < para.length; b++) {
+				for (int c = 0; c < para.length; c++) {
+					for (int d = 0; d < para.length; d++) {
+						ILP.a_num = para[a];
+						ILP.b_gen = para[b];
+						ILP.c_per = para[c];
+						ILP.d_ani = para[d];
+						// // while(true) {
+						// // for (String par : paras) {
+						// // String tks[] = par.trim().split("\\s+");
+						// ILP.a_num = Double.parseDouble(tks[0]);
+						// ILP.b_gen = Double.parseDouble(tks[1]);
+						// ILP.c_per = Double.parseDouble(tks[2]);
+						// ILP.d_ani = Double.parseDouble(tks[3]);
+						// // if(ILP.c_per>ILP.d_ani && ILP.c_per>ILP.b_gen)
+						//
+						// if (para[a] <= 0.04 && para[a] > 0 && para[b] <= 0.01
+						// && para[c] >= 0.04 && para[d] >= 0.02) {
+						if (ILP.a_num + ILP.b_gen + ILP.c_per + ILP.d_ani == 0
+								|| ILP.a_num * ILP.b_gen * ILP.c_per
+										* ILP.d_ani != 0)
 							run(args[0]);
-//						}
-//						// Common.input("");
-//						// System.exit(1);
-//						// run("nw");
-//						// run("mz");
-//						// run("wb");
-//						// run("bn");
-//						// run("bc");
-//						// run("tc");
-//						// }
-//						// System.exit(1);
-//					}
-//				}
-//			}
-//		}
+						// }
+						// // Common.input("");
+						// // System.exit(1);
+						// // run("nw");
+						// // run("mz");
+						// // run("wb");
+						// // run("bn");
+						// // run("bc");
+						// // run("tc");
+						// // }
+						// // System.exit(1);
+					}
+				}
+			}
+		}
 
 		// run("nw");
 		// run("mz");
