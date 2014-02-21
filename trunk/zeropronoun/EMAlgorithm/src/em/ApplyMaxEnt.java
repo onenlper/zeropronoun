@@ -215,9 +215,9 @@ public class ApplyMaxEnt {
 
 			for (int k = 0; k < document.getParts().size(); k++) {
 				pID++;
-				if(pID%5!=sigID) {
-					continue;
-				}
+//				if(pID%5!=sigID) {
+//					continue;
+//				}
 				CoNLLPart part = document.getParts().get(k);
 
 				for (CoNLLSentence s : part.getCoNLLSentences()) {
