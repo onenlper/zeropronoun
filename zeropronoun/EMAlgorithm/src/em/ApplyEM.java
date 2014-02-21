@@ -95,7 +95,7 @@ public class ApplyEM {
 			// modelInput2.readObject();
 
 			// modelInput2.close();
-			loadGuessProb();
+//			loadGuessProb();
 			fea = new GuessPronounFea(false, "guessPronoun");
 
 			superFea = new SuperviseFea(false, "supervise");
@@ -133,7 +133,7 @@ public class ApplyEM {
 				p_context = 1.0 / 2592.0;
 			}
 			allProbs.put(context, p_context);
-			System.out.println(context + " " + p_context);
+//			System.out.println(context + " " + p_context);
 		}
 
 		int[] ids = { 0, 6, 7, 8, 9, 10, 13, 15 };
@@ -164,11 +164,10 @@ public class ApplyEM {
 						p *= mean;
 					}
 				}
-				System.out.println(id + " : " + val + " : " + p);
+//				System.out.println(id + " : " + val + " : " + p);
 			}
 		}
-
-		Common.pause("");
+//		Common.pause("");
 	}
 
 	public void loadGuessProb() throws Exception {
@@ -476,8 +475,8 @@ public class ApplyEM {
 					// p_context = s[0]/(s[0]+s[1]);
 					// }
 
-					double maxentP = this.getMaxEntProb(cand, zero,
-							sameSpeaker, context, part);
+//					double maxentP = this.getMaxEntProb(cand, zero,
+//							sameSpeaker, context, part);
 
 					double p2nd = p_person * p_number * p_gender * p_animacy
 							* p_context * 1;
@@ -840,15 +839,15 @@ public class ApplyEM {
 		Common.outputLines(goods, "goods");
 		Common.outputLines(bads, "bas");
 
-		Common.outputHashMap(EMUtil.NEMap, "NEMAP");
+//		Common.outputHashMap(EMUtil.NEMap, "NEMAP");
 
-		Common.outputHashSet(Context.ss, "miniS");
-		Common.outputHashSet(Context.vs, "miniV");
+//		Common.outputHashSet(Context.ss, "miniS");
+//		Common.outputHashSet(Context.vs, "miniV");
 
 		// System.out.println(Context.svoStat.unigramAll);
 		// System.out.println(Context.svoStat.svoAll);
 
-		Common.outputLines(corrects, "EM.correct.all");
+//		Common.outputLines(corrects, "EM.correct.all");
 		Common.pause("!!#");
 	}
 }

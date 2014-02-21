@@ -266,9 +266,8 @@ public class EMLearn {
 							}
 						}
 
-						addMaxEnt(chainMap, ant, m, context, sameSpeaker,
-								entry, part);
-
+//						addMaxEnt(chainMap, ant, m, context, sameSpeaker,
+//								entry, part);
 					}
 					groups.add(rg);
 
@@ -279,7 +278,6 @@ public class EMLearn {
 						System.out.println(m.extent);
 						System.exit(1);
 					}
-
 				}
 			}
 		}
