@@ -124,7 +124,7 @@ public class ApplyMaxEnt {
 			// modelInput2.readObject();
 
 			// modelInput2.close();
-			loadGuessProb();
+//			loadGuessProb();
 			guessFea = new GuessPronounFea(false, "guessPronoun");
 
 			superFea = new SuperviseFea(false, "supervise");
@@ -198,13 +198,15 @@ public class ApplyMaxEnt {
 		}
 	}
 
+	static int sigID = 0;
+	
 	public void test() {
 		ArrayList<String> files = Common.getLines("chinese_list_" + folder
 				+ "_development");
 
 		ArrayList<ArrayList<Mention>> corefResults = new ArrayList<ArrayList<Mention>>();
 		ArrayList<ArrayList<Entity>> goldEntities = new ArrayList<ArrayList<Entity>>();
-
+		int pID = 0;
 		for (String file : files) {
 			System.out.println(file);
 			CoNLLDocument document = new CoNLLDocument(file.replace(
@@ -212,6 +214,10 @@ public class ApplyMaxEnt {
 			OntoCorefXMLReader.addGoldZeroPronouns(document, false);
 
 			for (int k = 0; k < document.getParts().size(); k++) {
+				pID++;
+				if(pID%5!=sigID) {
+					continue;
+				}
 				CoNLLPart part = document.getParts().get(k);
 
 				for (CoNLLSentence s : part.getCoNLLSentences()) {
@@ -645,34 +651,44 @@ public class ApplyMaxEnt {
 
 	private void setParas(CoNLLPart part) {
 		if (part.folder.equalsIgnoreCase("BN")) {
-//			0.008 0.008 0.02 0.01   R:0.45897435897435895 P: 0.45897435897435895 F: 0.45897435897435895
+			// 0.008 0.008 0.02 0.01 R:0.45897435897435895 P:
+			// 0.45897435897435895 F: 0.45897435897435895
 			ILP.a_num = 0.008;
 			ILP.b_gen = 0.008;
 			ILP.c_per = 0.02;
 			ILP.d_ani = 0.01;
 		} else if (part.folder.equalsIgnoreCase("TC")) {
-//			0.02 0.008 0.02 0.04    R:0.5371024734982333 P: 0.5608856088560885 F: 0.5487364620938627
-			ILP.a_num = 0.008;
-			ILP.b_gen = 0.01;
-			ILP.c_per = 0.06;
-			ILP.d_ani = 0.012;
+			// 0.02 0.008 0.02 0.04 R:0.5371024734982333 P: 0.5608856088560885
+			// F: 0.5487364620938627
+			ILP.a_num = 0.02;
+			ILP.b_gen = 0.008;
+			ILP.c_per = 0.02;
+			ILP.d_ani = 0.04;
 		} else if (part.folder.equalsIgnoreCase("NW")) {
-			ILP.a_num = 0.008;
-			ILP.b_gen = 0.01;
-			ILP.c_per = 0.06;
-			ILP.d_ani = 0.012;
+			// 0.02 0.02 0.008 0.06 R:0.38095238095238093 P: 0.38095238095238093
+			// F: 0.38095238095238093
+			// 0.02 0.02 0.08 0.008 R:0.39285714285714285 P: 0.39285714285714285
+			// F: 0.39285714285714285
+			ILP.a_num = 0.02;
+			ILP.b_gen = 0.02;
+			ILP.c_per = 0.008;
+			ILP.d_ani = 0.06;
 		} else if (part.folder.equalsIgnoreCase("BC")) {
+//			0.008 0.01 0.06 0.01
 			ILP.a_num = 0.008;
 			ILP.b_gen = 0.01;
 			ILP.c_per = 0.06;
-			ILP.d_ani = 0.012;
+			ILP.d_ani = 0.01;
 		} else if (part.folder.equalsIgnoreCase("WB")) {
-			ILP.a_num = 0.008;
+			// 0.04 0.01 0.04 0.02 R:0.5 P: 0.5 F: 0.5
+			// 0.04 0.01 0.06 0.02 R:0.5035211267605634 P: 0.5035211267605634 F:
+			// 0.5035211267605634
+			ILP.a_num = 0.04;
 			ILP.b_gen = 0.01;
 			ILP.c_per = 0.06;
-			ILP.d_ani = 0.012;
+			ILP.d_ani = 0.02;
 		} else if (part.folder.equalsIgnoreCase("MZ")) {
-//			0.02 0.008 0.06 0.008
+			// 0.02 0.008 0.06 0.008
 			ILP.a_num = 0.02;
 			ILP.b_gen = 0.008;
 			ILP.c_per = 0.06;
@@ -1466,6 +1482,9 @@ public class ApplyMaxEnt {
 		if (args.length < 1) {
 			System.err.println("java ~ folder [mode]");
 			System.exit(1);
+		}
+		if(args.length==3) {
+			sigID = Integer.parseInt(args[2]);
 		}
 		if (args[1].equals("prepare")) {
 			mode = prepare;
