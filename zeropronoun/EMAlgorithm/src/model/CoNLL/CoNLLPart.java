@@ -7,11 +7,10 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import util.Common;
-
 import model.Element;
 import model.Entity;
 import model.Mention;
+import model.SemanticRole;
 import model.CoNLL.CoNLLDocument.DocType;
 import model.syntaxTree.MyTreeNode;
 import em.EMUtil;
@@ -236,6 +235,7 @@ public class CoNLLPart {
 		}
 		this.chains.addAll(clusters.values());
 		processDiscourse();
+		formSRLs();
 	}
 
 	public boolean isPU(String word) {
@@ -442,6 +442,56 @@ public class CoNLLPart {
 					break;
 				}
 			}
+		}
+	}
+	
+	public void formSRLs() {
+		for(CoNLLSentence s : this.sentences) {
+			CoNLLWord w = s.getWords().get(0);
+			
+			//TODO
+			int roles = w.getPredicateArgument().split("\\s+").length;
+			for(int i=0;i<roles;i++) {
+				SemanticRole role = new SemanticRole();
+				
+				for(int k=0;k<s.words.size();k++) {
+					CoNLLWord word = s.words.get(k);
+					String label = word.getPredicateArgument().split("\\s+")[i];
+					if(label.startsWith("(V*")) {
+						Mention m = new Mention();
+						m.start = word.getIndex();
+						m.end = word.getIndex();
+						m.extent = this.getWord(m.start).word;
+						role.predicate = m;
+					} else if(label.startsWith("(ARG")) {
+						Mention m = new Mention();
+						m.start = word.getIndex();
+						
+						String roleName = label.substring(1, label.lastIndexOf("*"));
+						ArrayList<Mention> mentions = role.args.get(roleName);
+						if(mentions==null) {
+							mentions = new ArrayList<Mention>();
+							role.args.put(roleName, mentions);
+						}
+						mentions.add(m);
+						
+						//find end
+						while(!word.getPredicateArgument().split("\\s+")[i].endsWith(")")) {
+							k++;
+							word = s.words.get(k);
+						}
+						m.end = s.words.get(k).index;
+					}
+					
+					if(role.predicate==null) {
+						System.err.println("GE");
+						System.exit(1);
+					}
+				}
+
+				s.roles.add(role);
+			}
+			
 		}
 	}
 
