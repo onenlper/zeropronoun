@@ -277,6 +277,7 @@ public class ApplyEM {
 
 				ArrayList<Mention> anaphorZeros = EMUtil.getAnaphorZeros(part
 						.getChains());
+//				ArrayList<Mention> anaphorZeros = ZeroDetect.getHeuristicZeros(part);
 				// anaphorZeros = zeroDetectTest.detectZeros(part, null);
 
 				ArrayList<Mention> candidates = new ArrayList<Mention>();

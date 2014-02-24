@@ -219,6 +219,20 @@ public class EMUtil {
 		return zeros;
 	}
 
+	public static ArrayList<Mention> getZeros(ArrayList<Entity> chains) {
+		ArrayList<Mention> zeros = new ArrayList<Mention>();
+		for (Entity entity : chains) {
+			for (int i = 0; i < entity.mentions.size(); i++) {
+				Mention m2 = entity.mentions.get(i);
+				if (m2.end == -1) {
+					zeros.add(m2);
+					break;
+				}
+			}
+		}
+		return zeros;
+	}
+
 	public static void setPronounAttri(Mention m) {
 		// assign number, gender, person, animacy
 		if (EMUtil.singles.contains(m.head)) {
@@ -317,7 +331,7 @@ public class EMUtil {
 
 	public static Number getAntNumber(String str) {
 		boolean plura = false;
-		
+
 		if (str.contains("和")) {
 			plura = true;
 		}
@@ -327,7 +341,7 @@ public class EMUtil {
 		if (str.contains("多")) {
 			plura = true;
 		}
-		
+
 		if (str.endsWith("们")) {
 			plura = true;
 		}
@@ -338,7 +352,7 @@ public class EMUtil {
 			return Number.single;
 		}
 	}
-	
+
 	public static Number getAntNumber(Mention mention) {
 		MyTreeNode np = mention.NP;
 		boolean plura = false;
@@ -478,7 +492,7 @@ public class EMUtil {
 			}
 		}
 
-//		changeStr(em);
+		// changeStr(em);
 
 		return em;
 	}
@@ -770,7 +784,7 @@ public class EMUtil {
 		// System.out.println(head + " " + ret.name() + " " + mention.NE);
 		return ret;
 	}
-	
+
 	public static Animacy getAntAnimacy(String head) {
 		if (peopleness == null) {
 			loadMeassure();
@@ -779,24 +793,24 @@ public class EMUtil {
 			return getAnimacy(head);
 		}
 
-//		if (!peopleness.containsKey(head)
-//				&& mention.mType == MentionType.common) {
-//			head = head.substring(head.length() - 1);
-//		}
-//
+		// if (!peopleness.containsKey(head)
+		// && mention.mType == MentionType.common) {
+		// head = head.substring(head.length() - 1);
+		// }
+		//
 		Animacy ret;
 		if (head.endsWith("人") || head.equals("自己")) {
 			ret = Animacy.animate;
-		} 
-//		else if (mention.mType == MentionType.tmporal) {
-//			ret = Animacy.unanimate;
-//		} else if (!mention.NE.equalsIgnoreCase("OTHER")) {
-//			if (mention.NE.equals("PERSON")) {
-//				ret = Animacy.animate;
-//			} else {
-//				ret = Animacy.unanimate;
-//			}
-//		} 
+		}
+		// else if (mention.mType == MentionType.tmporal) {
+		// ret = Animacy.unanimate;
+		// } else if (!mention.NE.equalsIgnoreCase("OTHER")) {
+		// if (mention.NE.equals("PERSON")) {
+		// ret = Animacy.animate;
+		// } else {
+		// ret = Animacy.unanimate;
+		// }
+		// }
 		else if (peopleness.containsKey(head)) {
 			HashMap<String, Integer> subMap = peopleness.get(head);
 			int anim = 0;
@@ -969,7 +983,7 @@ public class EMUtil {
 	static HashMap<String, HashMap<String, Integer>> genderStat;
 
 	public static void loadGender() {
-		if(peopleness==null) {
+		if (peopleness == null) {
 			loadMeassure();
 		}
 		genderStat = new HashMap<String, HashMap<String, Integer>>();
@@ -1023,7 +1037,7 @@ public class EMUtil {
 			return Gender.male;
 		}
 	}
-	
+
 	public static Gender getAntGender(Mention m) {
 		if (genderStat == null) {
 			loadGender();
