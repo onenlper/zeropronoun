@@ -43,58 +43,52 @@ public class ZeroDetect {
 		MyTree tree = word.sentence.syntaxTree;
 		MyTreeNode root = tree.root;
 		MyTreeNode leaf = root.getLeaves().get(word.indexInSentence);
-
-		int weight = 0;
-
-		boolean subjectlessIP = false;
-		ArrayList<MyTreeNode> ipAns = leaf.getXAncestors("IP");
-		outer: for (MyTreeNode ip : ipAns) {
-			if (ip.getLeaves().get(0) == leaf) {
-				for (MyTreeNode child : ip.children) {
-					if (child.value.startsWith("NP") 
-							) {
-						break;
-					}
-					if (child.value.startsWith("VP")) {
-						subjectlessIP = true;
-						break outer;
-					}
-				}
-			}
-		}
-		if (subjectlessIP) {
-			weight++;
-		} else {
-			weight--;
-		}
-
-		boolean nosubject = true;
-		for (MyTreeNode tmp : leaf.getXAncestors("VP")) {
-			if (tmp.getLeaves().get(0) == leaf) {
-				ArrayList<MyTreeNode> leftSisters = tmp.getLeftSisters();
-				for (MyTreeNode n : leftSisters) {
-					if (n.value.equalsIgnoreCase("np") 
-//							&& !n.getLeaves().get(n.getLeaves().size()-1).parent.value.equals("NT")
-							) {
-						nosubject = false;
-					}
-				}
-			}
-		}
-		if(nosubject) {
-			weight++;
-		} else {
-			weight--;
-		}
-//
-		boolean firstGap = word.indexInSentence == 0;
 		int rightIdx = word.indexInSentence;
 		MyTreeNode Wr = tree.leaves.get(rightIdx);
 		ArrayList<MyTreeNode> WrAncestors = Wr.getAncestors();
 		MyTreeNode Wl = null;
 		MyTreeNode C = root;
+		MyTreeNode temp = null;
+		
+		MyTreeNode V = null;
+		for (MyTreeNode node : WrAncestors) {
+			if (node.value.toLowerCase().startsWith("vp") && node.getLeaves().get(0) == Wr) {
+				V = node;
+			}
+		}
+		
+		boolean firstGap = word.indexInSentence == 0;
 		if (firstGap) {
-
+			boolean find_IP_VP = false;
+			temp = Wr;
+			while (temp != root) {
+				if (temp.value.toLowerCase().startsWith("vp")
+						&& temp.parent.value.toLowerCase().startsWith("ip")) {
+					find_IP_VP = true;
+					break;
+				}
+				temp = temp.parent;
+			}
+			if (!find_IP_VP) {
+				return false;
+			}
+			
+			
+			boolean has_Ancestor_NP = false;
+			temp = V;
+			while (temp != root) {
+				// try {
+				if (temp.value.toLowerCase().startsWith("np")) {
+					has_Ancestor_NP = true;
+				}
+				temp = temp.parent;
+			}
+			if(has_Ancestor_NP) {
+				return false;
+			} else {
+				return true;
+			}
+			
 		} else {
 			int leftIdx = rightIdx - 1;
 			Wl = tree.leaves.get(leftIdx);
@@ -114,75 +108,110 @@ public class ZeroDetect {
 					break;
 				}
 			}
+			C = P;
+			temp = Wr;
+			boolean find_IP_VP = false;
+			while (temp != C) {
+				if (temp.value.toLowerCase().startsWith("vp")
+						&& temp.parent.value.toLowerCase().startsWith("ip")) {
+					find_IP_VP = true;
+					break;
+				}
+				temp = temp.parent;
+			}
+			if (!find_IP_VP) {
+				return false;
+			}
+			
+			boolean subjectlessIP = false;
+			ArrayList<MyTreeNode> ipAns = leaf.getXAncestors("IP");
+			outer: for (MyTreeNode ip : ipAns) {
+				if (ip.getLeaves().get(0) == leaf) {
+					for (MyTreeNode child : ip.children) {
+						if (child.value.startsWith("NP")) {
+							break;
+						}
+						if (child.value.startsWith("VP")) {
+							subjectlessIP = true;
+							break outer;
+						}
+					}
+				}
+			}
+			int weight = 0;
+			if (subjectlessIP) {
+				weight++;
+			} else {
+				weight--;
+			}
+
+			boolean nosubject = true;
+			for (MyTreeNode tmp : leaf.getXAncestors("VP")) {
+				if (tmp.getLeaves().get(0) == leaf) {
+					ArrayList<MyTreeNode> leftSisters = tmp.getLeftSisters();
+					for (MyTreeNode n : leftSisters) {
+						if (n.value.equalsIgnoreCase("np") 
+//								&& !n.getLeaves().get(n.getLeaves().size()-1).parent.value.equals("NT")
+								) {
+							nosubject = false;
+						}
+					}
+				}
+			}
+			if(nosubject) {
+				weight++;
+			} else {
+				weight--;
+			}
+			
 			// 1. Pl_Is_NP
-			if (Pl.value.toLowerCase().startsWith("np")) {
+			boolean Pl_Is_NP = Pl.value.toLowerCase().startsWith("np");
+			if (Pl_Is_NP) {
 				weight--;
 			} else {
 				weight++;
 			}
 			// 2. Pr_Is_VP
-			if (Pr.value.toLowerCase().startsWith("vp")) {
+			boolean Pr_Is_VP = Pr.value.toLowerCase().startsWith("vp");
+			if (Pr_Is_VP) {
 				weight++;
-				
 			} else {
 				weight--;
 			}
 			// 3. Pl_IS_NP && Pr_IS_VP
-			if (Pl.value.toLowerCase().startsWith("np")
-					&& Pr.value.toLowerCase().startsWith("vp")) {
+			boolean Pl_IS_NP_Pr_IS_VP = Pl.value.toLowerCase().startsWith("np")
+					&& Pr.value.toLowerCase().startsWith("vp");
+			if (Pl_IS_NP_Pr_IS_VP) {
 				weight++;
 			} else {
-				
 				weight--;			
 			}
-			C = P;
+			
+			boolean has_Ancestor_NP = false;
+			temp = V;
+			while (temp != root) {
+				// try {
+				if (temp.value.toLowerCase().startsWith("np")) {
+					has_Ancestor_NP = true;
+				}
+				temp = temp.parent;
+			}
+			if(has_Ancestor_NP) {
+				weight--;			
+			} else {
+				weight++;
+			}
+			
+			if(weight>=2) {
+				return true;
+			} else {
+				return false;
+			}
 		}
 
-		MyTreeNode temp = Wr;
-		boolean find_IP_VP = false;
-		while (temp != C) {
-			if (temp.value.toLowerCase().startsWith("vp")
-					&& temp.parent.value.toLowerCase().startsWith("ip")
-//					&& temp.getLeaves().get(0).leafIdx==word.indexInSentence
-					) {
-				find_IP_VP = true;
-				break;
-			}
-			temp = temp.parent;
-		}
-		if (find_IP_VP) {
-			weight++;
-		} else {
-			weight--;
-		}
-
-		boolean has_Ancestor_NP = false;
-		MyTreeNode V = null;
-		for (MyTreeNode node : WrAncestors) {
-			if (node.value.toLowerCase().startsWith("vp") && node.getLeaves().get(0) == Wr) {
-				V = node;
-			}
-		}
-		temp = V;
-		while (temp != root) {
-			// try {
-			if (temp.value.toLowerCase().startsWith("np")) {
-				has_Ancestor_NP = true;
-			}
-			temp = temp.parent;
-		}
-		if(has_Ancestor_NP) {
-			weight--;			
-		} else {
-			weight++;
-		}
+		
 		
 //		System.out.println(weight);
-		if(weight>=3) {
-			return true;
-		} else {
-			return false;
-		}
 	}
 
 	private static void visitTreeNode(MyTreeNode node, HashSet<Integer> zeros,
@@ -208,10 +237,6 @@ public class ZeroDetect {
 				}
 			}
 
-			if(node.parent.value.equals("VP")) {
-//				CC = true;
-			}
-			
 			int leafIdx = node.getLeaves().get(0).leafIdx;
 			if (!CC && !advp)
 				zeros.add(s.getWord(leafIdx).index);
