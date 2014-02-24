@@ -13,7 +13,6 @@ import model.CoNLL.OntoCorefXMLReader;
 import model.syntaxTree.MyTree;
 import model.syntaxTree.MyTreeNode;
 import util.Common;
-import util.Common.Feature;
 
 public class ZeroDetect {
 
@@ -52,7 +51,8 @@ public class ZeroDetect {
 		outer: for (MyTreeNode ip : ipAns) {
 			if (ip.getLeaves().get(0) == leaf) {
 				for (MyTreeNode child : ip.children) {
-					if (child.value.startsWith("NP")) {
+					if (child.value.startsWith("NP") 
+							) {
 						break;
 					}
 					if (child.value.startsWith("VP")) {
@@ -73,7 +73,9 @@ public class ZeroDetect {
 			if (tmp.getLeaves().get(0) == leaf) {
 				ArrayList<MyTreeNode> leftSisters = tmp.getLeftSisters();
 				for (MyTreeNode n : leftSisters) {
-					if (n.value.equalsIgnoreCase("np")) {
+					if (n.value.equalsIgnoreCase("np") 
+//							&& !n.getLeaves().get(n.getLeaves().size()-1).parent.value.equals("NT")
+							) {
 						nosubject = false;
 					}
 				}
@@ -84,7 +86,7 @@ public class ZeroDetect {
 		} else {
 			weight--;
 		}
-
+//
 		boolean firstGap = word.indexInSentence == 0;
 		int rightIdx = word.indexInSentence;
 		MyTreeNode Wr = tree.leaves.get(rightIdx);
@@ -120,16 +122,18 @@ public class ZeroDetect {
 			}
 			// 2. Pr_Is_VP
 			if (Pr.value.toLowerCase().startsWith("vp")) {
-				weight++;				
+				weight++;
+				
 			} else {
 				weight--;
 			}
 			// 3. Pl_IS_NP && Pr_IS_VP
 			if (Pl.value.toLowerCase().startsWith("np")
 					&& Pr.value.toLowerCase().startsWith("vp")) {
-				weight++;				
+				weight++;
 			} else {
-				weight--;
+				
+				weight--;			
 			}
 			C = P;
 		}
@@ -138,7 +142,9 @@ public class ZeroDetect {
 		boolean find_IP_VP = false;
 		while (temp != C) {
 			if (temp.value.toLowerCase().startsWith("vp")
-					&& temp.parent.value.toLowerCase().startsWith("ip")) {
+					&& temp.parent.value.toLowerCase().startsWith("ip")
+//					&& temp.getLeaves().get(0).leafIdx==word.indexInSentence
+					) {
 				find_IP_VP = true;
 				break;
 			}
@@ -149,8 +155,8 @@ public class ZeroDetect {
 		} else {
 			weight--;
 		}
+
 		boolean has_Ancestor_NP = false;
-		
 		MyTreeNode V = null;
 		for (MyTreeNode node : WrAncestors) {
 			if (node.value.toLowerCase().startsWith("vp") && node.getLeaves().get(0) == Wr) {
@@ -166,13 +172,13 @@ public class ZeroDetect {
 			temp = temp.parent;
 		}
 		if(has_Ancestor_NP) {
-			weight--;
+			weight--;			
 		} else {
 			weight++;
 		}
 		
 //		System.out.println(weight);
-		if(weight>1) {
+		if(weight>=3) {
 			return true;
 		} else {
 			return false;
@@ -202,6 +208,10 @@ public class ZeroDetect {
 				}
 			}
 
+			if(node.parent.value.equals("VP")) {
+//				CC = true;
+			}
+			
 			int leafIdx = node.getLeaves().get(0).leafIdx;
 			if (!CC && !advp)
 				zeros.add(s.getWord(leafIdx).index);
