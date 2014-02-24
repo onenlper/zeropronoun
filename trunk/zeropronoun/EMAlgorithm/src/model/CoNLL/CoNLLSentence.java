@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 
 import model.Mention;
+import model.SemanticRole;
 import model.syntaxTree.MyTree;
 import util.Common;
 
@@ -14,6 +15,8 @@ public class CoNLLSentence implements Serializable{
 	 */
 	private static final long serialVersionUID = 1L;
 
+	public ArrayList<SemanticRole> roles = new ArrayList<SemanticRole>();
+	
 	public CoNLLPart part;
 	
 	public ArrayList<Mention> mentions;
