@@ -100,7 +100,8 @@ public class ZeroDetect {
 			boolean has_Ancestor_NP = false;
 			temp = V;
 			while (temp != root) {
-				if (temp.value.toLowerCase().startsWith("np")) {
+				if (temp.value.toLowerCase().startsWith("np")
+						|| temp.value.toLowerCase().startsWith("qp")) {
 					has_Ancestor_NP = true;
 				}
 				temp = temp.parent;
@@ -127,16 +128,24 @@ public class ZeroDetect {
 				}
 			}
 			// Pl_Is_NP
-			boolean Pl_Is_ObjNP = (Pl.value.toLowerCase().startsWith("np") || Pl.value
-					.toLowerCase().startsWith("qp"))
-					&& Pl.parent.value.equals("VP");
+			boolean Pl_Is_ObjNP = (Pl.value.toLowerCase().startsWith("np") || 
+					Pl.value.toLowerCase().startsWith("qp") || Pl.value.toLowerCase().startsWith("ip"))
+					&& Pl.parent.value.equals("VP")
+					;
 
 			boolean hasSubject = false;
 			ArrayList<MyTreeNode> leftSisters = V.getLeftSisters();
 			for (MyTreeNode n : leftSisters) {
 				if (n.value.equalsIgnoreCase("np")
-						|| n.value.equalsIgnoreCase("qp")) {
+						|| n.value.equalsIgnoreCase("qp")
+						) {
 					hasSubject = true;
+					break;
+				}
+
+				if(n.value.toLowerCase().startsWith("ip")) {
+					hasSubject = true;
+					break;
 				}
 			}
 
@@ -150,7 +159,9 @@ public class ZeroDetect {
 			}
 
 			while (temp != root) {
-				if (temp.value.toLowerCase().startsWith("np")) {
+				if (temp.value.toLowerCase().startsWith("np")
+						|| temp.value.toLowerCase().startsWith("qp")
+						) {
 					has_Ancestor_NP = true;
 				}
 				temp = temp.parent;
@@ -165,29 +176,17 @@ public class ZeroDetect {
 			}
 
 			if (has_Ancestor_NP) {
-				for (MyTreeNode c : V.children) {
-					if (c.value.equals("NP")) {
-						// System.out.println(part.getDocument().getFilePath());
-						// System.out.println(word.getWord() + " " +
-						// zero.start);
-						// System.out.println(s.getText());
-						// System.out.println(Pl_Is_ObjNP + "-" + hasSubject +
-						// ":\t" +
-						// (goldInts.contains(zero.start)?"zero":"nonzero"));
-						// System.out.println("-----");
-						// return true;
-					}
-				}
 				return false;
 			}
-
-			// System.out.println(part.getDocument().getFilePath());
-			// System.out.println(word.getWord() + " " + zero.start);
-			// System.out.println(s.getText());
-			// System.out.println(Pl_Is_ObjNP + "-" + hasSubject + ":\t" +
-			// (goldInts.contains(zero.start)?"zero":"nonzero"));
-			// System.out.println("-----");
-
+			
+			if (!goldInts.contains(zero.start)) {
+//				 System.out.println(part.getDocument().getFilePath());
+//				 System.out.println(word.getWord() + " " + zero.start);
+//				 System.out.println(s.getText());
+//				 System.out.println(Pl_Is_ObjNP + "-" + hasSubject + ":\t" +
+//				 (goldInts.contains(zero.start)?"zero":"nonzero"));
+//				 System.out.println("-----");
+			}
 			return true;
 		}
 	}
@@ -246,8 +245,8 @@ public class ZeroDetect {
 			for (CoNLLPart part : doc.getParts()) {
 				ArrayList<Mention> goldZeros = EMUtil.getAnaphorZeros(part
 						.getChains());
-				// ArrayList<Mention> goldZeros = EMUtil.getZeros(part
-				// .getChains());
+//				 ArrayList<Mention> goldZeros = EMUtil.getZeros(part
+//				 .getChains());
 				goldInts.clear();
 				for (Mention z : goldZeros) {
 					goldInts.add(z.start);
