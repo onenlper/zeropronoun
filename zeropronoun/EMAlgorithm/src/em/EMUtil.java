@@ -226,7 +226,6 @@ public class EMUtil {
 				Mention m2 = entity.mentions.get(i);
 				if (m2.end == -1) {
 					zeros.add(m2);
-					break;
 				}
 			}
 		}
