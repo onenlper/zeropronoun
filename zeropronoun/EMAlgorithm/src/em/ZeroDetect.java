@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import javax.swing.tree.TreeNode;
+
 import model.Mention;
 import model.SemanticRole;
 import model.CoNLL.CoNLLDocument;
@@ -87,7 +89,10 @@ public class ZeroDetect {
 			}
 		}
 		if (sr != null) {
-			// System.out.println(sr.predicate.extent);
+		}
+
+		if (word.index == 0) {
+			return false;
 		}
 
 		boolean firstGap = word.indexInSentence == 0;
@@ -105,9 +110,6 @@ public class ZeroDetect {
 			}
 			return true;
 		} else {
-			// if(true) {
-			// return true;
-			// }
 			int leftIdx = rightIdx - 1;
 			Wl = tree.leaves.get(leftIdx);
 			ArrayList<MyTreeNode> WlAncestors = Wl.getAncestors();
@@ -125,54 +127,72 @@ public class ZeroDetect {
 				}
 			}
 			// Pl_Is_NP
-			boolean Pl_Is_NP = Pl.value.toLowerCase().startsWith("np");
-
-			if (Pl_Is_NP) {
-				return false;
-			}
+			boolean Pl_Is_ObjNP = (Pl.value.toLowerCase().startsWith("np") || Pl.value
+					.toLowerCase().startsWith("qp"))
+					&& Pl.parent.value.equals("VP");
 
 			boolean hasSubject = false;
-			for (MyTreeNode tmp : leaf.getXAncestors("VP")) {
-				if (tmp.getLeaves().get(0) == leaf) {
-					ArrayList<MyTreeNode> leftSisters = tmp.getLeftSisters();
-					for (MyTreeNode n : leftSisters) {
-						if (n.value.equalsIgnoreCase("np")
-								&& !n.getLeaves().get(n.getLeaves().size() - 1).parent.value
-										.equals("NT")) {
-							hasSubject = true;
-						}
-					}
+			ArrayList<MyTreeNode> leftSisters = V.getLeftSisters();
+			for (MyTreeNode n : leftSisters) {
+				if (n.value.equalsIgnoreCase("np")
+						|| n.value.equalsIgnoreCase("qp")) {
+					hasSubject = true;
 				}
-			}
-			if (hasSubject
-			// && !s.getWord(word.indexInSentence-1).posTag.equals("PU")
-			) {
-				// if (goldInts.contains(zero.start)) {
-				// System.out.println(part.getDocument().getFilePath());
-				// System.out.println(word.getWord() + " " + zero.start);
-				// System.out.println(s.getText());
-				// System.out.println("-----");
-				// }
-				return false;
 			}
 
 			boolean has_Ancestor_NP = false;
 			temp = V;
+			boolean VA = false;
+			for (MyTreeNode l : V.getLeaves()) {
+				if (l.parent.value.equals("VA")) {
+					VA = true;
+				}
+			}
+
 			while (temp != root) {
-				// try {
 				if (temp.value.toLowerCase().startsWith("np")) {
 					has_Ancestor_NP = true;
 				}
 				temp = temp.parent;
 			}
 
-			if (has_Ancestor_NP) {
+			if (hasSubject) {
 				return false;
 			}
+
+			if (Pl_Is_ObjNP) {
+				return false;
+			}
+
+			if (has_Ancestor_NP) {
+				for (MyTreeNode c : V.children) {
+					if (c.value.equals("NP")) {
+						// System.out.println(part.getDocument().getFilePath());
+						// System.out.println(word.getWord() + " " +
+						// zero.start);
+						// System.out.println(s.getText());
+						// System.out.println(Pl_Is_ObjNP + "-" + hasSubject +
+						// ":\t" +
+						// (goldInts.contains(zero.start)?"zero":"nonzero"));
+						// System.out.println("-----");
+						// return true;
+					}
+				}
+				return false;
+			}
+
+			// System.out.println(part.getDocument().getFilePath());
+			// System.out.println(word.getWord() + " " + zero.start);
+			// System.out.println(s.getText());
+			// System.out.println(Pl_Is_ObjNP + "-" + hasSubject + ":\t" +
+			// (goldInts.contains(zero.start)?"zero":"nonzero"));
+			// System.out.println("-----");
 
 			return true;
 		}
 	}
+
+	static HashMap<String, Integer> pus = new HashMap<String, Integer>();
 
 	static HashMap<String, Integer> map = new HashMap<String, Integer>();
 
@@ -224,7 +244,6 @@ public class ZeroDetect {
 			OntoCorefXMLReader.addGoldZeroPronouns(doc, true);
 
 			for (CoNLLPart part : doc.getParts()) {
-
 				ArrayList<Mention> goldZeros = EMUtil.getAnaphorZeros(part
 						.getChains());
 				// ArrayList<Mention> goldZeros = EMUtil.getZeros(part
@@ -262,6 +281,9 @@ public class ZeroDetect {
 		// }
 		// System.out.println("======");
 		// System.out.println(map.size());
+		// for (String key : pus.keySet()) {
+		// System.out.println(key + ":" + pus.get(key));
+		// }
 	}
 
 }
