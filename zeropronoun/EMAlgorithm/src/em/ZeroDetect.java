@@ -64,11 +64,6 @@ public class ZeroDetect {
 			return false;
 		}
 		
-		if(V.parent.parent.value.equals("VP") && V.parent.childIndex!=0 && 
-				V.parent.parent.children.get(V.parent.childIndex-1).value.equals("VV")) {
-			return false;
-		}
-
 		if (word.index == 0) {
 			return false;
 		}
@@ -158,6 +153,20 @@ public class ZeroDetect {
 				return false;
 			}
 
+			if(V.parent.parent.value.equals("VP") && V.parent.childIndex!=0 && 
+					V.parent.parent.children.get(V.parent.childIndex-1).value.equals("VV")) {
+				
+//				if (!goldInts.contains(zero.start)) {
+					System.out.println(part.getDocument().getFilePath());
+					System.out.println(word.getWord() + " " + zero.start);
+					System.out.println(s.getText());
+					System.out.println((goldInts.contains(zero.start) ? "zero" : "nonzero"));
+					System.out.println("-----");
+//				}
+				
+				return false;
+			}
+			
 			if (!goldInts.contains(zero.start)) {
 //				System.out.println(part.getDocument().getFilePath());
 //				System.out.println(word.getWord() + " " + zero.start);
