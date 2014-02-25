@@ -5,10 +5,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import javax.swing.tree.TreeNode;
-
 import model.Mention;
-import model.SemanticRole;
 import model.CoNLL.CoNLLDocument;
 import model.CoNLL.CoNLLPart;
 import model.CoNLL.CoNLLSentence;
@@ -34,6 +31,7 @@ public class ZeroDetect {
 				m.start = can;
 				m.end = -1;
 				m.sentenceID = s.getSentenceIdx();
+
 				if (isHeruisZP(m, part))
 					mentions.add(m);
 			}
@@ -62,33 +60,13 @@ public class ZeroDetect {
 				V = node;
 			}
 		}
-
-		temp = Wr;
-		boolean find_IP_VP = false;
-		while (temp != root) {
-			if (temp.value.toLowerCase().startsWith("vp")
-					&& temp.parent.value.toLowerCase().startsWith("ip")
-					&& temp.getLeaves().get(0) == Wr) {
-				find_IP_VP = true;
-				break;
-			}
-			temp = temp.parent;
-		}
-		if (!find_IP_VP) {
+		if(V==null) {
 			return false;
 		}
-
-		// predicate
-		SemanticRole sr = null;
-		out: for (MyTreeNode l : V.getLeaves()) {
-			for (SemanticRole r : s.roles) {
-				if (r.predicate.start == s.getWords().get(l.leafIdx).index) {
-					sr = r;
-					break out;
-				}
-			}
-		}
-		if (sr != null) {
+		
+		if(V.parent.parent.value.equals("VP") && V.parent.childIndex!=0 && 
+				V.parent.parent.children.get(V.parent.childIndex-1).value.equals("VV")) {
+			return false;
 		}
 
 		if (word.index == 0) {
@@ -113,6 +91,9 @@ public class ZeroDetect {
 		} else {
 			int leftIdx = rightIdx - 1;
 			Wl = tree.leaves.get(leftIdx);
+			if(Wl.value.equals("，") || Wl.value.equals(",")) {
+				Wl = tree.leaves.get(leftIdx-1);
+			}
 			ArrayList<MyTreeNode> WlAncestors = Wl.getAncestors();
 			int m = 0;
 			MyTreeNode Pl = WlAncestors.get(m);
@@ -128,22 +109,21 @@ public class ZeroDetect {
 				}
 			}
 			// Pl_Is_NP
-			boolean Pl_Is_ObjNP = (Pl.value.toLowerCase().startsWith("np") || 
-					Pl.value.toLowerCase().startsWith("qp") || Pl.value.toLowerCase().startsWith("ip"))
-					&& Pl.parent.value.equals("VP")
-					;
+			boolean Pl_Is_ObjNP = (Pl.value.toLowerCase().startsWith("np")
+					|| Pl.value.toLowerCase().startsWith("qp") || Pl.value
+					.toLowerCase().startsWith("ip"))
+					&& Pl.parent.value.equals("VP");
 
 			boolean hasSubject = false;
 			ArrayList<MyTreeNode> leftSisters = V.getLeftSisters();
 			for (MyTreeNode n : leftSisters) {
 				if (n.value.equalsIgnoreCase("np")
-						|| n.value.equalsIgnoreCase("qp")
-						) {
+						|| n.value.equalsIgnoreCase("qp")) {
 					hasSubject = true;
 					break;
 				}
 
-				if(n.value.toLowerCase().startsWith("ip")) {
+				if (n.value.toLowerCase().startsWith("ip")) {
 					hasSubject = true;
 					break;
 				}
@@ -160,8 +140,7 @@ public class ZeroDetect {
 
 			while (temp != root) {
 				if (temp.value.toLowerCase().startsWith("np")
-						|| temp.value.toLowerCase().startsWith("qp")
-						) {
+						|| temp.value.toLowerCase().startsWith("qp")) {
 					has_Ancestor_NP = true;
 				}
 				temp = temp.parent;
@@ -178,14 +157,14 @@ public class ZeroDetect {
 			if (has_Ancestor_NP) {
 				return false;
 			}
-			
+
 			if (!goldInts.contains(zero.start)) {
-//				 System.out.println(part.getDocument().getFilePath());
-//				 System.out.println(word.getWord() + " " + zero.start);
-//				 System.out.println(s.getText());
-//				 System.out.println(Pl_Is_ObjNP + "-" + hasSubject + ":\t" +
-//				 (goldInts.contains(zero.start)?"zero":"nonzero"));
-//				 System.out.println("-----");
+//				System.out.println(part.getDocument().getFilePath());
+//				System.out.println(word.getWord() + " " + zero.start);
+//				System.out.println(s.getText());
+//				System.out.println(Pl_Is_ObjNP + "-" + hasSubject + ":\t"
+//						+ (goldInts.contains(zero.start) ? "zero" : "nonzero"));
+//				System.out.println("-----");
 			}
 			return true;
 		}
@@ -205,7 +184,7 @@ public class ZeroDetect {
 					CC = true;
 				}
 			}
-
+			
 			boolean advp = false;
 			ArrayList<MyTreeNode> leftSisters = node.getLeftSisters();
 			for (int k = leftSisters.size() - 1; k >= 0; k--) {
