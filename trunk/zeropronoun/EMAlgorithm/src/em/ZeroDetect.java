@@ -63,6 +63,7 @@ public class ZeroDetect {
 		if(V==null) {
 			return false;
 		}
+		MyTreeNode IP = V.parent;
 		
 		if (word.index == 0) {
 			return false;
@@ -107,7 +108,8 @@ public class ZeroDetect {
 			boolean Pl_Is_ObjNP = (Pl.value.toLowerCase().startsWith("np")
 					|| Pl.value.toLowerCase().startsWith("qp") || Pl.value
 					.toLowerCase().startsWith("ip"))
-					&& Pl.parent.value.equals("VP");
+					&& (Pl.parent.value.equals("VP"))
+					;
 
 			boolean hasSubject = false;
 			ArrayList<MyTreeNode> leftSisters = V.getLeftSisters();
@@ -153,27 +155,20 @@ public class ZeroDetect {
 				return false;
 			}
 
-			if(V.parent.parent.value.equals("VP") && V.parent.childIndex!=0 && 
-					V.parent.parent.children.get(V.parent.childIndex-1).value.equals("VV")) {
-				
-//				if (!goldInts.contains(zero.start)) {
-					System.out.println(part.getDocument().getFilePath());
-					System.out.println(word.getWord() + " " + zero.start);
-					System.out.println(s.getText());
-					System.out.println((goldInts.contains(zero.start) ? "zero" : "nonzero"));
-					System.out.println("-----");
-//				}
-				
+			if(IP.parent.value.equals("VP")
+					&& IP.childIndex!=0
+					&& IP.parent.children.get(IP.childIndex-1).value.equals("VV")
+					) {
 				return false;
 			}
 			
 			if (!goldInts.contains(zero.start)) {
-//				System.out.println(part.getDocument().getFilePath());
-//				System.out.println(word.getWord() + " " + zero.start);
-//				System.out.println(s.getText());
-//				System.out.println(Pl_Is_ObjNP + "-" + hasSubject + ":\t"
-//						+ (goldInts.contains(zero.start) ? "zero" : "nonzero"));
-//				System.out.println("-----");
+				System.out.println(part.getDocument().getFilePath());
+				System.out.println(word.getWord() + " " + zero.start);
+				System.out.println(s.getText());
+				System.out.println(Pl_Is_ObjNP + "-" + hasSubject + ":\t"
+						+ (goldInts.contains(zero.start) ? "zero" : "nonzero"));
+				System.out.println("-----");
 			}
 			return true;
 		}
@@ -231,10 +226,10 @@ public class ZeroDetect {
 			OntoCorefXMLReader.addGoldZeroPronouns(doc, true);
 
 			for (CoNLLPart part : doc.getParts()) {
-				ArrayList<Mention> goldZeros = EMUtil.getAnaphorZeros(part
-						.getChains());
-//				 ArrayList<Mention> goldZeros = EMUtil.getZeros(part
-//				 .getChains());
+//				ArrayList<Mention> goldZeros = EMUtil.getAnaphorZeros(part
+//						.getChains());
+				 ArrayList<Mention> goldZeros = EMUtil.getZeros(part
+				 .getChains());
 				goldInts.clear();
 				for (Mention z : goldZeros) {
 					goldInts.add(z.start);
