@@ -145,13 +145,28 @@ public class ZeroDetect {
 				}
 
 				if (n.value.toLowerCase().startsWith("ip")||n.value.toLowerCase().startsWith("lcp")
-						||n.value.toLowerCase().startsWith("dp")) {
+						||n.value.toLowerCase().startsWith("dp")
+						||n.value.toLowerCase().startsWith("dnp")
+						) {
 					hasSubject = true;
 					break;
 				}
 			}
 			
+			for(int i=0;i<IP.childIndex;i++) {
+				if(IP.parent.getChild(i).value.equals("NP")) {
+//***					return false;
+				}
+			}
+			
+			for(int i=0;i<V.childIndex;i++) {
+				if(V.parent.getChild(i).value.equals("DFL")) {
+//					return false;
+				}
+			}
+			
 			if(IP.childIndex!=0 && IP.parent.value.equals("PP") && IP.parent.children.get(IP.childIndex-1).value.equals("P")
+					&& IP.parent.getChild(IP.childIndex-1).getChild(0).value.equals("为")
 					&& IP.parent.parent.value.equals("VP")
 					&& IP.parent.parent.childIndex!=0 && IP.parent.parent.parent.children.get(IP.parent.parent.childIndex-1).value.equals("NP")) {
 //				return false;
