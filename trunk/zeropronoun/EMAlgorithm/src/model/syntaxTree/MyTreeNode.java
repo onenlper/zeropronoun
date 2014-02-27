@@ -34,6 +34,10 @@ public class MyTreeNode {
 		children = new ArrayList<MyTreeNode>();
 	}
 	
+	public MyTreeNode getChild(int i) {
+		return this.children.get(i);
+	}
+	
 	public MyTreeNode getFirstXAncestor(String X) {
 		ArrayList<MyTreeNode> ancestors = this.getAncestors();
 		for(int i=ancestors.size()-2;i>=0;i--) {
