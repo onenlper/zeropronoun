@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Stack;
 
 import model.Mention;
 import model.CoNLL.CoNLLDocument;
@@ -41,11 +42,13 @@ public class ZeroDetect {
 	}
 
 	private static boolean isHeruisZP(Mention zero, CoNLLPart part) {
+//		if (true) {
+//			return true;
+//		}
 		CoNLLWord word = part.getWord(zero.start);
 		CoNLLSentence s = word.sentence;
 		MyTree tree = word.sentence.syntaxTree;
 		MyTreeNode root = tree.root;
-		MyTreeNode leaf = root.getLeaves().get(word.indexInSentence);
 		int rightIdx = word.indexInSentence;
 		MyTreeNode Wr = tree.leaves.get(rightIdx);
 		ArrayList<MyTreeNode> WrAncestors = Wr.getAncestors();
@@ -53,44 +56,63 @@ public class ZeroDetect {
 		MyTreeNode temp = null;
 
 		MyTreeNode V = null;
+		
 		for (MyTreeNode node : WrAncestors) {
 			if (node.value.toLowerCase().startsWith("vp")
 					&& node.getLeaves().get(0) == Wr
-					&& node.parent.value.equalsIgnoreCase("ip")) {
+					&& (node.parent.value.equalsIgnoreCase("ip"))) {
 				V = node;
 			}
 		}
-		if(V==null) {
+		if (V == null) {
 			return false;
 		}
-		MyTreeNode IP = V.parent;
 		
+		for(int i=0;i<V.childIndex;i++) {
+			if(V.parent.children.get(i).value.equals("VP")) {
+				return false;
+			}
+		}
+
+		MyTreeNode IP = V.parent;
+
 		if (word.index == 0) {
 			return false;
 		}
 
+		boolean has_Ancestor_NP = false;
+		temp = V;
+		while (temp != root) {
+			if (temp.value.toLowerCase().startsWith("np")
+					|| temp.value.toLowerCase().startsWith("qp")
+					) {
+				has_Ancestor_NP = true;
+			}
+			temp = temp.parent;
+		}
+		if (has_Ancestor_NP) {
+			return false;
+		}
+		
 		boolean firstGap = word.indexInSentence == 0;
 		if (firstGap) {
-			boolean has_Ancestor_NP = false;
-			temp = V;
-			while (temp != root) {
-				if (temp.value.toLowerCase().startsWith("np")
-						|| temp.value.toLowerCase().startsWith("qp")) {
-					has_Ancestor_NP = true;
-				}
-				temp = temp.parent;
-			}
-			if (has_Ancestor_NP) {
-				return false;
-			}
 			return true;
 		} else {
 			int leftIdx = rightIdx - 1;
 			Wl = tree.leaves.get(leftIdx);
 			if(Wl.value.equals("，") || Wl.value.equals(",")) {
-				Wl = tree.leaves.get(leftIdx-1);
+				Wl = tree.leaves.get(leftIdx - 1);
 			}
 			ArrayList<MyTreeNode> WlAncestors = Wl.getAncestors();
+//			boolean Pl_Is_ObjNP = false;
+//			for(int i=WlAncestors.size()-1;i>=0;i--) {
+//				MyTreeNode node = WlAncestors.get(i);
+//				if((node.value.equals("np") || node.value.equals("qp") || node.value.equals("ip"))
+//						&& node.parent!=null && node.parent.equals("VP")) {
+//					Pl_Is_ObjNP = true;
+//				}
+//			}
+			
 			int m = 0;
 			MyTreeNode Pl = WlAncestors.get(m);
 			MyTreeNode Pr = WrAncestors.get(m);
@@ -106,11 +128,13 @@ public class ZeroDetect {
 			}
 			// Pl_Is_NP
 			boolean Pl_Is_ObjNP = (Pl.value.toLowerCase().startsWith("np")
-					|| Pl.value.toLowerCase().startsWith("qp") || Pl.value
-					.toLowerCase().startsWith("ip"))
+					|| Pl.value.toLowerCase().startsWith("qp") 
+					|| Pl.value.toLowerCase().startsWith("ip")
+					|| Pl.value.toLowerCase().startsWith("lcp")
+					)
 					&& (Pl.parent.value.equals("VP"))
 					;
-
+			
 			boolean hasSubject = false;
 			ArrayList<MyTreeNode> leftSisters = V.getLeftSisters();
 			for (MyTreeNode n : leftSisters) {
@@ -120,29 +144,19 @@ public class ZeroDetect {
 					break;
 				}
 
-				if (n.value.toLowerCase().startsWith("ip")) {
+				if (n.value.toLowerCase().startsWith("ip")||n.value.toLowerCase().startsWith("lcp")
+						||n.value.toLowerCase().startsWith("dp")) {
 					hasSubject = true;
 					break;
 				}
 			}
-
-			boolean has_Ancestor_NP = false;
-			temp = V;
-			boolean VA = false;
-			for (MyTreeNode l : V.getLeaves()) {
-				if (l.parent.value.equals("VA")) {
-					VA = true;
-				}
+			
+			if(IP.childIndex!=0 && IP.parent.value.equals("PP") && IP.parent.children.get(IP.childIndex-1).value.equals("P")
+					&& IP.parent.parent.value.equals("VP")
+					&& IP.parent.parent.childIndex!=0 && IP.parent.parent.parent.children.get(IP.parent.parent.childIndex-1).value.equals("NP")) {
+//				return false;
 			}
-
-			while (temp != root) {
-				if (temp.value.toLowerCase().startsWith("np")
-						|| temp.value.toLowerCase().startsWith("qp")) {
-					has_Ancestor_NP = true;
-				}
-				temp = temp.parent;
-			}
-
+			
 			if (hasSubject) {
 				return false;
 			}
@@ -150,25 +164,42 @@ public class ZeroDetect {
 			if (Pl_Is_ObjNP) {
 				return false;
 			}
-
-			if (has_Ancestor_NP) {
-				return false;
-			}
-
-			if(IP.parent.value.equals("VP")
-					&& IP.childIndex!=0
-					&& IP.parent.children.get(IP.childIndex-1).value.equals("VV")
-					) {
-				return false;
-			}
 			
+			
+			// IP as OBJ
+			if (IP.parent.value.equals("VP")) {
+//				if(IP.childIndex != 0
+//					&& (IP.parent.children.get(IP.childIndex - 1).value
+//							.equals("VV"))) {
+//					return false;
+//				}
+				
+				for(int i=IP.childIndex-1;i>=0;i--) {
+					if(IP.parent.children.get(i).value.equals("VV")) {
+						return false;
+					} else if(IP.parent.children.get(i).value.equals("AS")
+//							|| IP.parent.children.get(i).children.get(0).value.equals("，")
+							){
+						continue;
+					} else {
+						break;
+					}
+				}
+				
+				for(int i=0;i<IP.childIndex-1;i++) {
+					if(IP.parent.children.get(i).value.equals("VV") && IP.parent.children.get(i+1).value.equals("NP")) {
+						return false;
+					}
+				}
+			}
+
 			if (!goldInts.contains(zero.start)) {
-				System.out.println(part.getDocument().getFilePath());
-				System.out.println(word.getWord() + " " + zero.start);
-				System.out.println(s.getText());
-				System.out.println(Pl_Is_ObjNP + "-" + hasSubject + ":\t"
-						+ (goldInts.contains(zero.start) ? "zero" : "nonzero"));
-				System.out.println("-----");
+//				System.out.println(part.getDocument().getFilePath());
+//				System.out.println(word.getWord() + " " + zero.start);
+//				System.out.println(s.getText());
+//				System.out.println(Pl_Is_ObjNP + "-" + hasSubject + ":\t"
+//						+ (goldInts.contains(zero.start) ? "zero" : "nonzero"));
+//				System.out.println("-----");
 			}
 			return true;
 		}
@@ -188,7 +219,7 @@ public class ZeroDetect {
 					CC = true;
 				}
 			}
-			
+
 			boolean advp = false;
 			ArrayList<MyTreeNode> leftSisters = node.getLeftSisters();
 			for (int k = leftSisters.size() - 1; k >= 0; k--) {
@@ -202,8 +233,8 @@ public class ZeroDetect {
 			}
 
 			int leafIdx = node.getLeaves().get(0).leafIdx;
-			if (!CC && !advp)
-				zeros.add(s.getWord(leafIdx).index);
+			 if (!CC && !advp)
+			zeros.add(s.getWord(leafIdx).index);
 		}
 		for (MyTreeNode child : node.children) {
 			visitTreeNode(child, zeros, s);
@@ -221,15 +252,16 @@ public class ZeroDetect {
 				+ "_development");
 
 		for (String file : files) {
-			CoNLLDocument doc = new CoNLLDocument(file.replace("auto_conll",
-					"gold_conll"));
+			CoNLLDocument doc = new CoNLLDocument(file
+					.replace("auto_conll", "gold_conll")
+					);
 			OntoCorefXMLReader.addGoldZeroPronouns(doc, true);
 
 			for (CoNLLPart part : doc.getParts()) {
-//				ArrayList<Mention> goldZeros = EMUtil.getAnaphorZeros(part
-//						.getChains());
-				 ArrayList<Mention> goldZeros = EMUtil.getZeros(part
-				 .getChains());
+				ArrayList<Mention> goldZeros = EMUtil.getAnaphorZeros(part
+						.getChains());
+//				 ArrayList<Mention> goldZeros = EMUtil.getZeros(part
+//				 .getChains());
 				goldInts.clear();
 				for (Mention z : goldZeros) {
 					goldInts.add(z.start);
@@ -239,12 +271,21 @@ public class ZeroDetect {
 
 				gold += goldZeros.size();
 				sys += systemZeros.size();
-				for (Mention s : systemZeros) {
-					for (Mention g : goldZeros) {
+				out: for (Mention g : goldZeros) {
+					for (Mention s : systemZeros) {
 						if (s.start == g.start) {
 							hit++;
+							continue out;
 						}
 					}
+//					CoNLLWord word = part.getWord(g.start);
+//					CoNLLSentence s = word.sentence;
+//					//d
+//					System.out.println(part.getDocument().getFilePath());
+//					System.out.println(word.getWord());
+//					System.out.println(s.getText());
+//					System.out.println("-----");
+					
 				}
 			}
 		}
@@ -254,9 +295,9 @@ public class ZeroDetect {
 		System.out.println("Hit: " + hit);
 		System.out.println("Gold: " + gold);
 		System.out.println("Sys: " + sys);
-		System.out.println("R: " + r);
-		System.out.println("P: " + p);
-		System.out.println("F: " + f);
+		System.out.println("R: " + r*100);
+		System.out.println("P: " + p*100);
+		System.out.println("F: " + f*100);
 
 		// for (String key : map.keySet()) {
 		// System.out.println(key + "\t:" + map.get(key));
