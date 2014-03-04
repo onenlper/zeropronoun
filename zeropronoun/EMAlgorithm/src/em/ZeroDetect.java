@@ -42,9 +42,6 @@ public class ZeroDetect {
 	}
 
 	private static boolean isHeruisZP(Mention zero, CoNLLPart part) {
-//		if (true) {
-//			return true;
-//		}
 		CoNLLWord word = part.getWord(zero.start);
 		CoNLLSentence s = word.sentence;
 		MyTree tree = word.sentence.syntaxTree;
@@ -64,21 +61,18 @@ public class ZeroDetect {
 				V = node;
 			}
 		}
+		// Rule 3
 		if (V == null) {
 			return false;
 		}
 		
 		for(int i=0;i<V.childIndex;i++) {
 			if(V.parent.children.get(i).value.equals("VP")) {
-				return false;
+//				return false;
 			}
 		}
 
 		MyTreeNode IP = V.parent;
-
-		if (word.index == 0) {
-			return false;
-		}
 
 		boolean has_Ancestor_NP = false;
 		temp = V;
@@ -90,43 +84,48 @@ public class ZeroDetect {
 			}
 			temp = temp.parent;
 		}
+		// Rule 4
 		if (has_Ancestor_NP) {
+//			if (!goldInts.contains(zero.start)) {
+//				System.out.println(part.getDocument().getFilePath());
+//				System.out.println(word.getWord() + " " + zero.start);
+//				System.out.println(s.getText());
+//				System.out.println(goldInts.contains(zero.start) ? "zero" : "nonzero");
+//				System.out.println("-----");
+//			}
 			return false;
 		}
 		
 		boolean firstGap = word.indexInSentence == 0;
-		if (firstGap) {
-			return true;
-		} else {
+		if (!firstGap) {
 			int leftIdx = rightIdx - 1;
 			Wl = tree.leaves.get(leftIdx);
 			if(Wl.value.equals("，") || Wl.value.equals(",")) {
 				Wl = tree.leaves.get(leftIdx - 1);
 			}
 			ArrayList<MyTreeNode> WlAncestors = Wl.getAncestors();
-//			boolean Pl_Is_ObjNP = false;
-//			for(int i=WlAncestors.size()-1;i>=0;i--) {
-//				MyTreeNode node = WlAncestors.get(i);
-//				if((node.value.equals("np") || node.value.equals("qp") || node.value.equals("ip"))
-//						&& node.parent!=null && node.parent.equals("VP")) {
-//					Pl_Is_ObjNP = true;
-//				}
-//			}
 			
 			int m = 0;
 			MyTreeNode Pl = WlAncestors.get(m);
-			MyTreeNode Pr = WrAncestors.get(m);
-			m++;
-			while (true) {
-				if (Pl == Pr) {
-					m++;
-					Pl = WlAncestors.get(m);
-					Pr = WrAncestors.get(m);
-				} else {
+//			MyTreeNode Pr = WrAncestors.get(m);
+//			m++;
+//			while (true) {
+//				if (Pl == Pr) {
+//					m++;
+//					Pl = WlAncestors.get(m);
+//					Pr = WrAncestors.get(m);
+//				} else {
+//					break;
+//				}
+//			}
+			// Pl_Is_NP
+			for(MyTreeNode node : WlAncestors) {
+				if(node.getLeaves().get(node.getLeaves().size()-1)==Wl) {
+					Pl = node;
 					break;
 				}
 			}
-			// Pl_Is_NP
+			
 			boolean Pl_Is_ObjNP = (Pl.value.toLowerCase().startsWith("np")
 					|| Pl.value.toLowerCase().startsWith("qp") 
 					|| Pl.value.toLowerCase().startsWith("ip")
@@ -152,42 +151,19 @@ public class ZeroDetect {
 					break;
 				}
 			}
-			
-			for(int i=0;i<IP.childIndex;i++) {
-				if(IP.parent.getChild(i).value.equals("NP")) {
-//***					return false;
-				}
-			}
-			
-			for(int i=0;i<V.childIndex;i++) {
-				if(V.parent.getChild(i).value.equals("DFL")) {
-//					return false;
-				}
-			}
-			
-			if(IP.childIndex!=0 && IP.parent.value.equals("PP") && IP.parent.children.get(IP.childIndex-1).value.equals("P")
-					&& IP.parent.getChild(IP.childIndex-1).getChild(0).value.equals("为")
-					&& IP.parent.parent.value.equals("VP")
-					&& IP.parent.parent.childIndex!=0 && IP.parent.parent.parent.children.get(IP.parent.parent.childIndex-1).value.equals("NP")) {
-//				return false;
-			}
-			
+			// Rule 5
 			if (hasSubject) {
 				return false;
 			}
-
+			
+			// Rule 6
 			if (Pl_Is_ObjNP) {
 				return false;
 			}
 			
-			
 			// IP as OBJ
+			// Rule 7
 			if (IP.parent.value.equals("VP")) {
-//				if(IP.childIndex != 0
-//					&& (IP.parent.children.get(IP.childIndex - 1).value
-//							.equals("VV"))) {
-//					return false;
-//				}
 				
 				for(int i=IP.childIndex-1;i>=0;i--) {
 					if(IP.parent.children.get(i).value.equals("VV")) {
@@ -207,17 +183,34 @@ public class ZeroDetect {
 					}
 				}
 			}
-
-			if (!goldInts.contains(zero.start)) {
-//				System.out.println(part.getDocument().getFilePath());
-//				System.out.println(word.getWord() + " " + zero.start);
-//				System.out.println(s.getText());
-//				System.out.println(Pl_Is_ObjNP + "-" + hasSubject + ":\t"
-//						+ (goldInts.contains(zero.start) ? "zero" : "nonzero"));
-//				System.out.println("-----");
-			}
-			return true;
 		}
+		// Rule 8
+		if (word.index == 0) {
+			return false;
+		}
+//		if(word.sentence.getSentenceIdx()==0) {
+//			boolean np = false;
+//			for(int i=0;i<word.indexInSentence;i++) {
+//				MyTreeNode leaf = tree.leaves.get(i);
+//				if(leaf.getXAncestors("NP").size()!=0) {
+//					np = true;
+//					break;
+//				}
+//			}
+//			if(!np) {
+////				return false;
+//			}
+//		}
+		
+		if (!goldInts.contains(zero.start)) {
+//			System.out.println(part.getDocument().getFilePath());
+//			System.out.println(word.getWord() + " " + zero.start);
+//			System.out.println(s.getText());
+//			System.out.println(goldInts.contains(zero.start) ? "zero" : "nonzero");
+//			System.out.println("-----");
+		}
+		
+		return true;
 	}
 
 	static HashMap<String, Integer> pus = new HashMap<String, Integer>();
@@ -248,6 +241,7 @@ public class ZeroDetect {
 			}
 
 			int leafIdx = node.getLeaves().get(0).leafIdx;
+			// Rule 2
 			 if (!CC && !advp)
 			zeros.add(s.getWord(leafIdx).index);
 		}
