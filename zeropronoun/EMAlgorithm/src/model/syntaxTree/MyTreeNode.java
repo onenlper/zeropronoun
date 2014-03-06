@@ -178,6 +178,10 @@ public class MyTreeNode {
 		}
 		return leaves;
 	}
+	
+	public MyTreeNode getLeaf(int i) {
+		return this.getLeaves().get(i);
+	}
 
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
@@ -236,7 +240,7 @@ public class MyTreeNode {
 						sb.append(" (-none- )");
 					}
 				} else if (tn.children.size() > 0) {
-					// leaf
+					// TODO leaf
 					if (leaf && tn.children.size() == 1 && tn.children.get(0).children.size() == 0) {
 						sb.append(" (").append(tn.value).append(" ").append(tn.children.get(0).value).append(")");
 					} else {
@@ -274,7 +278,8 @@ public class MyTreeNode {
 		newNode.leafIdx = oldNode.leafIdx;
 		newNode.value = oldNode.value;
 
-		for (MyTreeNode child : oldNode.children) {
+		for (int i=0;i<oldNode.children.size();i++) {
+			MyTreeNode child = oldNode.children.get(i);
 			MyTreeNode newChild = copyNode(child);
 			newChild.parent = newNode;
 			newNode.addChild(newChild);
