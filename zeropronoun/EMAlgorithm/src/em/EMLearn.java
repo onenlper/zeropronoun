@@ -161,7 +161,7 @@ public class EMLearn {
 				if (m.gram == EMUtil.Grammatic.subject
 						&& EMUtil.pronouns.contains(m.extent)) {
 					qid++;
-					EMUtil.setPronounAttri(m);
+					EMUtil.setPronounAttri(m, part);
 
 					String proSpeaker = part.getWord(m.start).speaker;
 
