@@ -120,7 +120,7 @@ public class MaxEntLearn {
 					}
 				}
 
-				EMUtil.setPronounAttri(m);
+				EMUtil.setPronounAttri(m, part);
 				String proSpeaker = part.getWord(m.start).speaker;
 
 				Collections.sort(ants);
