@@ -22,6 +22,7 @@ import java.util.Iterator;
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
+import jnisvmlight.LabeledFeatureVector;
 import model.syntaxTree.MyTree;
 import model.syntaxTree.MyTreeNode;
 
@@ -48,6 +49,26 @@ public class Common {
 	public static String concat(String antHead, String mHead) {
 		return antHead.compareTo(mHead) > 0 ? (antHead + "_" + mHead) : (mHead
 				+ "_" + antHead);
+	}
+	
+	public static LabeledFeatureVector SVMStringToFeature(String str) {
+		int a = str.indexOf(" ");
+		double label = Double.parseDouble(str.substring(0, a));
+		String tokens[] = str.substring(a + 1).trim().split("\\s+");
+
+		double[] values = new double[tokens.length];
+		int[] dims = new int[tokens.length];
+
+		for (int i = 0; i < tokens.length; i++) {
+			String t[] = tokens[i].split(":");
+			if(t[0].equals("qid")) {
+				continue;
+			}
+			dims[i] = Integer.parseInt(t[0]);
+			values[i] = Double.parseDouble(t[1]);
+		}
+
+		return new LabeledFeatureVector(label, dims, values);
 	}
 
 	public static String wordnet = "/usr/local/WordNet-3.0/";
@@ -1028,6 +1049,19 @@ public class Common {
 		ArrayList<MyTreeNode> rightAns = right.getAncestors();
 		for (int i = 0; i < leftAns.size() && i < rightAns.size(); i++) {
 			if (leftAns.get(i) == rightAns.get(i)) {
+				ancestor = leftAns.get(i);
+			}
+		}
+		return ancestor;
+	}
+	
+	public static MyTreeNode getLowestCommonAncestorX(MyTreeNode left,
+			MyTreeNode right, String X) {
+		MyTreeNode ancestor = null;
+		ArrayList<MyTreeNode> leftAns = left.getAncestors();
+		ArrayList<MyTreeNode> rightAns = right.getAncestors();
+		for (int i = 0; i < leftAns.size() && i < rightAns.size(); i++) {
+			if (leftAns.get(i) == rightAns.get(i) && leftAns.get(i).value.contains(X)) {
 				ancestor = leftAns.get(i);
 			}
 		}
