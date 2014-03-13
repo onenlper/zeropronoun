@@ -12,6 +12,9 @@ public class Mention implements Comparable<Mention>, Serializable{
 	/**
 	 * 
 	 */
+	
+	public boolean isAZP = false;
+	
 	private static final long serialVersionUID = 1L;
 	public int start = -1;
 	public int end = -1;
