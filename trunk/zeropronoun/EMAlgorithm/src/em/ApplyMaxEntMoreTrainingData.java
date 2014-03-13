@@ -197,8 +197,6 @@ public class ApplyMaxEntMoreTrainingData {
 
 		}
 	}
-
-	static int sigID = 0;
 	
 	public void test() {
 		ArrayList<String> files = Common.getLines("chinese_list_" + folder
@@ -215,9 +213,6 @@ public class ApplyMaxEntMoreTrainingData {
 
 			for (int k = 0; k < document.getParts().size(); k++) {
 				pID++;
-//				if(pID%5!=sigID) {
-//					continue;
-//				}
 				CoNLLPart part = document.getParts().get(k);
 
 				for (CoNLLSentence s : part.getCoNLLSentences()) {
@@ -482,7 +477,24 @@ public class ApplyMaxEntMoreTrainingData {
 			if (antCount > maximam) {
 				maximam = antCount;
 			}
-			double probAnt[] = runYasmet(ysb.toString(), antCount);
+			
+			double probAnt[] = null;
+			
+			if(overtTrain) {
+				double probAnt1[] = runYasmet(ysb.toString(), antCount, "WT");
+				probAnt = probAnt1;
+			} else if(zeroTrain) {
+				double probAnt2[] = runYasmet(ysb.toString(), antCount, "WTAZP");
+				probAnt = probAnt2;
+			} else if(bothTrain) {
+				double probAnt1[] = runYasmet(ysb.toString(), antCount, "WT");
+				double probAnt2[] = runYasmet(ysb.toString(), antCount, "WTAZP");
+				probAnt = new double[probAnt1.length];
+				for(int i=0;i<probAnt.length;i++) {
+					probAnt[i] = (probAnt1[i] + probAnt2[i])/2;
+				}
+			}
+			
 //			double probAnt[] = runSVMRank();
 			pronounID++;
 			// System.err.println(cands.size());
@@ -542,25 +554,23 @@ public class ApplyMaxEntMoreTrainingData {
 				double rankMax = 0;
 				for (int i = 0; i < probAnt.length; i++) {
 					double prob = probAnt[i];
-					if (prob > rankMax) {
+					if (prob > rankMax && !filters.contains(i)) {
 						rankMax = prob;
 						rankID = i;
 					}
 				}
-				int antIdx = -1;
-
-				setParas(part);
-
-				ILP ilp = new ILP(numberOfAnt, probAnt, probNum, probGen,
-						probPer, probAni);
-				try {
-					antIdx = ilp.execute();
-				} catch (LpSolveException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+//				int antIdx = -1;
+//				setParas(part);
+//				ILP ilp = new ILP(numberOfAnt, probAnt, probNum, probGen,
+//						probPer, probAni);
+//				try {
+//					antIdx = ilp.execute();
+//				} catch (LpSolveException e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
+//				}
 				// }
-				antecedent = cands.get(antIdx);
+				antecedent = cands.get(idMap.get(rankID));
 
 			}
 			if (antecedent != null) {
@@ -1078,7 +1088,7 @@ public class ApplyMaxEntMoreTrainingData {
 
 	static int maxAnts = 1200;
 
-	private double[] runYasmet(String str, int antCount) {
+	private double[] runYasmet(String str, int antCount, String modelName) {
 		String tks[] = str.split("@");
 		int numberOfUnit = tks.length - 2;
 		if (numberOfUnit > maxAnts) {
@@ -1098,7 +1108,7 @@ public class ApplyMaxEntMoreTrainingData {
 		}
 		case classify: {
 			String lineStr = "";
-			String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/WT";
+			String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/" + modelName;
 
 			Runtime run = Runtime.getRuntime();
 			double ret[] = new double[antCount];
@@ -1270,7 +1280,7 @@ public class ApplyMaxEntMoreTrainingData {
 		double prob = distr.getCount("+1");
 		return prob;
 	}
-
+	
 	public void addEmptyCategoryNode(Mention zero) {
 		MyTreeNode V = zero.V;
 		MyTreeNode newNP = new MyTreeNode();
@@ -1279,9 +1289,13 @@ public class ApplyMaxEntMoreTrainingData {
 		V.parent.addChild(VIdx, newNP);
 
 		MyTreeNode empty = new MyTreeNode();
-		empty.value = "-NONE-";
-		newNP.addChild(empty);
+		empty.value = "PN";
 
+		MyTreeNode leaf = new MyTreeNode();
+		leaf.value = zero.head;
+		empty.addChild(leaf);
+		
+		newNP.addChild(empty);
 		MyTreeNode child = new MyTreeNode();
 		child.value = zero.extent;
 		empty.addChild(child);
@@ -1481,14 +1495,25 @@ public class ApplyMaxEntMoreTrainingData {
 			"0.04 0.08 0.02 0.04", "0.06 0.06 0.008 0.06",
 			"0.06 0.06 0.01 0.06" };
 
+	public static boolean overtTrain = false;
+	public static boolean zeroTrain = false;
+	public static boolean bothTrain = false;
+	
 	public static void main(String args[]) {
-		if (args.length < 1) {
-			System.err.println("java ~ folder [mode]");
+		if (args.length < 3) {
+			System.err.println("java ~ folder [mode] [overt|zero|both]");
 			System.exit(1);
 		}
-		if(args.length==3) {
-			sigID = Integer.parseInt(args[2]);
+		if(args[2].equals("overt")) {
+			overtTrain = true;
+		} else if(args[2].equals("zero")) {
+			zeroTrain = true;
+		} else if(args[2].equals("both")) {
+			bothTrain = true;
+		} else {
+			Common.bangErrorPOS("[overt|zero|both]");
 		}
+		
 		if (args[1].equals("prepare")) {
 			mode = prepare;
 			run(args[0]);
