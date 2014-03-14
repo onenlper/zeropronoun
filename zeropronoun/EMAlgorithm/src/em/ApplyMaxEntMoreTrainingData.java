@@ -14,7 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import lpsolve.LpSolveException;
+import jnisvmlight.SVMLightModel;
 import mentionDetect.ParseTreeMention;
 import model.Entity;
 import model.Mention;
@@ -88,11 +88,14 @@ public class ApplyMaxEntMoreTrainingData {
 
 	double good = 0;
 	double bad = 0;
-
+	SVMLightModel overtModel;
 	@SuppressWarnings("unchecked")
 	public ApplyMaxEntMoreTrainingData(String folder) {
 		this.folder = folder;
 		try {
+			overtModel = SVMLightModel.readSVMLightModelFromURL(new java.io.File(
+					"/users/yzcchen/tool/JNI_SVM-light-6.01/src/svmlight-6.01/rankOvert.model").toURL());
+			
 			ObjectInputStream modelInput = new ObjectInputStream(
 					new FileInputStream("EMModel"));
 			numberP = (Parameter) modelInput.readObject();
@@ -368,12 +371,13 @@ public class ApplyMaxEntMoreTrainingData {
 			ysb.append("0 @ ");
 			int antCount = 0;
 			HashMap<Integer, Integer> idMap = new HashMap<Integer, Integer>();
+			ArrayList<String> svmRanks = new ArrayList<String>();
 			for (int m = 0; m < EMUtil.pronounList.size(); m++) {
 				String pronoun = EMUtil.pronounList.get(m);
 
 				zero.extent = pronoun;
 				ArrayList<String> units = new ArrayList<String>();
-				ArrayList<String> svmRanks = new ArrayList<String>();
+				
 				for (int i = 0; i < cands.size(); i++) {
 					Mention cand = cands.get(i);
 					if (cand.extent.isEmpty()) {
@@ -494,6 +498,7 @@ public class ApplyMaxEntMoreTrainingData {
 					probAnt[i] = (probAnt1[i] + probAnt2[i])/2;
 				}
 			}
+//			probAnt = getSVMRankProb(svmRanks);
 			
 //			double probAnt[] = runSVMRank();
 			pronounID++;
@@ -659,6 +664,50 @@ public class ApplyMaxEntMoreTrainingData {
 			}
 		}
 	}
+
+	private double[] getYasmetProb(StringBuilder ysb, int antCount,
+			double[] probAnt) {
+		if(overtTrain) {
+			double probAnt1[] = runYasmet(ysb.toString(), antCount, "WT");
+			probAnt = probAnt1;
+		} else if(zeroTrain) {
+			double probAnt2[] = runYasmet(ysb.toString(), antCount, "WTAZP");
+			probAnt = probAnt2;
+		} else if(bothTrain) {
+			double probAnt1[] = runYasmet(ysb.toString(), antCount, "WT");
+			double probAnt2[] = runYasmet(ysb.toString(), antCount, "WTAZP");
+			probAnt = new double[probAnt1.length];
+			StringBuilder sb = new StringBuilder();
+			for(int i=0;i<probAnt.length;i++) {
+				probAnt[i] = (probAnt1[i] + probAnt2[i])/2;
+				sb.append(probAnt[i]).append(",");
+				if(i%(probAnt.length/10)==0) {
+					sb.append("\n");
+				}
+			}
+//			System.out.println(sb.toString().trim());
+		}
+		return probAnt;
+	}
+	
+	private double[] getSVMRankProb(ArrayList<String> lines) {
+		double probAnt[] = new double[lines.size()];
+		if(overtTrain) {
+			for(int i=0;i<lines.size();i++) {
+				String line = lines.get(i);
+				try {
+					probAnt[i] = this.overtModel.classify(Common.SVMStringToFeature(line));
+				} catch (Exception e) {
+					e.printStackTrace();
+					Common.pause("exception");
+				}
+			}
+		} else if(zeroTrain) {
+		} else if(bothTrain) {
+		}
+		return probAnt;
+	}
+
 
 	private void setParas(CoNLLPart part) {
 		if (part.folder.equalsIgnoreCase("BN")) {
@@ -1281,6 +1330,7 @@ public class ApplyMaxEntMoreTrainingData {
 		return prob;
 	}
 	
+
 	public void addEmptyCategoryNode(Mention zero) {
 		MyTreeNode V = zero.V;
 		MyTreeNode newNP = new MyTreeNode();
@@ -1289,13 +1339,9 @@ public class ApplyMaxEntMoreTrainingData {
 		V.parent.addChild(VIdx, newNP);
 
 		MyTreeNode empty = new MyTreeNode();
-		empty.value = "PN";
-
-		MyTreeNode leaf = new MyTreeNode();
-		leaf.value = zero.head;
-		empty.addChild(leaf);
-		
+		empty.value = "-NONE-";
 		newNP.addChild(empty);
+
 		MyTreeNode child = new MyTreeNode();
 		child.value = zero.extent;
 		empty.addChild(child);
@@ -1523,6 +1569,12 @@ public class ApplyMaxEntMoreTrainingData {
 		} else if (args[1].equals("classify")) {
 			mode = classify;
 			run(args[0]);
+			run("nw");
+			 run("mz");
+			 run("wb");
+			 run("bn");
+			 run("bc");
+			 run("tc");
 			return;
 		} else {
 			Common.bangErrorPOS("");
@@ -1602,12 +1654,12 @@ public class ApplyMaxEntMoreTrainingData {
 		// }
 		// }
 
-		// run("nw");
-		// run("mz");
-		// run("wb");
-		// run("bn");
-		// run("bc");
-		// run("tc");
+//		 run("nw");
+		 run("mz");
+		 run("wb");
+		 run("bn");
+		 run("bc");
+		 run("tc");
 	}
 
 	public static void run(String folder) {
