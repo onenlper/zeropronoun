@@ -484,11 +484,11 @@ public class ApplyMaxEntMoreTrainingData {
 
 			double probAnt[] = new double[cands.size()];
 
-//			double[] probAntMR = getMRProb(mrYSB, antCount);
-//			// antecedent-based weight
-//			for (int i = 0; i < probAntMR.length; i++) {
-//				probAnt[idMap.get(i)] += probAntMR[i];
-//			}
+			double[] probAntMR = getMRProb(mrYSB, antCount);
+			// antecedent-based weight
+			for (int i = 0; i < probAntMR.length; i++) {
+				probAnt[idMap.get(i)] += probAntMR[i];
+			}
 			
 			double[] probAntCR = getCRProb(crYSB, clusterIdMap.size());
 			for (int i = 0; i < probAntCR.length; i++) {
