@@ -316,11 +316,6 @@ public class ApplyMaxEntMoreTrainingData {
 			}
 			findBest(zero, cands);
 
-			// label = pronoun.animacy.ordinal() + 1;
-
-			// Yasmet format
-			// NUMBER, GENDER, PERSON, ANIMACY
-
 			// init yasmet
 			StringBuilder ysb = new StringBuilder();
 			ysb.append("0 @ ");
@@ -352,57 +347,15 @@ public class ApplyMaxEntMoreTrainingData {
 					cand.msg = Context.message;
 					cand.MI = Context.MI;
 
-					if (m == 0) {
-						if (coref) {
-							goods.add(Double.toString(cand.MI));
-						} else {
-							bads.add(Double.toString(cand.MI));
-						}
-					}
 					boolean sameSpeaker = proSpeaker.equals(antSpeaker);
 					Entry entry = new Entry(cand, context, sameSpeaker,
 							cand.isFS);
-
-					int conflict = 0;
-					if (sameSpeaker) {
-						if (!entry.person.name().equals(
-								EMUtil.getPerson(pronoun).name())) {
-							conflict++;
-						}
-					} else {
-						if (entry.person.name().equals(
-								EMUtil.getPerson(pronoun).name())
-								&& entry.person != EMUtil.Person.third) {
-							conflict++;
-						}
-					}
-					if (!entry.number.name().equals(
-							EMUtil.getNumber(pronoun).name())) {
-						conflict++;
-					}
-					if (!entry.gender.name().equals(
-							EMUtil.getGender(pronoun).name())) {
-						conflict++;
-					}
-					if (!entry.animacy.name().equals(
-							EMUtil.getAnimacy(pronoun).name())
-							&& entry.animacy != Animacy.unknown) {
-						conflict++;
-					}
-
-					if (conflict > 0) {
-						filters.add(antCount);
-					}
 
 					String unit = MaxEntLearn.getYamset(false, cand, zero,
 							context, sameSpeaker, entry, superFea, 1, part);
 
 					ysb.append(unit);
 					units.add(unit);
-					if (cand.isFS) {
-						// System.out.println(antCount + "###");
-						// System.out.println(unit);
-					}
 					idMap.put(antCount, i);
 					antCount++;
 					String svmRank = MaxEntLearn.getSVMRank(0, cand, zero,
@@ -450,7 +403,9 @@ public class ApplyMaxEntMoreTrainingData {
 				double rankMax = 0;
 				for (int i = 0; i < probAnt.length; i++) {
 					double prob = probAnt[i];
-					if (prob > rankMax && !filters.contains(i)) {
+					if (prob > rankMax 
+//							&& !filters.contains(i)
+							) {
 						rankMax = prob;
 						rankID = i;
 					}
