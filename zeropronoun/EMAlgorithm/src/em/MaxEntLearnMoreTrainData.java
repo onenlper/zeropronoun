@@ -262,63 +262,63 @@ public class MaxEntLearnMoreTrainData {
 						}
 					}
 					
-//					if(goldMentionToClusterIDMap.containsKey(ant.toName()) && 
-//							processedClusters.contains(goldMentionToClusterIDMap.get(ant.toName()))) {
-//					} else {
-//						if(coref) {
-//							crYSB.insert(0, clusterID + " @ ");
-//						}
-//						ArrayList<Mention> wholeCluster = clusterMap.get(ant
-//								.toName());
-//						ArrayList<Mention> cluster = new ArrayList<Mention>();
-//						for (Mention a : wholeCluster) {
-//							cluster.add(a);
-//							if (a.toName().equals(ant.toName())) {
-//								break;
-//							}
-//						}
-//						HashMap<Integer, Integer> feaMap = new HashMap<Integer, Integer>();
-//						for(int c=0;c<cluster.size();c++) {
-//							Mention cant = cluster.get(c);
-//							if (m.s.getSentenceIdx() - cant.s.getSentenceIdx() > 2) {
-//								cant.isBest = false;
-//							}
-//							context = Context.buildContext(cant, m, part, cant==ant?fs:false);
-//							superFea.configure("", "", "", "", context, cant, m, part);
-//							fea = superFea.getSVMFormatString();
-//							
-//							String tks[] = fea.split("\\s+");
-//							for(String tk : tks) {
-//								int comma = tk.indexOf(":");
-//								int feaIdx = Integer.parseInt(tk.substring(0, comma));
-//								if(feaMap.containsKey(feaIdx)) {
-//									feaMap.put(feaIdx, feaMap.get(feaIdx).intValue() + 1);
-//								} else {
-//									feaMap.put(feaIdx, 1);
-//								}
-//							}
-//						}
-//						ArrayList<Integer> feaIdxes = new ArrayList<Integer>(feaMap.keySet());
-//						Collections.sort(feaIdxes);
-//						StringBuilder crunitSb = new StringBuilder();
-//						for(int feaIdx : feaIdxes) {
-//							int amount = feaMap.get(feaIdx);
-//							int newFea = feaIdx * 3;
-//							if(amount==cluster.size()) {
-//								newFea += 0;
-//							} else if(amount>=cluster.size()/2) {
-//								newFea += 1;
-//							} else if(amount>0) {
-//								newFea += 2;
-//							}
-//							crunitSb.append(newFea).append(":1 ");
-//						}
-//						crYSB.append(getYamset(coref, crunitSb.toString().trim(), 1));
-//						if(goldMentionToClusterIDMap.containsKey(ant.toName())) {
-//							processedClusters.add(goldMentionToClusterIDMap.get(ant.toName()));
-//						}
-//						clusterID++;
-//					}
+					if(goldMentionToClusterIDMap.containsKey(ant.toName()) && 
+							processedClusters.contains(goldMentionToClusterIDMap.get(ant.toName()))) {
+					} else {
+						if(coref) {
+							crYSB.insert(0, clusterID + " @ ");
+						}
+						ArrayList<Mention> wholeCluster = clusterMap.get(ant
+								.toName());
+						ArrayList<Mention> cluster = new ArrayList<Mention>();
+						for (Mention a : wholeCluster) {
+							cluster.add(a);
+							if (a.toName().equals(ant.toName())) {
+								break;
+							}
+						}
+						HashMap<Integer, Integer> feaMap = new HashMap<Integer, Integer>();
+						for(int c=0;c<cluster.size();c++) {
+							Mention cant = cluster.get(c);
+							if (m.s.getSentenceIdx() - cant.s.getSentenceIdx() > 2) {
+								cant.isBest = false;
+							}
+							context = Context.buildContext(cant, m, part, cant==ant?fs:false);
+							superFea.configure("", "", "", "", context, cant, m, part);
+							fea = superFea.getSVMFormatString();
+							
+							String tks[] = fea.split("\\s+");
+							for(String tk : tks) {
+								int comma = tk.indexOf(":");
+								int feaIdx = Integer.parseInt(tk.substring(0, comma));
+								if(feaMap.containsKey(feaIdx)) {
+									feaMap.put(feaIdx, feaMap.get(feaIdx).intValue() + 1);
+								} else {
+									feaMap.put(feaIdx, 1);
+								}
+							}
+						}
+						ArrayList<Integer> feaIdxes = new ArrayList<Integer>(feaMap.keySet());
+						Collections.sort(feaIdxes);
+						StringBuilder crunitSb = new StringBuilder();
+						for(int feaIdx : feaIdxes) {
+							int amount = feaMap.get(feaIdx);
+							int newFea = feaIdx * 3;
+							if(amount==cluster.size()) {
+								newFea += 0;
+							} else if(amount>=cluster.size()/2) {
+								newFea += 1;
+							} else if(amount>0) {
+								newFea += 2;
+							}
+							crunitSb.append(newFea).append(":1 ");
+						}
+						crYSB.append(getYamset(coref, crunitSb.toString().trim(), 1));
+						if(goldMentionToClusterIDMap.containsKey(ant.toName())) {
+							processedClusters.add(goldMentionToClusterIDMap.get(ant.toName()));
+						}
+						clusterID++;
+					}
 				}
 				for (int k = ants.size(); k < 100; k++) {
 					mrYSB.append("@ 0 NOCLASS 1 # ");
