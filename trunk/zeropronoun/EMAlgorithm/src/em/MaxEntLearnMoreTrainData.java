@@ -280,6 +280,7 @@ public class MaxEntLearnMoreTrainData {
 						HashMap<Integer, Integer> feaMap = new HashMap<Integer, Integer>();
 						for(int c=0;c<cluster.size();c++) {
 							Mention cant = cluster.get(c);
+							cant.MI = Context.calMI(cant, m);
 							if (m.s.getSentenceIdx() - cant.s.getSentenceIdx() > 2) {
 								cant.isBest = false;
 							}
