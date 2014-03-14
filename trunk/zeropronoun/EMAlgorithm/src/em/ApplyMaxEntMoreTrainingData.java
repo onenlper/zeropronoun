@@ -87,13 +87,16 @@ public class ApplyMaxEntMoreTrainingData {
 	double good = 0;
 	double bad = 0;
 	SVMLightModel overtModel;
+
 	@SuppressWarnings("unchecked")
 	public ApplyMaxEntMoreTrainingData(String folder) {
 		this.folder = folder;
 		try {
-			overtModel = SVMLightModel.readSVMLightModelFromURL(new java.io.File(
-					"/users/yzcchen/tool/JNI_SVM-light-6.01/src/svmlight-6.01/rankOvert.model").toURL());
-			
+			overtModel = SVMLightModel
+					.readSVMLightModelFromURL(new java.io.File(
+							"/users/yzcchen/tool/JNI_SVM-light-6.01/src/svmlight-6.01/rankOvert.model")
+							.toURL());
+
 			ObjectInputStream modelInput = new ObjectInputStream(
 					new FileInputStream("EMModel"));
 			numberP = (Parameter) modelInput.readObject();
@@ -125,7 +128,7 @@ public class ApplyMaxEntMoreTrainingData {
 			// modelInput2.readObject();
 
 			// modelInput2.close();
-//			loadGuessProb();
+			// loadGuessProb();
 			superFea = new SuperviseFea(false, "supervise");
 			EMUtil.loadPredictNE(folder, "dev");
 		} catch (FileNotFoundException e) {
@@ -196,7 +199,7 @@ public class ApplyMaxEntMoreTrainingData {
 
 		}
 	}
-	
+
 	public void test() {
 		ArrayList<String> files = Common.getLines("chinese_list_" + folder
 				+ "_development");
@@ -246,9 +249,9 @@ public class ApplyMaxEntMoreTrainingData {
 				ArrayList<Mention> candidates = new ArrayList<Mention>();
 				candidates.addAll(goldBoundaryNPMentions);
 
-				if (!file.contains("/nw/") 
-//						&& !file.contains("/mz/")
-//						&& !file.contains("/bn/")
+				if (!file.contains("/nw/")
+				// && !file.contains("/mz/")
+				// && !file.contains("/bn/")
 				// && !file.contains("/mz/")&& !file.contains("/wb/")
 				) {
 					candidates.addAll(anaphorZeros);
@@ -275,8 +278,9 @@ public class ApplyMaxEntMoreTrainingData {
 
 	private void findAntecedent(String file, CoNLLPart part,
 			HashMap<String, Integer> chainMap, ArrayList<Mention> corefResult,
-			ArrayList<Mention> anaphorZeros, ArrayList<Mention> allCandidates, ArrayList<Entity> NPCorefChains) {
-		
+			ArrayList<Mention> anaphorZeros, ArrayList<Mention> allCandidates,
+			ArrayList<Entity> NPCorefChains) {
+
 		HashMap<String, Integer> goldMentionToClusterIDMap = new HashMap<String, Integer>();
 		for (int i = 0; i < NPCorefChains.size(); i++) {
 			Entity e = NPCorefChains.get(i);
@@ -287,7 +291,7 @@ public class ApplyMaxEntMoreTrainingData {
 		int eid = NPCorefChains.size();
 		for (int i = 0; i < allCandidates.size(); i++) {
 			Mention m = allCandidates.get(i);
-			if(!goldMentionToClusterIDMap.containsKey(m.toName())) {
+			if (!goldMentionToClusterIDMap.containsKey(m.toName())) {
 				goldMentionToClusterIDMap.put(m.toName(), eid++);
 			}
 		}
@@ -308,7 +312,8 @@ public class ApplyMaxEntMoreTrainingData {
 						continue;
 					}
 					if (goldMentionToClusterIDMap.containsKey(m2.toName())
-							&& goldMentionToClusterIDMap.get(m2.toName()).intValue() == clusterID) {
+							&& goldMentionToClusterIDMap.get(m2.toName())
+									.intValue() == clusterID) {
 						ms.add(m2);
 					}
 				}
@@ -316,8 +321,7 @@ public class ApplyMaxEntMoreTrainingData {
 				ms.add(m);
 			}
 		}
-		
-		
+
 		for (Mention zero : anaphorZeros) {
 			zero.sentenceID = part.getWord(zero.start).sentence
 					.getSentenceIdx();
@@ -348,8 +352,7 @@ public class ApplyMaxEntMoreTrainingData {
 				cand.MI = Context.calMI(cand, zero);
 				if (cand.start < zero.start
 						&& zero.sentenceID - cand.sentenceID <= 2) {
-					if (!findFS && cand.gram == EMUtil.Grammatic.subject
-					) {
+					if (!findFS && cand.gram == EMUtil.Grammatic.subject) {
 						cand.isFS = true;
 						findFS = true;
 					}
@@ -360,9 +363,9 @@ public class ApplyMaxEntMoreTrainingData {
 
 			// init yasmet
 			StringBuilder mrYSB = new StringBuilder();
-			
+
 			StringBuilder crYSB = new StringBuilder();
-			
+
 			mrYSB.append("0 @ ");
 			crYSB.append("0 @ ");
 			int antCount = 0;
@@ -370,122 +373,130 @@ public class ApplyMaxEntMoreTrainingData {
 			HashMap<Integer, Integer> clusterIdMap = new HashMap<Integer, Integer>();
 			int clusterID = 0;
 			ArrayList<String> svmRanks = new ArrayList<String>();
-//			for (int m = 0; m < EMUtil.pronounList.size(); m++) {
-//				String pronoun = EMUtil.pronounList.get(m);
-//
-//				zero.extent = pronoun;
-				HashSet<Integer> processedClusters = new HashSet<Integer>();
-				
-				ArrayList<String> units = new ArrayList<String>();
-				
-				for (int i = 0; i < cands.size(); i++) {
-					Mention cand = cands.get(i);
-					if (cand.extent.isEmpty()) {
-						continue;
-					}
-//					String antSpeaker = part.getWord(cand.start).speaker;
-					cand.sentenceID = part.getWord(cand.start).sentence
-							.getSentenceIdx();
-					
-					Context context = Context.buildContext(cand, zero, part,
-							cand.isFS);
-//					cand.msg = Context.message;
-//					cand.MI = Context.MI;
-					
-					superFea.configure("", "", "", "", context, cand, zero, part);
-					String fea = superFea.getSVMFormatString();
+			// for (int m = 0; m < EMUtil.pronounList.size(); m++) {
+			// String pronoun = EMUtil.pronounList.get(m);
+			//
+			// zero.extent = pronoun;
+			HashSet<Integer> processedClusters = new HashSet<Integer>();
 
-//					boolean sameSpeaker = proSpeaker.equals(antSpeaker);
+			ArrayList<String> units = new ArrayList<String>();
 
-					String unit = MaxEntLearnMoreTrainData.getYamset(false, fea, 1);
-
-					mrYSB.append(unit);
-					units.add(unit);
-					idMap.put(antCount, i);
-					antCount++;
-					String svmRank = MaxEntLearnMoreTrainData.getSVMRank(0, fea);
-					svmRanks.add(svmRank);
-					
-					
-					if(goldMentionToClusterIDMap.containsKey(cand.toName()) && 
-							processedClusters.contains(goldMentionToClusterIDMap.get(cand.toName()))) {
-					} else {
-						ArrayList<Mention> wholeCluster = clusterMap.get(cand
-								.toName());
-						ArrayList<Mention> cluster = new ArrayList<Mention>();
-						for (Mention a : wholeCluster) {
-							cluster.add(a);
-							if (a.toName().equals(cand.toName())) {
-								break;
-							}
-						}
-						HashMap<Integer, Integer> feaMap = new HashMap<Integer, Integer>();
-						for(int c=0;c<cluster.size();c++) {
-							Mention cant = cluster.get(c);
-							cant.MI = Context.calMI(cant, zero);
-							if (zero.s.getSentenceIdx() - cant.s.getSentenceIdx() > 2) {
-								cant.isBest = false;
-							}
-							context = Context.buildContext(cant, zero, part, cant==cand?cand.isFS:false);
-							superFea.configure("", "", "", "", context, cant, zero, part);
-							fea = superFea.getSVMFormatString();
-							
-							String tks[] = fea.split("\\s+");
-							for(String tk : tks) {
-								int comma = tk.indexOf(":");
-								int feaIdx = Integer.parseInt(tk.substring(0, comma));
-								if(feaMap.containsKey(feaIdx)) {
-									feaMap.put(feaIdx, feaMap.get(feaIdx).intValue() + 1);
-								} else {
-									feaMap.put(feaIdx, 1);
-								}
-							}
-						}
-						ArrayList<Integer> feaIdxes = new ArrayList<Integer>(feaMap.keySet());
-						Collections.sort(feaIdxes);
-						StringBuilder crunitSb = new StringBuilder();
-						for(int feaIdx : feaIdxes) {
-							int amount = feaMap.get(feaIdx);
-							int newFea = feaIdx * 3;
-							if(amount==cluster.size()) {
-								newFea += 0;
-							} else if(amount>=cluster.size()/2) {
-								newFea += 1;
-							} else if(amount>0) {
-								newFea += 2;
-							}
-							crunitSb.append(newFea).append(":1 ");
-						}
-						crYSB.append(MaxEntLearnMoreTrainData.getYamset(false, crunitSb.toString().trim(), 1));
-						if(goldMentionToClusterIDMap.containsKey(cand.toName())) {
-							processedClusters.add(goldMentionToClusterIDMap.get(cand.toName()));
-						}
-						clusterIdMap.put(clusterID, i);
-						clusterID++;
-					}
+			for (int i = 0; i < cands.size(); i++) {
+				Mention cand = cands.get(i);
+				if (cand.extent.isEmpty()) {
+					continue;
 				}
-				Common.outputLines(svmRanks, "svmRank.test");
-				// Common.pause("");
-//				 break;
-//			}
+				// String antSpeaker = part.getWord(cand.start).speaker;
+				cand.sentenceID = part.getWord(cand.start).sentence
+						.getSentenceIdx();
+
+				Context context = Context.buildContext(cand, zero, part,
+						cand.isFS);
+				// cand.msg = Context.message;
+				// cand.MI = Context.MI;
+
+				superFea.configure("", "", "", "", context, cand, zero, part);
+				String fea = superFea.getSVMFormatString();
+
+				// boolean sameSpeaker = proSpeaker.equals(antSpeaker);
+
+				String unit = MaxEntLearnMoreTrainData.getYamset(false, fea, 1);
+
+				mrYSB.append(unit);
+				units.add(unit);
+				idMap.put(antCount, i);
+				antCount++;
+				String svmRank = MaxEntLearnMoreTrainData.getSVMRank(0, fea);
+				svmRanks.add(svmRank);
+
+				if (goldMentionToClusterIDMap.containsKey(cand.toName())
+						&& processedClusters.contains(goldMentionToClusterIDMap
+								.get(cand.toName()))) {
+				} else {
+					ArrayList<Mention> wholeCluster = clusterMap.get(cand
+							.toName());
+					ArrayList<Mention> cluster = new ArrayList<Mention>();
+					for (Mention a : wholeCluster) {
+						cluster.add(a);
+						if (a.toName().equals(cand.toName())) {
+							break;
+						}
+					}
+					HashMap<Integer, Integer> feaMap = new HashMap<Integer, Integer>();
+					for (int c = 0; c < cluster.size(); c++) {
+						Mention cant = cluster.get(c);
+						cant.MI = Context.calMI(cant, zero);
+						if (zero.s.getSentenceIdx() - cant.s.getSentenceIdx() > 2) {
+							cant.isBest = false;
+						}
+						context = Context.buildContext(cant, zero, part,
+								cant == cand ? cand.isFS : false);
+						superFea.configure("", "", "", "", context, cant, zero,
+								part);
+						fea = superFea.getSVMFormatString();
+
+						String tks[] = fea.split("\\s+");
+						for (String tk : tks) {
+							int comma = tk.indexOf(":");
+							int feaIdx = Integer.parseInt(tk
+									.substring(0, comma));
+							if (feaMap.containsKey(feaIdx)) {
+								feaMap.put(feaIdx, feaMap.get(feaIdx)
+										.intValue() + 1);
+							} else {
+								feaMap.put(feaIdx, 1);
+							}
+						}
+					}
+					ArrayList<Integer> feaIdxes = new ArrayList<Integer>(
+							feaMap.keySet());
+					Collections.sort(feaIdxes);
+					StringBuilder crunitSb = new StringBuilder();
+					for (int feaIdx : feaIdxes) {
+						int amount = feaMap.get(feaIdx);
+						int newFea = feaIdx * 3;
+						if (amount == cluster.size()) {
+							newFea += 0;
+						} else if (amount >= cluster.size() / 2) {
+							newFea += 1;
+						} else if (amount > 0) {
+							newFea += 2;
+						}
+						crunitSb.append(newFea).append(":1 ");
+					}
+					crYSB.append(MaxEntLearnMoreTrainData.getYamset(false,
+							crunitSb.toString().trim(), 1));
+					if (goldMentionToClusterIDMap.containsKey(cand.toName())) {
+						processedClusters.add(goldMentionToClusterIDMap
+								.get(cand.toName()));
+					}
+					clusterIdMap.put(clusterID, i);
+					clusterID++;
+				}
+			}
+			Common.outputLines(svmRanks, "svmRank.test");
+			// Common.pause("");
+			// break;
+			// }
 			if (antCount > maximam) {
 				maximam = antCount;
 			}
 
-			double probAnt[] = null;
+			double probAnt[] = new double[cands.size()];
+
+//			double[] probAntMR = getMRProb(mrYSB, antCount);
+//			// antecedent-based weight
+//			for (int i = 0; i < probAntMR.length; i++) {
+//				probAnt[idMap.get(i)] += probAntMR[i];
+//			}
 			
 			double[] probAntCR = getCRProb(crYSB, clusterIdMap.size());
-			
-			double[] probAntMR = getMRProb(mrYSB, antCount);
-			probAnt = probAntMR;
-			
-			// antecedent-based weight
-			for(int i=0;i<probAntCR.length;i++) {
+			for (int i = 0; i < probAntCR.length; i++) {
 				probAnt[clusterIdMap.get(i)] += probAntCR[i];
 			}
-			
-//			probAnt = getSVMRankProb(svmRanks);
-//			double probAnt[] = runSVMRank();
+
+			// probAnt = getSVMRankProb(svmRanks);
+			// double probAnt[] = runSVMRank();
 			pronounID++;
 			// System.err.println(cands.size());
 			if (antCount != 0 && (mode == classify || mode == load)) {
@@ -493,14 +504,13 @@ public class ApplyMaxEntMoreTrainingData {
 				double rankMax = 0;
 				for (int i = 0; i < probAnt.length; i++) {
 					double prob = probAnt[i];
-					if (prob > rankMax 
-							) {
+					if (prob > rankMax) {
 						rankMax = prob;
 						rankID = i;
 					}
 				}
-//				antecedent = cands.get(clusterIdMap.get(rankID));
-				antecedent = cands.get(idMap.get(rankID));
+				// antecedent = cands.get(clusterIdMap.get(rankID));
+				antecedent = cands.get(rankID);
 			}
 			if (antecedent != null) {
 				if (antecedent.end != -1) {
@@ -517,13 +527,16 @@ public class ApplyMaxEntMoreTrainingData {
 				// System.out.println(zero.start);
 				// System.out.println(antecedent.extent);
 				// TODO insert it !!!!
-				int zeroClusterID = goldMentionToClusterIDMap.get(zero.antecedent.toName());
-				goldMentionToClusterIDMap.put(zero.antecedent.toName(), zeroClusterID);
-				
-				ArrayList<Mention> zeroCorefs = clusterMap.get(zero.antecedent.toName());
+				int zeroClusterID = goldMentionToClusterIDMap
+						.get(zero.antecedent.toName());
+				goldMentionToClusterIDMap.put(zero.antecedent.toName(),
+						zeroClusterID);
+
+				ArrayList<Mention> zeroCorefs = clusterMap.get(zero.antecedent
+						.toName());
 				zeroCorefs.add(zero);
 				Collections.sort(zeroCorefs);
-				for(Mention zeroCoref : zeroCorefs) {
+				for (Mention zeroCoref : zeroCorefs) {
 					clusterMap.put(zeroCoref.toName(), zeroCorefs);
 				}
 			}
@@ -598,37 +611,37 @@ public class ApplyMaxEntMoreTrainingData {
 
 	private double[] getCRProb(StringBuilder crYSB, int antCount) {
 		double probAnt[] = null;
-		if(overtTrain) {
+		if (overtTrain) {
 			double probAnt1[] = runYasmet(crYSB.toString(), antCount, "WTCR");
 			probAnt = probAnt1;
-		} else if(zeroTrain) {
+		} else if (zeroTrain) {
 			double probAnt2[] = runYasmet(crYSB.toString(), antCount, "WTAZPCR");
 			probAnt = probAnt2;
-		} else if(bothTrain) {
+		} else if (bothTrain) {
 			double probAnt1[] = runYasmet(crYSB.toString(), antCount, "WTCR");
 			double probAnt2[] = runYasmet(crYSB.toString(), antCount, "WTAZPCR");
 			probAnt = new double[probAnt1.length];
-			for(int i=0;i<probAnt.length;i++) {
-				probAnt[i] = (probAnt1[i] + probAnt2[i])/2;
+			for (int i = 0; i < probAnt.length; i++) {
+				probAnt[i] = (probAnt1[i] + probAnt2[i]) / 2;
 			}
 		}
 		return probAnt;
 	}
-	
+
 	private double[] getMRProb(StringBuilder mrYSB, int antCount) {
 		double probAnt[] = null;
-		if(overtTrain) {
+		if (overtTrain) {
 			double probAnt1[] = runYasmet(mrYSB.toString(), antCount, "WT");
 			probAnt = probAnt1;
-		} else if(zeroTrain) {
+		} else if (zeroTrain) {
 			double probAnt2[] = runYasmet(mrYSB.toString(), antCount, "WTAZP");
 			probAnt = probAnt2;
-		} else if(bothTrain) {
+		} else if (bothTrain) {
 			double probAnt1[] = runYasmet(mrYSB.toString(), antCount, "WT");
 			double probAnt2[] = runYasmet(mrYSB.toString(), antCount, "WTAZP");
 			probAnt = new double[probAnt1.length];
-			for(int i=0;i<probAnt.length;i++) {
-				probAnt[i] = (probAnt1[i] + probAnt2[i])/2;
+			for (int i = 0; i < probAnt.length; i++) {
+				probAnt[i] = (probAnt1[i] + probAnt2[i]) / 2;
 			}
 		}
 		return probAnt;
@@ -636,47 +649,47 @@ public class ApplyMaxEntMoreTrainingData {
 
 	private double[] getYasmetProb(StringBuilder ysb, int antCount,
 			double[] probAnt) {
-		if(overtTrain) {
+		if (overtTrain) {
 			double probAnt1[] = runYasmet(ysb.toString(), antCount, "WT");
 			probAnt = probAnt1;
-		} else if(zeroTrain) {
+		} else if (zeroTrain) {
 			double probAnt2[] = runYasmet(ysb.toString(), antCount, "WTAZP");
 			probAnt = probAnt2;
-		} else if(bothTrain) {
+		} else if (bothTrain) {
 			double probAnt1[] = runYasmet(ysb.toString(), antCount, "WT");
 			double probAnt2[] = runYasmet(ysb.toString(), antCount, "WTAZP");
 			probAnt = new double[probAnt1.length];
 			StringBuilder sb = new StringBuilder();
-			for(int i=0;i<probAnt.length;i++) {
-				probAnt[i] = (probAnt1[i] + probAnt2[i])/2;
+			for (int i = 0; i < probAnt.length; i++) {
+				probAnt[i] = (probAnt1[i] + probAnt2[i]) / 2;
 				sb.append(probAnt[i]).append(",");
-				if(i%(probAnt.length/10)==0) {
+				if (i % (probAnt.length / 10) == 0) {
 					sb.append("\n");
 				}
 			}
-//			System.out.println(sb.toString().trim());
+			// System.out.println(sb.toString().trim());
 		}
 		return probAnt;
 	}
-	
+
 	private double[] getSVMRankProb(ArrayList<String> lines) {
 		double probAnt[] = new double[lines.size()];
-		if(overtTrain) {
-			for(int i=0;i<lines.size();i++) {
+		if (overtTrain) {
+			for (int i = 0; i < lines.size(); i++) {
 				String line = lines.get(i);
 				try {
-					probAnt[i] = this.overtModel.classify(Common.SVMStringToFeature(line));
+					probAnt[i] = this.overtModel.classify(Common
+							.SVMStringToFeature(line));
 				} catch (Exception e) {
 					e.printStackTrace();
 					Common.pause("exception");
 				}
 			}
-		} else if(zeroTrain) {
-		} else if(bothTrain) {
+		} else if (zeroTrain) {
+		} else if (bothTrain) {
 		}
 		return probAnt;
 	}
-
 
 	private void setParas(CoNLLPart part) {
 		if (part.folder.equalsIgnoreCase("BN")) {
@@ -703,7 +716,7 @@ public class ApplyMaxEntMoreTrainingData {
 			ILP.c_per = 0.008;
 			ILP.d_ani = 0.06;
 		} else if (part.folder.equalsIgnoreCase("BC")) {
-//			0.008 0.01 0.06 0.01
+			// 0.008 0.01 0.06 0.01
 			ILP.a_num = 0.008;
 			ILP.b_gen = 0.01;
 			ILP.c_per = 0.06;
@@ -993,9 +1006,9 @@ public class ApplyMaxEntMoreTrainingData {
 		}
 		case classify: {
 			if (true) {
-				 double ret[] = new double[all];
-				 return ret;
-//				return selectRestriction(attri, all, v);
+				double ret[] = new double[all];
+				return ret;
+				// return selectRestriction(attri, all, v);
 			}
 			String lineStr = "";
 			String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/" + attri
@@ -1057,9 +1070,9 @@ public class ApplyMaxEntMoreTrainingData {
 			// }
 			// return ret;
 			if (true) {
-				 double ret[] = new double[all];
-				 return ret;
-//				return selectRestriction(attri, all, v);
+				double ret[] = new double[all];
+				return ret;
+				// return selectRestriction(attri, all, v);
 			}
 			return selectRestriction(attri, all, v);
 		}
@@ -1126,7 +1139,8 @@ public class ApplyMaxEntMoreTrainingData {
 		}
 		case classify: {
 			String lineStr = "";
-			String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/" + modelName;
+			String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/"
+					+ modelName;
 
 			Runtime run = Runtime.getRuntime();
 			double ret[] = new double[antCount];
@@ -1298,7 +1312,6 @@ public class ApplyMaxEntMoreTrainingData {
 		double prob = distr.getCount("+1");
 		return prob;
 	}
-	
 
 	public void addEmptyCategoryNode(Mention zero) {
 		MyTreeNode V = zero.V;
@@ -1417,7 +1430,7 @@ public class ApplyMaxEntMoreTrainingData {
 		bads.clear();
 		goods.clear();
 		pronounID = 0;
-		
+
 		Common.pause("g");
 	}
 
@@ -1513,22 +1526,22 @@ public class ApplyMaxEntMoreTrainingData {
 	public static boolean overtTrain = false;
 	public static boolean zeroTrain = false;
 	public static boolean bothTrain = false;
-	
+
 	public static void main(String args[]) {
 		if (args.length < 3) {
 			System.err.println("java ~ folder [mode] [overt|zero|both]");
 			System.exit(1);
 		}
-		if(args[2].equals("overt")) {
+		if (args[2].equals("overt")) {
 			overtTrain = true;
-		} else if(args[2].equals("zero")) {
+		} else if (args[2].equals("zero")) {
 			zeroTrain = true;
-		} else if(args[2].equals("both")) {
+		} else if (args[2].equals("both")) {
 			bothTrain = true;
 		} else {
 			Common.bangErrorPOS("[overt|zero|both]");
 		}
-		
+
 		if (args[1].equals("prepare")) {
 			mode = prepare;
 			run(args[0]);
@@ -1539,11 +1552,11 @@ public class ApplyMaxEntMoreTrainingData {
 			mode = classify;
 			run(args[0]);
 			run("nw");
-			 run("mz");
-			 run("wb");
-			 run("bn");
-			 run("bc");
-			 run("tc");
+			run("mz");
+			run("wb");
+			run("bn");
+			run("bc");
+			run("tc");
 			return;
 		} else {
 			Common.bangErrorPOS("");
@@ -1582,16 +1595,16 @@ public class ApplyMaxEntMoreTrainingData {
 		// ILP.c_per = para[c];
 		// ILP.d_ani = para[d];
 		// // while(true) {
-		
-		if(args[0].equalsIgnoreCase("bn")) {
+
+		if (args[0].equalsIgnoreCase("bn")) {
 			paras = tuneBN;
-		} else if(args[0].equalsIgnoreCase("tc")) {
+		} else if (args[0].equalsIgnoreCase("tc")) {
 			paras = tuneTC;
-		} else if(args[0].equalsIgnoreCase("mz")) {
+		} else if (args[0].equalsIgnoreCase("mz")) {
 			paras = tuneMZ;
 		}
-		
-		for (int i=0;i<paras.length;i++) {
+
+		for (int i = 0; i < paras.length; i++) {
 			String par = paras[i];
 			String tks[] = par.trim().split("\\s+");
 			ILP.a_num = Double.parseDouble(tks[0]);
@@ -1604,9 +1617,9 @@ public class ApplyMaxEntMoreTrainingData {
 			//
 			// if (para[a] <= 0.04 && para[a] > 0 && para[b] <= 0.01
 			// && para[c] >= 0.04 && para[d] >= 0.02) {
-//			if (ILP.a_num + ILP.b_gen + ILP.c_per + ILP.d_ani == 0
-//					|| ILP.a_num * ILP.b_gen * ILP.c_per * ILP.d_ani != 0)
-				
+			// if (ILP.a_num + ILP.b_gen + ILP.c_per + ILP.d_ani == 0
+			// || ILP.a_num * ILP.b_gen * ILP.c_per * ILP.d_ani != 0)
+
 			// }
 			// // Common.input("");
 			// // System.exit(1);
@@ -1623,17 +1636,18 @@ public class ApplyMaxEntMoreTrainingData {
 		// }
 		// }
 
-//		 run("nw");
-		 run("mz");
-		 run("wb");
-		 run("bn");
-		 run("bc");
-		 run("tc");
+		// run("nw");
+		run("mz");
+		run("wb");
+		run("bn");
+		run("bc");
+		run("tc");
 	}
 
 	public static void run(String folder) {
 		EMUtil.train = false;
-		ApplyMaxEntMoreTrainingData test = new ApplyMaxEntMoreTrainingData(folder);
+		ApplyMaxEntMoreTrainingData test = new ApplyMaxEntMoreTrainingData(
+				folder);
 		test.test();
 
 		// System.out.println(EMUtil.missed);
