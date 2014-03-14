@@ -21,6 +21,8 @@ public class SuperviseFea extends YYFeature {
 
 	Context context;
 
+	public static boolean plusNumberGenderPersonAnimacy = true;
+	
 	String personStr;
 	String numberStr;
 	String genderStr;
@@ -59,10 +61,13 @@ public class SuperviseFea extends YYFeature {
 
 	public ArrayList<String> getFeas() {
 		ArrayList<String> strs = new ArrayList<String>();
+		
+		if(plusNumberGenderPersonAnimacy) {
 		 strs.add(personStr);
 		 strs.add(numberStr);
 		 strs.add(genderStr);
 		 strs.add(animacyStr);
+		}
 
 //		 strs.add(this.part.folder);
 //				 strs.add(context.feaL);
