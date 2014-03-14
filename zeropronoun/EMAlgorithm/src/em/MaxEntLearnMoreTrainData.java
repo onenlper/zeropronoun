@@ -523,6 +523,7 @@ public class MaxEntLearnMoreTrainData {
 	}
 
 	public static void main(String args[]) throws Exception {
+		SuperviseFea.plusNumberGenderPersonAnimacy = false;
 		EMUtil.train = true;
 
 		genderWriter = new FileWriter("gender.train");
