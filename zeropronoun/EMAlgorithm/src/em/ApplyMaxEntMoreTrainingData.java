@@ -422,6 +422,7 @@ public class ApplyMaxEntMoreTrainingData {
 						HashMap<Integer, Integer> feaMap = new HashMap<Integer, Integer>();
 						for(int c=0;c<cluster.size();c++) {
 							Mention cant = cluster.get(c);
+							cant.MI = Context.calMI(cant, zero);
 							if (zero.s.getSentenceIdx() - cant.s.getSentenceIdx() > 2) {
 								cant.isBest = false;
 							}
@@ -473,10 +474,16 @@ public class ApplyMaxEntMoreTrainingData {
 
 			double probAnt[] = null;
 			
-			double[] probAntCR = getCRProb(crYSB, antCount);
+			double[] probAntCR = getCRProb(crYSB, clusterIdMap.size());
 			
-//			double[] probAntMR = getMRProb(mrYSB, antCount);
-			probAnt = probAntCR;
+			double[] probAntMR = getMRProb(mrYSB, antCount);
+			probAnt = probAntMR;
+			
+			// antecedent-based weight
+			for(int i=0;i<probAntCR.length;i++) {
+				probAnt[clusterIdMap.get(i)] += probAntCR[i];
+			}
+			
 //			probAnt = getSVMRankProb(svmRanks);
 //			double probAnt[] = runSVMRank();
 			pronounID++;
@@ -492,8 +499,8 @@ public class ApplyMaxEntMoreTrainingData {
 						rankID = i;
 					}
 				}
-				antecedent = cands.get(clusterIdMap.get(rankID));
-//				antecedent = cands.get(idMap.get(rankID));
+//				antecedent = cands.get(clusterIdMap.get(rankID));
+				antecedent = cands.get(idMap.get(rankID));
 			}
 			if (antecedent != null) {
 				if (antecedent.end != -1) {
