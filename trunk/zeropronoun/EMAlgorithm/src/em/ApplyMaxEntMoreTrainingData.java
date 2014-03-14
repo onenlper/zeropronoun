@@ -62,8 +62,6 @@ public class ApplyMaxEntMoreTrainingData {
 
 	HashMap<String, Double> fracContextCount;
 
-	GuessPronounFea guessFea;
-
 	LinearClassifier<String, String> classifier;
 
 	SuperviseFea superFea;
@@ -128,8 +126,6 @@ public class ApplyMaxEntMoreTrainingData {
 
 			// modelInput2.close();
 //			loadGuessProb();
-			guessFea = new GuessPronounFea(false, "guessPronoun");
-
 			superFea = new SuperviseFea(false, "supervise");
 			EMUtil.loadPredictNE(folder, "dev");
 		} catch (FileNotFoundException e) {
@@ -311,60 +307,19 @@ public class ApplyMaxEntMoreTrainingData {
 				if (cand.start < zero.start
 						&& zero.sentenceID - cand.sentenceID <= 2) {
 					if (!findFS && cand.gram == EMUtil.Grammatic.subject
-					// && !cand.s.getWord(cand.headInS).posTag.equals("NT")
-					// && MI>0
 					) {
 						cand.isFS = true;
 						findFS = true;
 					}
-					// if(cand.s==zero.s && cand.gram==Grammatic.object &&
-					// cand.end+2==zero.start &&
-					// part.getWord(cand.end+1).word.equals("，") && cand.MI>0){
-					// cand.isFS = true;
-					// findFS = true;
-					// }
 					cands.add(cand);
 				}
 			}
 			findBest(zero, cands);
 
-			// call yasmet to get Prob(gender|context) Prob(number|context)
-			// Prob(person|context) Prob(animacy|context)
-			guessFea.configure(zero.start - 1, zero.start,
-					part.getWord(zero.start).sentence, part);
-
 			// label = pronoun.animacy.ordinal() + 1;
 
-			String feaStr = guessFea.getSVMFormatString();
-
-			String v = EMUtil.getFirstVerb(zero.V);
 			// Yasmet format
 			// NUMBER, GENDER, PERSON, ANIMACY
-			String tks[] = feaStr.split("\\s+");
-			int all = EMUtil.Number.values().length;
-			double[] numberProbs = ApplyMaxEntMoreTrainingData.selectRestriction("number", all,
-					v);
-			String nYSB = transform(tks, all, 0, numberProbs);
-			double probNum[] = runAttri("number", nYSB, all, v);
-
-			all = EMUtil.Gender.values().length - 1;
-			double[] genderProbs = ApplyMaxEntMoreTrainingData.selectRestriction("gender", all,
-					v);
-			String gYSB = transform(tks, all, 0, genderProbs);
-			double probGen[] = runAttri("gender", gYSB, all, v);
-
-			all = EMUtil.Person.values().length;
-			double[] personProbs = ApplyMaxEntMoreTrainingData.selectRestriction("person", all,
-					v);
-			String pYSB = transform(tks, all, 0, personProbs);
-			double probPer[] = runAttri("person", pYSB, all, v);
-
-			all = EMUtil.Animacy.values().length - 1;
-			double[] animacyProbs = ApplyMaxEntMoreTrainingData.selectRestriction("animacy",
-					all, v);
-			String aYSB = transform(tks, all, 0, animacyProbs);
-			double probAni[] = runAttri("animacy", aYSB, all, v);
-			// TODO
 
 			// init yasmet
 			StringBuilder ysb = new StringBuilder();
@@ -383,8 +338,6 @@ public class ApplyMaxEntMoreTrainingData {
 					if (cand.extent.isEmpty()) {
 						continue;
 					}
-					// if(!cand.isFS)
-					// continue;
 					String antSpeaker = part.getWord(cand.start).speaker;
 					cand.sentenceID = part.getWord(cand.start).sentence
 							.getSentenceIdx();
@@ -438,20 +391,6 @@ public class ApplyMaxEntMoreTrainingData {
 					}
 
 					if (conflict > 0) {
-						if (chainMap.containsKey(zero.toName())
-								&& chainMap.containsKey(cand.toName())
-								&& chainMap.get(zero.toName()).intValue() == chainMap
-										.get(cand.toName()).intValue()) {
-							// System.err.println(sameSpeaker + "#"
-							// + entry.person.name() + "="
-							// + EMUtil.getPerson(pronoun).name());
-							// System.err.println(entry.number.name() + "="
-							// + EMUtil.getNumber(pronoun).name());
-							// System.err.println(entry.gender.name() + "="
-							// + EMUtil.getGender(pronoun).name());
-							// System.err.println(entry.animacy.name() + "="
-							// + EMUtil.getAnimacy(pronoun).name());
-						}
 						filters.add(antCount);
 					}
 
@@ -499,59 +438,11 @@ public class ApplyMaxEntMoreTrainingData {
 				}
 			}
 //			probAnt = getSVMRankProb(svmRanks);
-			
 //			double probAnt[] = runSVMRank();
 			pronounID++;
 			// System.err.println(cands.size());
 			if (antCount != 0 && (mode == classify || mode == load)) {
 				// run yasmet here
-
-				int numberOfAnt = probAnt.length / EMUtil.pronounList.size();
-				if (probAnt.length % EMUtil.pronounList.size() != 0) {
-					Common.bangErrorPOS("!!");
-				}
-
-				// re-normalize?
-				for (Integer f : filters) {
-					// probAnt[f] = -1000000;
-				}
-
-				// do re-normalize
-				double sumover = 0;
-				for (int i = 0; i < antCount; i++) {
-					if (!filters.contains(i)) {
-						// sumover += probAnt[i];
-					}
-				}
-				for (int i = 0; i < antCount; i++) {
-					// probAnt[i] = probAnt[i] / sumover;
-				}
-
-				// HashSet<Integer> reranks = new HashSet<Integer>();
-				// for (int i = 0; i < EMUtil.pronounList.size(); i++) {
-				// double rankMax = 0;
-				// int rerank = -1;
-				// for (int j = 0; j < numberOfAnt; j++) {
-				// double prob = probAnt[numberOfAnt * i + j];
-				// if (prob > rankMax) {
-				// rankMax = prob;
-				// rerank = numberOfAnt * i + j;
-				// }
-				// }
-				// reranks.add(rerank);
-				// }
-				// for (int i = 0; i < antCount; i++) {
-				// if (reranks.contains(i)) {
-				// sumover += probAnt[i];
-				// }
-				// }
-				// for (int i = 0; i < antCount; i++) {
-				// if (reranks.contains(i)) {
-				// probAnt[i] = probAnt[i] / sumover;
-				// } else {
-				// probAnt[i] = -10000;
-				// }
-				// }
 
 				System.out.println(filters.size() + "###############"
 						+ antCount);
@@ -564,19 +455,7 @@ public class ApplyMaxEntMoreTrainingData {
 						rankID = i;
 					}
 				}
-//				int antIdx = -1;
-//				setParas(part);
-//				ILP ilp = new ILP(numberOfAnt, probAnt, probNum, probGen,
-//						probPer, probAni);
-//				try {
-//					antIdx = ilp.execute();
-//				} catch (LpSolveException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				}
-				// }
 				antecedent = cands.get(idMap.get(rankID));
-
 			}
 			if (antecedent != null) {
 				if (antecedent.end != -1) {
