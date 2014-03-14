@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import model.Element;
@@ -17,7 +18,6 @@ import model.CoNLL.OntoCorefXMLReader;
 import model.syntaxTree.MyTreeNode;
 import util.Common;
 import edu.stanford.nlp.ling.Datum;
-import em.ResolveGroup.Entry;
 
 public class MaxEntLearnMoreTrainData {
 
@@ -50,9 +50,16 @@ public class MaxEntLearnMoreTrainData {
 	static List<Datum<String, String>> trainingData = new ArrayList<Datum<String, String>>();
 
 	static ArrayList<String> yasmet = new ArrayList<String>();
+	static ArrayList<String> yasmetAZP = new ArrayList<String>();
+
+	static ArrayList<String> yasmetCR = new ArrayList<String>();
+	static ArrayList<String> yasmetAZPCR = new ArrayList<String>();
+
+	
 	static int maxAnts = 0;
 
 	static ArrayList<String> svmRanks = new ArrayList<String>();
+	static ArrayList<String> svmRanksAZP = new ArrayList<String>();
 	static int qid = 0;
 
 	private static ArrayList<Element> getChGoldNE(CoNLLPart part) {
@@ -88,6 +95,7 @@ public class MaxEntLearnMoreTrainData {
 
 		ArrayList<Mention> goldInChainZeroses = EMUtil.getAnaphorZeros(part
 				.getChains());
+
 		for (Entity e : part.getChains()) {
 			for (Mention m : e.mentions) {
 				m.entity = e;
@@ -111,7 +119,7 @@ public class MaxEntLearnMoreTrainData {
 				ArrayList<MyTreeNode> rightAncestors = right.getAncestors();
 				for (int i = 0; i < leftAncestors.size()
 						&& i < rightAncestors.size(); i++) {
-					if(leftAncestors.get(i)==rightAncestors.get(i)) {
+					if (leftAncestors.get(i) == rightAncestors.get(i)) {
 						m.NP = leftAncestors.get(i);
 					} else {
 						break;
@@ -133,6 +141,39 @@ public class MaxEntLearnMoreTrainData {
 		allMentions.addAll(goldInChainZeroses);
 		Collections.sort(allMentions);
 
+		HashMap<String, Integer> goldMentionToClusterIDMap = new HashMap<String, Integer>();
+		for (int i = 0; i < part.getChains().size(); i++) {
+			Entity e = part.getChains().get(i);
+			for (Mention m : e.mentions) {
+				goldMentionToClusterIDMap.put(m.toName(), i);
+			}
+		}
+
+		HashMap<String, ArrayList<Mention>> clusterMap = new HashMap<String, ArrayList<Mention>>();
+		for (int i = 0; i < allMentions.size(); i++) {
+			Mention m = allMentions.get(i);
+			if (m.end == -1) {
+				continue;
+			}
+			ArrayList<Mention> ms = new ArrayList<Mention>();
+			clusterMap.put(m.toName(), ms);
+			if (goldMentionToClusterIDMap.containsKey(m.toName())) {
+				int clusterID = goldMentionToClusterIDMap.get(m.toName());
+				for (int j = 0; j < allMentions.size(); j++) {
+					Mention m2 = allMentions.get(j);
+					if (m2.end == -1) {
+						continue;
+					}
+					if (goldMentionToClusterIDMap.containsKey(m2.toName())
+							&& goldMentionToClusterIDMap.get(m2.toName()).intValue() == clusterID) {
+						ms.add(m2);
+					}
+				}
+			} else {
+				ms.add(m);
+			}
+		}
+
 		for (int i = 0; i < allMentions.size(); i++) {
 			Mention m = allMentions.get(i);
 
@@ -145,19 +186,11 @@ public class MaxEntLearnMoreTrainData {
 					map.put(ext, 1);
 				}
 			}
-
 			// TODO assign number, gender, person, animacy for AZPs
-
-			if (
-//					m.isAZP
-//			 ||
-			 (m.gram == EMUtil.Grammatic.subject
-			 && EMUtil.pronouns.contains(m.extent))
-			) {
-				// String goldPro = m.extent;
+			if (m.isAZP
+					|| (m.gram == EMUtil.Grammatic.subject && EMUtil.pronouns
+							.contains(m.extent))) {
 				qid++;
-				// for (String pronoun : EMUtil.pronounList) {
-				// m.extent = pronoun;
 				ArrayList<Mention> ants = new ArrayList<Mention>();
 				int corefCount = 0;
 				for (int j = i - 1; j >= 0; j--) {
@@ -184,73 +217,123 @@ public class MaxEntLearnMoreTrainData {
 				Collections.reverse(ants);
 				ApplyEM.findBest(m, ants);
 
-				StringBuilder ysb = new StringBuilder();
+				StringBuilder mrYSB = new StringBuilder();
+				StringBuilder crYSB = new StringBuilder();
 				if (ants.size() > maxAnts) {
 					maxAnts = ants.size();
 				}
 
 				boolean findFirstSubj = false;
 				boolean findCoref = false;
+
+				HashSet<Integer> processedClusters = new HashSet<Integer>();
+				int clusterID = 0;
 				for (int k = 0; k < ants.size(); k++) {
+
 					Mention ant = ants.get(k);
 
+					// System.out.println(ant.entity.entityIdx + " # " +
+					// ant.entity.mentions.size());
 					boolean fs = false;
 					if (!findFirstSubj && ant.gram == EMUtil.Grammatic.subject) {
 						findFirstSubj = true;
 						fs = true;
 					}
-					String antSpeaker = part.getWord(ant.start).speaker;
-
+					
 					Context context = Context.buildContext(ant, m, part, fs);
-
-					boolean sameSpeaker = proSpeaker.equals(antSpeaker);
-
-					Entry entry = new Entry(ant, context, sameSpeaker, fs);
+					superFea.configure("", "", "", "", context, ant, m, part);
+					String fea = superFea.getSVMFormatString();
+					
 					boolean coref = isCoref(chainMap, m, ant);
+					int rank = -1;
 					if (coref) {
 						if (!findCoref) {
-							ysb.insert(0, k + " @ ");
+							mrYSB.insert(0, k + " @ ");
 							findCoref = true;
 						}
-					}
-					int rank = 0;
-					if (coref) {
-						// if(m.extent.equals(goldPro)) {
-						// rank = 3;
-						// } else {
-						// rank = 2;
-						// }
 						rank = 1;
-					} else {
-						rank = -1;
 					}
-					// coref = coref && m.extent.equals(goldPro);
-
-					// //
-					// if (sameSpeaker) {
-					// pStr = entry.person.name() + "=" +
-					// EMUtil.getPerson(pronoun).name();
-					// } else {
-					// pStr = entry.person.name() + "!="
-					// + EMUtil.getPerson(pronoun).name();
-					// }
-					// String nStr = entry.number.name() + "="
-					// + EMUtil.getNumber(pronoun).name();
-					// String gStr = entry.gender.name() + "="
-					// + EMUtil.getGender(pronoun).name();
-					// String aStr = entry.animacy.name() + "="
-					// + EMUtil.getAnimacy(pronoun).name();
-
-					ysb.append(getYamset(coref, ant, m, context, sameSpeaker,
-							entry, superFea, corefCount, part));
-					svmRanks.add(getSVMRank(rank, ant, m, context, sameSpeaker,
-							entry, superFea, part));
+					mrYSB.append(getYamset(coref, fea, corefCount));
+					if (corefCount > 0) {
+						if (m.isAZP) {
+							svmRanksAZP.add(getSVMRank(rank, fea));
+						} else {
+							svmRanks.add(getSVMRank(rank, fea));
+						}
+					}
+					
+//					if(goldMentionToClusterIDMap.containsKey(ant.toName()) && 
+//							processedClusters.contains(goldMentionToClusterIDMap.get(ant.toName()))) {
+//					} else {
+//						if(coref) {
+//							crYSB.insert(0, clusterID + " @ ");
+//						}
+//						ArrayList<Mention> wholeCluster = clusterMap.get(ant
+//								.toName());
+//						ArrayList<Mention> cluster = new ArrayList<Mention>();
+//						for (Mention a : wholeCluster) {
+//							cluster.add(a);
+//							if (a.toName().equals(ant.toName())) {
+//								break;
+//							}
+//						}
+//						HashMap<Integer, Integer> feaMap = new HashMap<Integer, Integer>();
+//						for(int c=0;c<cluster.size();c++) {
+//							Mention cant = cluster.get(c);
+//							if (m.s.getSentenceIdx() - cant.s.getSentenceIdx() > 2) {
+//								cant.isBest = false;
+//							}
+//							context = Context.buildContext(cant, m, part, cant==ant?fs:false);
+//							superFea.configure("", "", "", "", context, cant, m, part);
+//							fea = superFea.getSVMFormatString();
+//							
+//							String tks[] = fea.split("\\s+");
+//							for(String tk : tks) {
+//								int comma = tk.indexOf(":");
+//								int feaIdx = Integer.parseInt(tk.substring(0, comma));
+//								if(feaMap.containsKey(feaIdx)) {
+//									feaMap.put(feaIdx, feaMap.get(feaIdx).intValue() + 1);
+//								} else {
+//									feaMap.put(feaIdx, 1);
+//								}
+//							}
+//						}
+//						ArrayList<Integer> feaIdxes = new ArrayList<Integer>(feaMap.keySet());
+//						Collections.sort(feaIdxes);
+//						StringBuilder crunitSb = new StringBuilder();
+//						for(int feaIdx : feaIdxes) {
+//							int amount = feaMap.get(feaIdx);
+//							int newFea = feaIdx * 3;
+//							if(amount==cluster.size()) {
+//								newFea += 0;
+//							} else if(amount>=cluster.size()/2) {
+//								newFea += 1;
+//							} else if(amount>0) {
+//								newFea += 2;
+//							}
+//							crunitSb.append(newFea).append(":1 ");
+//						}
+//						crYSB.append(getYamset(coref, crunitSb.toString().trim(), 1));
+//						if(goldMentionToClusterIDMap.containsKey(ant.toName())) {
+//							processedClusters.add(goldMentionToClusterIDMap.get(ant.toName()));
+//						}
+//						clusterID++;
+//					}
 				}
-				for (int k = ants.size(); k < 84; k++) {
-					ysb.append("@ 0 NOCLASS 1 # ");
+				for (int k = ants.size(); k < 100; k++) {
+					mrYSB.append("@ 0 NOCLASS 1 # ");
+				}
+				for(int k=clusterID;k<100;k++) {
+					crYSB.append("@ 0 NOCLASS 1 # ");
 				}
 				if (corefCount > 0) {
-					yasmet.add(ysb.toString().trim());
+					if (m.isAZP) {
+						yasmetAZP.add(mrYSB.toString().trim());
+						yasmetAZPCR.add(crYSB.toString().trim());
+					} else {
+						yasmet.add(mrYSB.toString().trim());
+						yasmetCR.add(crYSB.toString().trim());
+					}
 				}
 				// }
 				// m.extent = goldPro;
@@ -366,46 +449,38 @@ public class MaxEntLearnMoreTrainData {
 		return coref;
 	}
 
-	public static String getSVMRank(int rank, Mention ant, Mention pro,
-			Context context, boolean sameSpeaker, Entry entry,
-			SuperviseFea superFea, CoNLLPart part) {
-		String pronoun = pro.extent;
-		String pStr = "";
-		if (sameSpeaker) {
-			pStr = entry.person.name() + "=" + pro.person.name();
-		} else {
-			pStr = entry.person.name() + "!=" + pro.person.name();
-		}
-		String nStr = entry.number.name() + "=" + pro.number.name();
-		String gStr = entry.gender.name() + "=" + pro.gender.name();
-		String aStr = entry.animacy.name() + "=" + pro.animacy.name();
+	public static String getSVMRank(int rank, String svm) {
+//		String pronoun = pro.extent;
+//		String pStr = "";
+//		if (sameSpeaker) {
+//			pStr = entry.person.name() + "=" + pro.person.name();
+//		} else {
+//			pStr = entry.person.name() + "!=" + pro.person.name();
+//		}
+//		String nStr = entry.number.name() + "=" + pro.number.name();
+//		String gStr = entry.gender.name() + "=" + pro.gender.name();
+//		String aStr = entry.animacy.name() + "=" + pro.animacy.name();
 
-		superFea.configure(pStr, nStr, gStr, aStr, context, ant, pro, part);
-
-		String svm = superFea.getSVMFormatString();
+//		superFea.configure(pStr, nStr, gStr, aStr, context, ant, pro, part);
+//		String svm = superFea.getSVMFormatString();
 		String label = Integer.toString(rank);
 		return label + " qid:" + qid + " " + svm;
 		// return ysb.toString();
 	}
 
-	public static String getYamset(boolean coref, Mention ant, Mention pro,
-			Context context, boolean sameSpeaker, Entry entry,
-			SuperviseFea superFea, double corefCount, CoNLLPart part) {
-		String pStr = "";
-		if (sameSpeaker) {
-			pStr = entry.person.name() + "=" + pro.person.name();
-		} else {
-			pStr = entry.person.name() + "!=" + pro.person.name();
-		}
-		String nStr = entry.number.name() + "=" + pro.number.name();
-		String gStr = entry.gender.name() + "=" + pro.gender.name();
-		String aStr = entry.animacy.name() + "=" + pro.animacy.name();
-
-		superFea.configure(pStr, nStr, gStr, aStr, context, ant, pro, part);
-
-		String fea = superFea.getSVMFormatString();
-		String tks[] = fea.split("\\s+");
+	public static String getYamset(boolean coref, String fea,
+			double corefCount) {
+		// String pStr = "";
+		// if (sameSpeaker) {
+		// pStr = entry.person.name() + "=" + pro.person.name();
+		// } else {
+		// pStr = entry.person.name() + "!=" + pro.person.name();
+		// }
+		// String nStr = entry.number.name() + "=" + pro.number.name();
+		// String gStr = entry.gender.name() + "=" + pro.gender.name();
+		// String aStr = entry.animacy.name() + "=" + pro.animacy.name();
 		StringBuilder ysb = new StringBuilder();
+		String tks[] = fea.split("\\s+");
 		ysb.append("@ ");
 		if (coref) {
 			ysb.append(1.0 / corefCount + " ");
@@ -428,7 +503,7 @@ public class MaxEntLearnMoreTrainData {
 
 		ArrayList<String> lines = Common.getLines("chinese_list_all_train");
 		for (String line : lines) {
-			System.out.println(line);
+			// System.out.println(line);
 			CoNLLDocument d = new CoNLLDocument(line);
 
 			OntoCorefXMLReader.addGoldZeroPronouns(d, false);
@@ -437,13 +512,13 @@ public class MaxEntLearnMoreTrainData {
 				extractGroups(part);
 			}
 		}
-//		CoNLLDocument d = new CoNLLDocument("train_gold_conll");
-//		parts.addAll(d.getParts());
-//		int i = d.getParts().size();
-//		for (CoNLLPart part : parts) {
-//			extractGroups(part);
-//			// System.out.println(i--);
-//		}
+		// CoNLLDocument d = new CoNLLDocument("train_gold_conll");
+		// parts.addAll(d.getParts());
+		// int i = d.getParts().size();
+		// for (CoNLLPart part : parts) {
+		// extractGroups(part);
+		// // System.out.println(i--);
+		// }
 	}
 
 	public static void main(String args[]) throws Exception {
@@ -467,12 +542,23 @@ public class MaxEntLearnMoreTrainData {
 		extractCoNLL(groups);
 
 		superFea.freeze();
-		yasmet.add(0, Integer.toString(maxAnts));
+		if (maxAnts > 100) {
+			Common.pause("MaxAnts:" + maxAnts);
+		}
+		yasmet.add(0, "100");
 		Common.outputLines(yasmet, "yasmet.train");
+		yasmetAZP.add(0, "100");
+		Common.outputLines(yasmetAZP, "yasmetAZP.train");
+		
+		yasmetCR.add(0, "100");
+		Common.outputLines(yasmetCR, "yasmetCR.train");
+		yasmetAZPCR.add(0, "100");
+		Common.outputLines(yasmetAZPCR, "yasmetAZPCR.train");
 
 		System.out.println(":" + match / all);
 
 		Common.outputLines(svmRanks, "svmRank.train");
+		Common.outputLines(svmRanksAZP, "svmRankAZP.train");
 
 		System.out.println("Qid: " + qid);
 
