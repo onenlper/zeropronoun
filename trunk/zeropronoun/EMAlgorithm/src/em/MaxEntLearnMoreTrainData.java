@@ -60,6 +60,10 @@ public class MaxEntLearnMoreTrainData {
 
 	static ArrayList<String> svmRanks = new ArrayList<String>();
 	static ArrayList<String> svmRanksAZP = new ArrayList<String>();
+	
+	static ArrayList<String> svmRanksCR = new ArrayList<String>();
+	static ArrayList<String> svmRanksAZPCR = new ArrayList<String>();
+	
 	static int qid = 0;
 
 	private static ArrayList<Element> getChGoldNE(CoNLLPart part) {
@@ -318,6 +322,13 @@ public class MaxEntLearnMoreTrainData {
 						if(goldMentionToClusterIDMap.containsKey(ant.toName())) {
 							processedClusters.add(goldMentionToClusterIDMap.get(ant.toName()));
 						}
+						
+						if(m.isAZP) {
+							svmRanksAZPCR.add(getSVMRank(rank, crunitSb.toString().trim()));
+						} else {
+							svmRanksCR.add(getSVMRank(rank, crunitSb.toString().trim()));
+						}
+						
 						clusterID++;
 					}
 				}
@@ -561,6 +572,9 @@ public class MaxEntLearnMoreTrainData {
 
 		Common.outputLines(svmRanks, "svmRank.train");
 		Common.outputLines(svmRanksAZP, "svmRankAZP.train");
+		
+		Common.outputLines(svmRanksCR, "svmRankCR.train");
+		Common.outputLines(svmRanksAZPCR, "svmRankAZPCR.train");
 
 		System.out.println("Qid: " + qid);
 
