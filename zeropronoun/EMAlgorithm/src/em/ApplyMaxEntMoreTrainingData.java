@@ -373,6 +373,7 @@ public class ApplyMaxEntMoreTrainingData {
 			HashMap<Integer, Integer> clusterIdMap = new HashMap<Integer, Integer>();
 			int clusterID = 0;
 			ArrayList<String> svmRanks = new ArrayList<String>();
+			ArrayList<String> svmRanksCR = new ArrayList<String>();
 			// for (int m = 0; m < EMUtil.pronounList.size(); m++) {
 			// String pronoun = EMUtil.pronounList.get(m);
 			//
@@ -464,6 +465,8 @@ public class ApplyMaxEntMoreTrainingData {
 						}
 						crunitSb.append(newFea).append(":1 ");
 					}
+					svmRanksCR.add(MaxEntLearnMoreTrainData.getSVMRank(-1,
+							crunitSb.toString().trim()));
 					crYSB.append(MaxEntLearnMoreTrainData.getYamset(false,
 							crunitSb.toString().trim(), 1));
 					if (goldMentionToClusterIDMap.containsKey(cand.toName())) {
@@ -475,6 +478,7 @@ public class ApplyMaxEntMoreTrainingData {
 				}
 			}
 			Common.outputLines(svmRanks, "svmRank.test");
+			Common.outputLines(svmRanksCR, "svmRankCR.test");
 			// Common.pause("");
 			// break;
 			// }
@@ -494,14 +498,24 @@ public class ApplyMaxEntMoreTrainingData {
 			for (int i = 0; i < probAntCR.length; i++) {
 				probAnt[clusterIdMap.get(i)] += probAntCR[i];
 			}
-
-			// probAnt = getSVMRankProb(svmRanks);
-			// double probAnt[] = runSVMRank();
+//
+//			// probAnt = getSVMRankProb(svmRanks);
+//			double probAntSVMMR[] = runSVMRank("");
+//			for(int i=0;i<probAntSVMMR.length;i++) {
+//				probAnt[idMap.get(i)] += probAntSVMMR[i];
+//			}
+			
+//			double probAntSVMCR[] = runSVMRank("CR");
+//			for(int i=0;i<probAntSVMCR.length;i++) {
+//				probAnt[clusterIdMap.get(i)] += probAntSVMCR[i];
+//			}
+			
 			pronounID++;
 			// System.err.println(cands.size());
 			if (antCount != 0 && (mode == classify || mode == load)) {
 				int rankID = -1;
-				double rankMax = 0;
+				// TODO
+				double rankMax = -1000000;
 				for (int i = 0; i < probAnt.length; i++) {
 					double prob = probAnt[i];
 					if (prob > rankMax) {
@@ -509,7 +523,7 @@ public class ApplyMaxEntMoreTrainingData {
 						rankID = i;
 					}
 				}
-				// antecedent = cands.get(clusterIdMap.get(rankID));
+//				 antecedent = cands.get(clusterIdMap.get(rankID));
 				antecedent = cands.get(rankID);
 			}
 			if (antecedent != null) {
@@ -1212,9 +1226,9 @@ public class ApplyMaxEntMoreTrainingData {
 	}
 
 	// dd
-	private static String runSVMRank() {
+	private static double[] runSVMRank(String model) {
 		String lineStr = "";
-		String cmd = "./svmRank.sh";
+		String cmd = "./svmRank" + model +".sh";
 
 		Runtime run = Runtime.getRuntime();
 		try {
@@ -1236,21 +1250,26 @@ public class ApplyMaxEntMoreTrainingData {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		ArrayList<String> lines = Common.getLines("svmRank.result");
-		StringBuilder sb = new StringBuilder();
-		double maxP = Double.NEGATIVE_INFINITY;
-		int maxIdx = -1;
-		for (int i = 0; i < lines.size(); i++) {
-			String line = lines.get(i);
-			double p = Double.parseDouble(line);
-			if (p > maxP) {
-				maxP = p;
-				maxIdx = i;
-			}
-			sb.append(p).append(" ");
+		ArrayList<String> lines = Common.getLines("svmRank" + model +".result");
+		double[] ret = new double[lines.size()];
+		for(int i=0;i<lines.size();i++) {
+			ret[i] = Double.parseDouble(lines.get(i));
 		}
-		sb.insert(0, maxIdx + " ");
-		return sb.toString().trim();
+		return ret;
+//		StringBuilder sb = new StringBuilder();
+//		double maxP = Double.NEGATIVE_INFINITY;
+//		int maxIdx = -1;
+//		for (int i = 0; i < lines.size(); i++) {
+//			String line = lines.get(i);
+//			double p = Double.parseDouble(line);
+//			if (p > maxP) {
+//				maxP = p;
+//				maxIdx = i;
+//			}
+//			sb.append(p).append(" ");
+//		}
+//		sb.insert(0, maxIdx + " ");
+//		return sb.toString().trim();
 	}
 
 	private double runSVMLight() {
