@@ -16,7 +16,7 @@ cp /users/yzcchen/tool/YASMET/WTCR /dev/shm/
 cp /users/yzcchen/tool/YASMET/WTAZPCR /dev/shm/
 
 cd /users/yzcchen/chen3/zeroEM/EMAlgorithm/src
-#java -Xmx32g -cp $path -Djava.library.path=../lib/ux64/  em/ApplyMaxEntMoreTrainingData $1 classify both
+java -Xmx32g -cp $path -Djava.library.path=../lib/ux64/  em/ApplyMaxEntMoreTrainingData $1 classify both
 
 #java -Xmx16g -cp ../lib/lpsolve55j.jar:.:../lib/stanford-classifier-3.2.0.jar -Djava.library.path=../lib/ux64/  em/ApplyMaxEntMoreTrainingData $1 prepare
 cd /users/yzcchen/tool/YASMET
