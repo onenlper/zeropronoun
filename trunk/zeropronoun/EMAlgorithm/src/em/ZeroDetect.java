@@ -41,6 +41,8 @@ public class ZeroDetect {
 		return mentions;
 	}
 
+	static HashMap<String, Integer> map2 = new HashMap<String, Integer>();
+	
 	private static boolean isHeruisZP(Mention zero, CoNLLPart part) {
 		CoNLLWord word = part.getWord(zero.start);
 		CoNLLSentence s = word.sentence;
@@ -66,12 +68,6 @@ public class ZeroDetect {
 			return false;
 		}
 		
-		for(int i=0;i<V.childIndex;i++) {
-			if(V.parent.children.get(i).value.equals("VP")) {
-//				return false;
-			}
-		}
-
 		MyTreeNode IP = V.parent;
 
 		boolean has_Ancestor_NP = false;
@@ -96,7 +92,47 @@ public class ZeroDetect {
 			return false;
 		}
 		
+		// rule 9?
 		boolean firstGap = word.indexInSentence == 0;
+		if(firstGap || s.getWords().get(word.indexInSentence-1).posTag.equals("PU")) {
+			HashSet<String> set = new HashSet<String>();
+			
+			boolean v = false;
+			
+			for(MyTreeNode tn : IP.getLeaves()) {
+				if(!tn.parent.value.equals("PU") && !tn.parent.value.equals("SP")
+						) {
+					set.add(tn.value);
+				}
+				if(tn.parent.value.startsWith("V")) {
+					v = true;
+				}
+			}
+			if(!v) {
+				return false;
+			}
+			if(set.size()==1) {
+//				System.out.println(set.toString() + " # " + part.getDocument().getDocumentID());
+				String key = set.iterator().next();
+				if(map2.containsKey(key)) {
+					map2.put(key, map2.get(key) + 1);
+				} else {
+					map2.put(key, 1);
+				}
+				return false;
+			}
+			
+		}
+		
+
+		for(MyTreeNode tn: IP.getLeaves()) {
+			if(tn.parent.value.startsWith("V")) {
+				if((tn.value.equals("没有") || tn.value.equals("有")) && tn.parent.value.equals("VE")) {
+					return false;					
+				}
+				break;
+			}
+		}
 		if (!firstGap) {
 			int leftIdx = rightIdx - 1;
 			Wl = tree.leaves.get(leftIdx);
@@ -188,6 +224,7 @@ public class ZeroDetect {
 		if (word.index == 0) {
 			return false;
 		}
+		
 //		if(word.sentence.getSentenceIdx()==0) {
 //			boolean np = false;
 //			for(int i=0;i<word.indexInSentence;i++) {
@@ -256,7 +293,7 @@ public class ZeroDetect {
 		double gold = 0;
 		double sys = 0;
 		double hit = 0;
-		String folder = "all";
+		String folder = args[0];
 		ArrayList<String> files = Common.getLines("chinese_list_" + folder
 				+ "_development");
 
@@ -308,6 +345,12 @@ public class ZeroDetect {
 		System.out.println("P: " + p*100);
 		System.out.println("F: " + f*100);
 
+		int all = 0;
+		for(String key : map2.keySet()) {
+//			System.out.println(key + " # " + map2.get(key));
+			all += map2.get(key);
+		}
+		System.out.println(all);
 		// for (String key : map.keySet()) {
 		// System.out.println(key + "\t:" + map.get(key));
 		// }
