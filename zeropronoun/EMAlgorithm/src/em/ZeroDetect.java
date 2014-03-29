@@ -203,9 +203,16 @@ public class ZeroDetect {
 		
 		
 		// Rule 9
+//		possessive you3, existential you3
 		for(MyTreeNode tn: IP.getLeaves()) {
 			if(tn.parent.value.startsWith("V")) {
-				if((tn.value.equals("没有") || tn.value.equals("有")) && tn.parent.value.equals("VE")) {
+				if((tn.value.equals("没有") || tn.value.equals("有") || tn.value.equals("无")) && tn.parent.value.equals("VE")) {
+					System.out.println(part.getDocument().getFilePath());
+					System.out.println(word.getWord() + " " + zero.start);
+					System.out.println(s.getText());
+					System.out.println(goldInts.contains(zero.start) ? "zero" : "nonzero");
+					System.out.println("-----");
+					
 					return false;					
 				}
 				break;
