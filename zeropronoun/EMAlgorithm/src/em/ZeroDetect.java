@@ -201,12 +201,24 @@ public class ZeroDetect {
 //			}
 //		}
 		
-		// rule 9?
+		
+		// Rule 9
+		for(MyTreeNode tn: IP.getLeaves()) {
+			if(tn.parent.value.startsWith("V")) {
+				if((tn.value.equals("没有") || tn.value.equals("有")) && tn.parent.value.equals("VE")) {
+					return false;					
+				}
+				break;
+			}
+		}
+		
+		// rule 10?
 		HashSet<String> set = new HashSet<String>();
 		
 		MyTreeNode verb = null;
 		for(MyTreeNode tn : IP.getLeaves()) {
-			if(!tn.parent.value.equals("PU") && !tn.parent.value.equals("SP")
+			if(!tn.parent.value.equals("PU")
+					&& !tn.parent.value.equals("SP")
 					) {
 				set.add(tn.value);
 			}
@@ -229,16 +241,6 @@ public class ZeroDetect {
 			}
 			if(verb!=null && !verb.parent.value.equals("VV")) {
 				return false;
-			}
-		}
-		
-		// Rule 10
-		for(MyTreeNode tn: IP.getLeaves()) {
-			if(tn.parent.value.startsWith("V")) {
-				if((tn.value.equals("没有") || tn.value.equals("有")) && tn.parent.value.equals("VE")) {
-					return false;					
-				}
-				break;
 			}
 		}
 		
