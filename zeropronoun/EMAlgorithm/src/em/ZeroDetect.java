@@ -206,13 +206,8 @@ public class ZeroDetect {
 //		possessive you3, existential you3
 		for(MyTreeNode tn: IP.getLeaves()) {
 			if(tn.parent.value.startsWith("V")) {
-				if((tn.value.equals("没有") || tn.value.equals("有") || tn.value.equals("无")) && tn.parent.value.equals("VE")) {
-					System.out.println(part.getDocument().getFilePath());
-					System.out.println(word.getWord() + " " + zero.start);
-					System.out.println(s.getText());
-					System.out.println(goldInts.contains(zero.start) ? "zero" : "nonzero");
-					System.out.println("-----");
-					
+				if((tn.value.equals("没有") || tn.value.equals("有") || tn.value.equals("无")) && 
+						tn.parent.value.equals("VE")) {
 					return false;					
 				}
 				break;
@@ -224,8 +219,10 @@ public class ZeroDetect {
 		
 		MyTreeNode verb = null;
 		for(MyTreeNode tn : IP.getLeaves()) {
-			if(!tn.parent.value.equals("PU")
+			if(true 
+					&& !tn.parent.value.equals("PU") 
 					&& !tn.parent.value.equals("SP")
+					&& !tn.parent.value.equals("AS")
 					) {
 				set.add(tn.value);
 			}
@@ -238,15 +235,24 @@ public class ZeroDetect {
 		if(verb==null) {
 			return false;
 		}
+		
 		if(set.size()==1) {
-			System.out.println(set.toString() + " # " + part.getDocument().getDocumentID() + "#" + verb.parent.value);
 			String key = set.iterator().next();
 			if(map2.containsKey(key)) {
 				map2.put(key, map2.get(key) + 1);
 			} else {
 				map2.put(key, 1);
 			}
-			if(verb!=null && !verb.parent.value.equals("VV")) {
+			if(verb!=null && (verb.parent.value.equals("VC") || verb.parent.value.equals("VA"))) {
+				if(!goldInts.contains(zero.start)) {
+					System.out.println(set.toString() + " # " + part.getDocument().getDocumentID() + "#" + verb.parent.value
+							+ "$$" + (goldInts.contains(zero.start) ? "zero" : "nonzero"));
+					System.out.println(part.getDocument().getFilePath());
+					System.out.println(word.getWord() + " " + zero.start);
+					System.out.println(s.getText());
+					System.out.println(goldInts.contains(zero.start) ? "zero" : "nonzero");
+					System.out.println("-----");
+					}
 				return false;
 			}
 		}
