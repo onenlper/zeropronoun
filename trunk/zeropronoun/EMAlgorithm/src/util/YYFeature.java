@@ -12,7 +12,7 @@ public abstract class YYFeature {
 
 	public HashMap<String, Integer> strFeaMap;
 
-	int strFeaFrom = 1000;
+	public static int strFeaFrom = 1000;
 	String name;
 
 	public YYFeature(boolean train, String name) {
