@@ -18,6 +18,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
@@ -301,7 +302,7 @@ public class Common {
 		}
 	}
 
-	public static void outputLines(ArrayList<String> lines, String filename) {
+	public static void outputLines(List<String> lines, String filename) {
 		try {
 			FileWriter fw;
 			fw = new FileWriter(filename);
