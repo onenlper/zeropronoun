@@ -67,6 +67,17 @@ public class CoNLLDocument {
 		this.parseFile();
 		
 	}
+	
+	public CoNLLWord getWord(int id) {
+		for(CoNLLPart part : this.getParts()) {
+			if(id>=part.getWordCount()) {
+				id -= part.getWordCount();
+			} else {
+				return part.getWord(id);
+			}
+		}
+		return null;
+	}
 
 	/*
 	 * parse CoNLL format file
