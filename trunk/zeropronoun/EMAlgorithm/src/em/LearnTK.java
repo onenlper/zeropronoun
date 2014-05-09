@@ -12,11 +12,14 @@ import model.Mention;
 import model.CoNLL.CoNLLDocument;
 import model.CoNLL.CoNLLPart;
 import model.CoNLL.CoNLLSentence;
+import model.CoNLL.OntoCorefXMLReader;
 import util.Common;
 import util.TKUtil;
 import edu.stanford.nlp.ling.Datum;
 import em.ResolveGroup.Entry;
 
+
+// nw: 44.04, mz:35.18, wb:45.77, bn:52.82, bc:48.03, tc:51.23, all:47.87
 public class LearnTK {
 
 	static ArrayList<CoNLLPart> parts = new ArrayList<CoNLLPart>();
@@ -76,6 +79,8 @@ public class LearnTK {
 
 	static HashMap<String, Integer> map = new HashMap<String, Integer>();
 
+	static int azps = 0;
+	
 	public static void extractGroups(CoNLLPart part) {
 		// ArrayList<Element> goldNE = getChGoldNE(part);
 		HashMap<String, Integer> chainMap = EMUtil.formChainMap(part
@@ -83,6 +88,23 @@ public class LearnTK {
 		ArrayList<Mention> allMentions = EMUtil.extractMention(part);
 		Collections.sort(allMentions);
 		EMUtil.assignNE(allMentions, part.getNameEntities());
+		 
+		ArrayList<Mention> goldInChainZeroses = EMUtil.getAnaphorZeros(part
+				.getChains());
+		for (Mention z : goldInChainZeroses) {
+			if (z.end == -1) {
+				z.isAZP = true;
+				// find V
+				// TODO
+				EMUtil.assignVNode(z, part);
+				z.s = part.getWord(z.start).sentence;
+			} else {
+				Common.bangErrorPOS("!!!");
+			}
+		}
+		allMentions.addAll(goldInChainZeroses);
+		Collections.sort(allMentions);
+		
 		for (int i = 0; i < allMentions.size(); i++) {
 			Mention m = allMentions.get(i);
 
@@ -95,8 +117,11 @@ public class LearnTK {
 					map.put(ext, 1);
 				}
 			}
-			if (m.gram == EMUtil.Grammatic.subject
-					&& EMUtil.pronouns.contains(m.extent)
+			
+			if (
+					m.end==-1
+//					m.gram == EMUtil.Grammatic.subject
+//					&& EMUtil.pronouns.contains(m.extent)
 			// && chainMap.containsKey(m.toName())
 			) {
 				// String goldPro = m.extent;
@@ -110,20 +135,21 @@ public class LearnTK {
 					// TODO
 					// 他们 爱国 的 标准#228,231
 					// 他们#228,228
-					if (ant.end < m.start) {
+					if (ant.end < m.start && ant.end!=-1) {
 						ants.add(ant);
 						// ant.MI = Context.calMI(ant, m);
 						// ant.isBest = false;
 						boolean coref = isCoref(chainMap, m, ant);
 						if (coref) {
 							corefCount++;
+							break;
 						}
 						if (m.s.getSentenceIdx() - ant.s.getSentenceIdx() > 2) {
 							break;
 						}
 					}
 				}
-				EMUtil.setPronounAttri(m);
+//				EMUtil.setPronounAttri(m, part);
 				String proSpeaker = part.getWord(m.start).speaker;
 
 				Collections.sort(ants);
@@ -134,7 +160,11 @@ public class LearnTK {
 				if (ants.size() > maxAnts) {
 					maxAnts = ants.size();
 				}
-
+				
+				if(corefCount==0) { 
+					continue;
+				}
+				azps++;
 				boolean findFirstSubj = false;
 				boolean findCoref = false;
 				for (int k = 0; k < ants.size(); k++) {
@@ -149,7 +179,7 @@ public class LearnTK {
 //							continue;
 //						}
 
-						String tk1 = getTKStr(ant1, m, false, part, false);
+						String tk1 = getTKStr(ant1, m, false, part, true);
 //						String tk2 = getTKStr(ant2, m, false, part, false);
 						StringBuilder sb = new StringBuilder();
 //						if (!coref1) {
@@ -161,6 +191,11 @@ public class LearnTK {
 //									.append(" |BT| ").append(tk2)
 //									.append(" |ET|");
 //						}
+						
+						if(tk1.isEmpty()) {
+							continue;
+						}
+						
 						if(coref1) {
 							sb.append("+1 ").append("|BT| ").append(tk1).append(" |ET|");
 						} else {
@@ -228,10 +263,10 @@ public class LearnTK {
 
 	private static String getTKStr(Mention ant, Mention pro,
 			boolean sameSpeaker, CoNLLPart part, boolean isZP) {
-		String tk = TKUtil.getMinExpansion(ant, pro, part, isZP, "");
+//		String tk = TKUtil.getMinExpansion(ant, pro, part, isZP, "");
 //		 String tk = TKUtil.getSimpleExpansion(ant, pro, part, false, "");
 //		 String tk = TKUtil.getFullExpansion(ant, pro, part, false, "");
-//		 String tk = TKUtil.getDynamicExpansion(ant, pro, part, false, "");
+		 String tk = TKUtil.getDynamicExpansion(ant, pro, part, isZP, "");
 		// System.out.println("###");
 		// System.out.println(tk);
 		// System.out.println("###");
@@ -285,6 +320,7 @@ public class LearnTK {
 				+ "_train");
 		for (String line : lines) {
 			CoNLLDocument d = new CoNLLDocument(line);
+			OntoCorefXMLReader.addGoldZeroPronouns(d, false);
 			parts.addAll(d.getParts());
 		}
 		int i = parts.size();		
@@ -315,7 +351,7 @@ public class LearnTK {
 		System.out.println(":" + match / all);
 
 		Common.outputLines(svmRanks, "svmRank." + folder);
-
+		System.out.println("AZPs: " + azps);
 		// System.out.println("Qid: " + qid);
 		// for(String k : map.keySet()) {
 		// System.out.println(k + ":" + map.get(k));
