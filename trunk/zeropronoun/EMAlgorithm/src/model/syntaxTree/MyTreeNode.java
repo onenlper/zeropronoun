@@ -16,6 +16,28 @@ public class MyTreeNode {
 		return sisters;
 	}
 
+	public void removeItselfFromParent() {
+		this.parent.children.remove(this);
+		this.parent = null;
+	}
+
+	public void removeToRemoves() {
+		ArrayList<MyTreeNode> leaves = this.getLeaves();
+		for (MyTreeNode leaf : leaves) {
+			if(!leaf.toRemove) {
+				continue;
+			}
+			MyTreeNode remove = leaf;
+			while (remove.children.size() == 0) {
+				MyTreeNode parent = remove.parent;
+				remove.removeItselfFromParent();
+				remove = parent;
+			}
+		}
+	}
+	
+	public boolean toRemove = false;
+	
 	public boolean emptyCategory = false;
 	
 	public String value;
