@@ -245,13 +245,13 @@ public class ZeroDetect {
 			}
 			if(verb!=null && (verb.parent.value.equals("VC") || verb.parent.value.equals("VA"))) {
 				if(!goldInts.contains(zero.start)) {
-					System.out.println(set.toString() + " # " + part.getDocument().getDocumentID() + "#" + verb.parent.value
-							+ "$$" + (goldInts.contains(zero.start) ? "zero" : "nonzero"));
-					System.out.println(part.getDocument().getFilePath());
-					System.out.println(word.getWord() + " " + zero.start);
-					System.out.println(s.getText());
-					System.out.println(goldInts.contains(zero.start) ? "zero" : "nonzero");
-					System.out.println("-----");
+//					System.out.println(set.toString() + " # " + part.getDocument().getDocumentID() + "#" + verb.parent.value
+//							+ "$$" + (goldInts.contains(zero.start) ? "zero" : "nonzero"));
+//					System.out.println(part.getDocument().getFilePath());
+//					System.out.println(word.getWord() + " " + zero.start);
+//					System.out.println(s.getText());
+//					System.out.println(goldInts.contains(zero.start) ? "zero" : "nonzero");
+//					System.out.println("-----");
 					}
 				return false;
 			}
