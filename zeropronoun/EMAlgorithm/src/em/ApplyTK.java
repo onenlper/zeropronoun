@@ -1,11 +1,9 @@
 package em;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
@@ -14,7 +12,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import lpsolve.LpSolveException;
 import mentionDetect.ParseTreeMention;
 import model.Entity;
 import model.Mention;
@@ -25,6 +22,7 @@ import model.CoNLL.CoNLLWord;
 import model.CoNLL.OntoCorefXMLReader;
 import model.syntaxTree.MyTreeNode;
 import util.Common;
+import util.TKUtil;
 import edu.stanford.nlp.classify.LinearClassifier;
 import edu.stanford.nlp.ling.Datum;
 import edu.stanford.nlp.stats.Counter;
@@ -62,8 +60,6 @@ public class ApplyTK {
 
 	HashMap<String, Double> fracContextCount;
 
-	GuessPronounFea guessFea;
-
 	LinearClassifier<String, String> classifier;
 
 	SuperviseFea superFea;
@@ -82,12 +78,6 @@ public class ApplyTK {
 	static ArrayList<String> personRS;
 	static ArrayList<String> animacyRS;
 	static ArrayList<String> anteRS;
-
-	public static ArrayList<String> goods = new ArrayList<String>();
-	public static ArrayList<String> bads = new ArrayList<String>();
-
-	double good = 0;
-	double bad = 0;
 
 	@SuppressWarnings("unchecked")
 	public ApplyTK(String folder) {
@@ -124,11 +114,9 @@ public class ApplyTK {
 			// modelInput2.readObject();
 
 			// modelInput2.close();
-//			loadGuessProb();
-			guessFea = new GuessPronounFea(false, "guessPronoun");
-
+			// loadGuessProb();
 			superFea = new SuperviseFea(false, "supervise");
-			EMUtil.loadPredictNE(folder, "dev");
+			EMUtil.loadPredictNE(folder.split("\\-")[0], "dev");
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		} catch (IOException e) {
@@ -141,7 +129,7 @@ public class ApplyTK {
 	}
 
 	static int sigID = 0;
-	
+
 	public void test() {
 		ArrayList<String> files = Common.getLines("chinese_list_" + folder
 				+ "_development");
@@ -157,9 +145,9 @@ public class ApplyTK {
 
 			for (int k = 0; k < document.getParts().size(); k++) {
 				pID++;
-//				if(pID%5!=sigID) {
-//					continue;
-//				}
+				// if(pID%5!=sigID) {
+				// continue;
+				// }
 				CoNLLPart part = document.getParts().get(k);
 
 				for (CoNLLSentence s : part.getCoNLLSentences()) {
@@ -194,12 +182,12 @@ public class ApplyTK {
 				ArrayList<Mention> candidates = new ArrayList<Mention>();
 				candidates.addAll(goldBoundaryNPMentions);
 
-				if (!file.contains("/nw/") 
-//						&& !file.contains("/mz/")
-//						&& !file.contains("/bn/")
+				if (!file.contains("/nw/")
+				// && !file.contains("/mz/")
+				// && !file.contains("/bn/")
 				// && !file.contains("/mz/")&& !file.contains("/wb/")
 				) {
-					candidates.addAll(anaphorZeros);
+					// candidates.addAll(anaphorZeros);
 				}
 				Collections.sort(candidates);
 
@@ -212,12 +200,6 @@ public class ApplyTK {
 				// candidates);
 			}
 		}
-		System.out.println("Good: " + good);
-		System.out.println("Bad: " + bad);
-		System.out.println("Precission: " + good / (good + bad) * 100);
-
-		bad = 0;
-		good = 0;
 		evaluate(corefResults, goldEntities);
 	}
 
@@ -240,10 +222,8 @@ public class ApplyTK {
 			Collections.sort(allCandidates);
 			String proSpeaker = part.getWord(zero.start).speaker;
 			String overtPro = "";
-
 			ArrayList<Mention> cands = new ArrayList<Mention>();
 			boolean findFS = false;
-			HashSet<Integer> filters = new HashSet<Integer>();
 			for (int h = allCandidates.size() - 1; h >= 0; h--) {
 				Mention cand = allCandidates.get(h);
 				cand.sentenceID = part.getWord(cand.start).sentence
@@ -253,7 +233,7 @@ public class ApplyTK {
 				cand.isBest = false;
 				cand.MI = Context.calMI(cand, zero);
 				if (cand.start < zero.start
-						&& zero.sentenceID - cand.sentenceID <= 2) {
+						&& (zero.sentenceID - cand.sentenceID <= 3 || cands.size()==0)) {
 					if (!findFS && cand.gram == EMUtil.Grammatic.subject
 					// && !cand.s.getWord(cand.headInS).posTag.equals("NT")
 					// && MI>0
@@ -261,98 +241,31 @@ public class ApplyTK {
 						cand.isFS = true;
 						findFS = true;
 					}
-					// if(cand.s==zero.s && cand.gram==Grammatic.object &&
-					// cand.end+2==zero.start &&
-					// part.getWord(cand.end+1).word.equals("，") && cand.MI>0){
-					// cand.isFS = true;
-					// findFS = true;
-					// }
 					cands.add(cand);
 				}
 			}
+			if(cands.size()==0) {
+				
+			}
+			
 			findBest(zero, cands);
-
-			// call yasmet to get Prob(gender|context) Prob(number|context)
-			// Prob(person|context) Prob(animacy|context)
-			guessFea.configure(zero.start - 1, zero.start,
-					part.getWord(zero.start).sentence, part);
-
-			// label = pronoun.animacy.ordinal() + 1;
-
-			String feaStr = guessFea.getSVMFormatString();
-
 			String v = EMUtil.getFirstVerb(zero.V);
-			// Yasmet format
-			// NUMBER, GENDER, PERSON, ANIMACY
-			String tks[] = feaStr.split("\\s+");
-			int all = EMUtil.Number.values().length;
-			double[] numberProbs = ApplyTK.selectRestriction("number", all,
-					v);
-			String nYSB = transform(tks, all, 0, numberProbs);
-			double probNum[] = runAttri("number", nYSB, all, v);
 
-			all = EMUtil.Gender.values().length - 1;
-			double[] genderProbs = ApplyTK.selectRestriction("gender", all,
-					v);
-			String gYSB = transform(tks, all, 0, genderProbs);
-			double probGen[] = runAttri("gender", gYSB, all, v);
-
-			all = EMUtil.Person.values().length;
-			double[] personProbs = ApplyTK.selectRestriction("person", all,
-					v);
-			String pYSB = transform(tks, all, 0, personProbs);
-			double probPer[] = runAttri("person", pYSB, all, v);
-
-			all = EMUtil.Animacy.values().length - 1;
-			double[] animacyProbs = ApplyTK.selectRestriction("animacy",
-					all, v);
-			String aYSB = transform(tks, all, 0, animacyProbs);
-			double probAni[] = runAttri("animacy", aYSB, all, v);
-			// TODO
-
-			// init yasmet
-			StringBuilder ysb = new StringBuilder();
-			ysb.append("0 @ ");
-			int antCount = 0;
-			HashMap<Integer, Integer> idMap = new HashMap<Integer, Integer>();
+			double tournament[] = new double[cands.size()];
+			double maxDouble = -10000000;
 			for (int m = 0; m < EMUtil.pronounList.size(); m++) {
 				String pronoun = EMUtil.pronounList.get(m);
 
 				zero.extent = pronoun;
-				ArrayList<String> units = new ArrayList<String>();
-				ArrayList<String> svmRanks = new ArrayList<String>();
 				for (int i = 0; i < cands.size(); i++) {
 					Mention cand = cands.get(i);
-					if (cand.extent.isEmpty()) {
-						continue;
-					}
-					// if(!cand.isFS)
-					// continue;
-					String antSpeaker = part.getWord(cand.start).speaker;
-					cand.sentenceID = part.getWord(cand.start).sentence
-							.getSentenceIdx();
-					boolean coref = chainMap.containsKey(zero.toName())
-							&& chainMap.containsKey(cand.toName())
-							&& chainMap.get(zero.toName()).intValue() == chainMap
-									.get(cand.toName()).intValue();
-
-					//
 					Context context = Context.buildContext(cand, zero, part,
 							cand.isFS);
-					cand.msg = Context.message;
-					cand.MI = Context.MI;
-
-					if (m == 0) {
-						if (coref) {
-							goods.add(Double.toString(cand.MI));
-						} else {
-							bads.add(Double.toString(cand.MI));
-						}
-					}
+					String antSpeaker = part.getWord(cand.start).speaker;
 					boolean sameSpeaker = proSpeaker.equals(antSpeaker);
 					Entry entry = new Entry(cand, context, sameSpeaker,
 							cand.isFS);
-
+					//
 					int conflict = 0;
 					if (sameSpeaker) {
 						if (!entry.person.name().equals(
@@ -381,129 +294,47 @@ public class ApplyTK {
 					}
 
 					if (conflict > 0) {
-						if (chainMap.containsKey(zero.toName())
-								&& chainMap.containsKey(cand.toName())
-								&& chainMap.get(zero.toName()).intValue() == chainMap
-										.get(cand.toName()).intValue()) {
-							// System.err.println(sameSpeaker + "#"
-							// + entry.person.name() + "="
-							// + EMUtil.getPerson(pronoun).name());
-							// System.err.println(entry.number.name() + "="
-							// + EMUtil.getNumber(pronoun).name());
-							// System.err.println(entry.gender.name() + "="
-							// + EMUtil.getGender(pronoun).name());
-							// System.err.println(entry.animacy.name() + "="
-							// + EMUtil.getAnimacy(pronoun).name());
-						}
-						filters.add(antCount);
+						continue;
 					}
 
-					String unit = MaxEntLearn.getYamset(false, cand, zero,
-							context, sameSpeaker, entry, superFea, 1, part);
+					if (mode == prepare) {
+						String flatFeature = LearnTK.getSVMRank(0, cand, zero,
+								context, sameSpeaker, entry, superFea, part);
 
-					ysb.append(unit);
-					units.add(unit);
-					if (cand.isFS) {
-						// System.out.println(antCount + "###");
-						// System.out.println(unit);
+						String tk1 = TKUtil.getDynamicExpansion(cand, zero,
+								part, true, pronoun);
+						String instance = "1 |BT| " + tk1 + " |ET| ";
+						tkLines.add(instance);
+
+						svmRanks.add(1 + " qid:" + 1 + " " + flatFeature);
+
+					} else if (mode == load) {
+//						String tkl = tkLines.get(tkID++);
+//						try {
+							double val = Double.parseDouble(tkLines.get(tkID++));
+							System.out.println(val + "#" + maxDouble);
+							if (val > maxDouble) {
+								antecedent = cand;
+								maxDouble = val;
+							}
+//						} catch (Exception e) {
+//
+//						}
 					}
-					idMap.put(antCount, i);
-					antCount++;
-					String svmRank = MaxEntLearn.getSVMRank(0, cand, zero,
-							context, sameSpeaker, entry, superFea, part);
-					svmRanks.add(svmRank);
 				}
-				if (antCount == 0) {
-					continue;
-				}
-
-				Common.outputLines(svmRanks, "svmRank.test");
 				// Common.pause("");
 				// break;
 			}
-			if (antCount > maximam) {
-				maximam = antCount;
-			}
-			double probAnt[] = runYasmet(ysb.toString(), antCount);
+			System.out.println(antecedent + "###" + cands.size());
 			pronounID++;
 			// System.err.println(cands.size());
-			if (antCount != 0 && (mode == classify || mode == load)) {
-				// run yasmet here
-
-				int numberOfAnt = probAnt.length / EMUtil.pronounList.size();
-				if (probAnt.length % EMUtil.pronounList.size() != 0) {
-					Common.bangErrorPOS("!!");
-				}
-
-				// re-normalize?
-				for (Integer f : filters) {
-					// probAnt[f] = -1000000;
-				}
-
-				// do re-normalize
-				double sumover = 0;
-				for (int i = 0; i < antCount; i++) {
-					if (!filters.contains(i)) {
-						// sumover += probAnt[i];
-					}
-				}
-				for (int i = 0; i < antCount; i++) {
-					// probAnt[i] = probAnt[i] / sumover;
-				}
-
-				// HashSet<Integer> reranks = new HashSet<Integer>();
-				// for (int i = 0; i < EMUtil.pronounList.size(); i++) {
-				// double rankMax = 0;
-				// int rerank = -1;
-				// for (int j = 0; j < numberOfAnt; j++) {
-				// double prob = probAnt[numberOfAnt * i + j];
-				// if (prob > rankMax) {
-				// rankMax = prob;
-				// rerank = numberOfAnt * i + j;
-				// }
-				// }
-				// reranks.add(rerank);
-				// }
-				// for (int i = 0; i < antCount; i++) {
-				// if (reranks.contains(i)) {
-				// sumover += probAnt[i];
-				// }
-				// }
-				// for (int i = 0; i < antCount; i++) {
-				// if (reranks.contains(i)) {
-				// probAnt[i] = probAnt[i] / sumover;
-				// } else {
-				// probAnt[i] = -10000;
-				// }
-				// }
-
-				System.out.println(filters.size() + "###############"
-						+ antCount);
-				int rankID = -1;
-				double rankMax = 0;
-				for (int i = 0; i < probAnt.length; i++) {
-					double prob = probAnt[i];
-					if (prob > rankMax) {
-						rankMax = prob;
-						rankID = i;
-					}
-				}
-				int antIdx = -1;
-
-				setParas(part);
-
-				ILP ilp = new ILP(numberOfAnt, probAnt, probNum, probGen,
-						probPer, probAni);
-				try {
-					antIdx = ilp.execute();
-				} catch (LpSolveException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				// }
-				antecedent = cands.get(antIdx);
-
-			}
+			// double maxVal = Double.MIN_VALUE;
+			// for(int i=0;i<tournament.length;i++) {
+			// if(tournament[i]>maxVal) {
+			// maxVal = tournament[i];
+			// antecedent = cands.get(i);
+			// }
+			// }
 			if (antecedent != null) {
 				if (antecedent.end != -1) {
 					zero.antecedent = antecedent;
@@ -525,7 +356,6 @@ public class ApplyTK {
 					&& chainMap.containsKey(zero.antecedent.toName())
 					&& chainMap.get(zero.toName()).intValue() == chainMap.get(
 							zero.antecedent.toName()).intValue()) {
-				good++;
 				// if(antecedent.mType==MentionType.tmporal) {
 				// System.out.println(antecedent.extent + "GOOD!");
 				// }
@@ -546,8 +376,6 @@ public class ApplyTK {
 				// {
 				// System.out.println(antecedent.extent + "BAD !");
 				// }
-				bad++;
-				System.out.println("Error??? " + good + "/" + bad);
 				if (zero.antecedent != null) {
 					System.out.println(zero.antecedent.msg);
 				}
@@ -559,7 +387,7 @@ public class ApplyTK {
 			String path = prefix + middle + suffix;
 			System.out.println(path);
 			// System.out.println("=== " + file);
-			EMUtil.addEmptyCategoryNode(zero);
+			// EMUtil.addEmptyCategoryNode(zero);
 
 			// if (antecedent != null) {
 			// CoNLLWord candWord = part.getWord(antecedent.start);
@@ -589,86 +417,6 @@ public class ApplyTK {
 				corefResult.add(zero);
 			}
 		}
-	}
-
-	private void setParas(CoNLLPart part) {
-		if (part.folder.equalsIgnoreCase("BN")) {
-			// 0.008 0.008 0.02 0.01 R:0.45897435897435895 P:
-			// 0.45897435897435895 F: 0.45897435897435895
-			ILP.a_num = 0.008;
-			ILP.b_gen = 0.008;
-			ILP.c_per = 0.02;
-			ILP.d_ani = 0.01;
-		} else if (part.folder.equalsIgnoreCase("TC")) {
-			// 0.02 0.008 0.02 0.04 R:0.5371024734982333 P: 0.5608856088560885
-			// F: 0.5487364620938627
-			ILP.a_num = 0.02;
-			ILP.b_gen = 0.008;
-			ILP.c_per = 0.02;
-			ILP.d_ani = 0.04;
-		} else if (part.folder.equalsIgnoreCase("NW")) {
-			// 0.02 0.02 0.008 0.06 R:0.38095238095238093 P: 0.38095238095238093
-			// F: 0.38095238095238093
-			// 0.02 0.02 0.08 0.008 R:0.39285714285714285 P: 0.39285714285714285
-			// F: 0.39285714285714285
-			ILP.a_num = 0.02;
-			ILP.b_gen = 0.02;
-			ILP.c_per = 0.008;
-			ILP.d_ani = 0.06;
-		} else if (part.folder.equalsIgnoreCase("BC")) {
-//			0.008 0.01 0.06 0.01
-			ILP.a_num = 0.008;
-			ILP.b_gen = 0.01;
-			ILP.c_per = 0.06;
-			ILP.d_ani = 0.01;
-		} else if (part.folder.equalsIgnoreCase("WB")) {
-			// 0.04 0.01 0.04 0.02 R:0.5 P: 0.5 F: 0.5
-			// 0.04 0.01 0.06 0.02 R:0.5035211267605634 P: 0.5035211267605634 F:
-			// 0.5035211267605634
-			ILP.a_num = 0.04;
-			ILP.b_gen = 0.01;
-			ILP.c_per = 0.06;
-			ILP.d_ani = 0.02;
-		} else if (part.folder.equalsIgnoreCase("MZ")) {
-			// 0.02 0.008 0.06 0.008
-			ILP.a_num = 0.02;
-			ILP.b_gen = 0.008;
-			ILP.c_per = 0.06;
-			ILP.d_ani = 0.008;
-		} else {
-			Common.bangErrorPOS("Wrong Folder!!!" + part.folder);
-		}
-	}
-
-	private static String transform(String[] tks, int all, int y,
-			double probs[]) {
-		StringBuilder ysb = new StringBuilder();
-		ysb.append(all + "\n");
-		ysb.append(y);
-		ysb.append(" @ ");
-		for (int i = 0; i < all; i++) {
-			ysb.append("@ ");
-			if (i == y) {
-				ysb.append("1 ");
-			} else {
-				ysb.append("0 ");
-			}
-			for (String tk : tks) {
-				if (tk.isEmpty()) {
-					continue;
-				}
-				int k = tk.indexOf(":");
-				String f = tk.substring(0, k);
-				String v = tk.substring(k + 1);
-				ysb.append(f + "_" + i).append(" ").append(v).append(" ");
-			}
-			for (int j = 0; j < probs.length; j++) {
-				ysb.append(j + "_" + i).append(" ").append(probs[j])
-						.append(" ");
-			}
-			ysb.append("# ");
-		}
-		return ysb.toString();
 	}
 
 	// private void findSVMLight(String file, CoNLLPart part,
@@ -882,107 +630,6 @@ public class ApplyTK {
 	// }
 	// }
 
-	private double[] runAttri(String attri, String str, int all, String v) {
-		switch (mode) {
-		case prepare: {
-			ArrayList<String> lines = null;
-			if (attri.equals("number")) {
-				lines = numberTest;
-			} else if (attri.equals("gender")) {
-				lines = genderTest;
-			} else if (attri.equals("person")) {
-				lines = personTest;
-			} else if (attri.equals("animacy")) {
-				lines = animacyTest;
-			}
-			String tks[] = str.split("\n");
-			if (lines.isEmpty()) {
-				lines.add(tks[0]);
-				lines.add(tks[1]);
-			} else {
-				lines.add(tks[1]);
-			}
-			return new double[0];
-		}
-		case classify: {
-			if (true) {
-				// double ret[] = new double[all];
-				// return ret;
-				return selectRestriction(attri, all, v);
-			}
-			String lineStr = "";
-			String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/" + attri
-					+ ".model";
-			Runtime run = Runtime.getRuntime();
-			try {
-				Process p = run.exec(cmd);
-
-				BufferedOutputStream out = new BufferedOutputStream(
-						p.getOutputStream());
-				out.write(str.getBytes());
-				out.flush();
-				out.close();
-
-				BufferedInputStream in = new BufferedInputStream(
-						p.getInputStream());
-				BufferedReader inBr = new BufferedReader(new InputStreamReader(
-						in));
-				lineStr = inBr.readLine();
-				if (p.waitFor() != 0) {
-					if (p.exitValue() == 1) {
-						System.err.println("ERROR YASMET");
-						Common.bangErrorPOS("");
-					}
-				}
-				System.out.println(lineStr);
-				inBr.close();
-				in.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-
-			String tks[] = lineStr.split("\\s+");
-			double ret[] = new double[tks.length - 1];
-			for (int i = 1; i < tks.length; i++) {
-				ret[i - 1] = Double.parseDouble(tks[i]);
-			}
-			return ret;
-		}
-		case load: {
-			// String lineStr = "";
-			// if (attri.equals("number")) {
-			// lineStr = numberRS.get(pronounID);
-			// } else if (attri.equals("gender")) {
-			// lineStr = genderRS.get(pronounID);
-			// } else if (attri.equals("person")) {
-			// lineStr = personRS.get(pronounID);
-			// } else if (attri.equals("animacy")) {
-			// lineStr = animacyRS.get(pronounID);
-			// } else {
-			// Common.bangErrorPOS("No Such Attri");
-			// }
-			// String tks[] = lineStr.split("\\s+");
-			// double ret[] = new double[tks.length - 1];
-			// for (int i = 1; i < tks.length; i++) {
-			// ret[i - 1] = Double.parseDouble(tks[i]);
-			// }
-			// return ret;
-			if (true) {
-				// double ret[] = new double[all];
-				// return ret;
-				return selectRestriction(attri, all, v);
-			}
-			return selectRestriction(attri, all, v);
-		}
-		default: {
-			Common.bangErrorPOS("WRONG MODE");
-		}
-		}
-		return null;
-	}
-
 	public static double[] selectRestriction(String attri, int all, String v) {
 		HashMap<Integer, Integer> map = null;
 		if (attri.equals("number")) {
@@ -1017,98 +664,9 @@ public class ApplyTK {
 		return ret;
 	}
 
+	static ArrayList<String> svmRanks = new ArrayList<String>();
+
 	static int maxAnts = 1200;
-
-	private double[] runYasmet(String str, int antCount) {
-		String tks[] = str.split("@");
-		int numberOfUnit = tks.length - 2;
-		if (numberOfUnit > maxAnts) {
-			Common.bangErrorPOS("!!!MAX: " + numberOfUnit);
-		}
-		for (int i = numberOfUnit; i < maxAnts; i++) {
-			str += "@ 0 NOCLASS 1 # ";
-		}
-
-		switch (mode) {
-		case prepare: {
-			if (anteTest.isEmpty()) {
-				anteTest.add(Integer.toString(maxAnts));
-			}
-			anteTest.add(str);
-			return new double[0];
-		}
-		case classify: {
-			String lineStr = "";
-			String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/WT";
-
-			Runtime run = Runtime.getRuntime();
-			double ret[] = new double[antCount];
-			try {
-				Process p = run.exec(cmd);
-
-				BufferedOutputStream out = new BufferedOutputStream(
-						p.getOutputStream());
-				out.write(Integer.toString(maxAnts).getBytes());
-				out.write(("\n" + str).getBytes());
-				out.flush();
-				out.close();
-
-				// BufferedInputStream errIn = new
-				// BufferedInputStream(p.getErrorStream());
-				// BufferedReader errBr = new BufferedReader(new
-				// InputStreamReader(errIn));
-
-				BufferedInputStream in = new BufferedInputStream(
-						p.getInputStream());
-				BufferedReader inBr = new BufferedReader(new InputStreamReader(
-						in));
-				lineStr = inBr.readLine();
-				if (p.waitFor() != 0) {
-					if (p.exitValue() == 1) {
-						System.err.println("ERROR YASMET");
-						Common.bangErrorPOS("");
-					}
-				}
-				inBr.close();
-				in.close();
-
-				tks = lineStr.split("\\s+");
-				double norm = 0;
-				for (int i = 0; i < antCount; i++) {
-					double conf = Double.parseDouble(tks[i + 1]);
-					norm += conf;
-					ret[i] = conf;
-				}
-				for (int i = 0; i < antCount; i++) {
-					ret[i] = ret[i] / norm;
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-			return ret;
-		}
-		case (load): {
-			double ret[] = new double[antCount];
-			String lineStr = anteRS.get(pronounID);
-			tks = lineStr.split("\\s+");
-			double norm = 0;
-			for (int i = 0; i < antCount; i++) {
-				double conf = Double.parseDouble(tks[i + 1]);
-				norm += conf;
-				ret[i] = conf;
-			}
-			for (int i = 0; i < antCount; i++) {
-				ret[i] = ret[i] / norm;
-			}
-			return ret;
-		}
-		default:
-			Common.bangErrorPOS("");
-		}
-		return null;
-	}
 
 	// dd
 	private String runSVMRank() {
@@ -1288,6 +846,9 @@ public class ApplyTK {
 		double hit = 0;
 
 		for (int i = 0; i < zeroses.size(); i++) {
+//			if(i%5!=4) {
+//				continue;
+//			}
 			ArrayList<Mention> zeros = zeroses.get(i);
 			ArrayList<Entity> entities = entitieses.get(i);
 			ArrayList<Mention> goldInChainZeroses = EMUtil
@@ -1310,11 +871,7 @@ public class ApplyTK {
 		double p = hit / system;
 		double f = 2 * r * p / (r + p);
 
-		String para = ILP.a_num + " " + ILP.b_gen + " " + ILP.c_per + " "
-				+ ILP.d_ani;
 		String result = "R:" + r + " P: " + p + " F: " + f;
-		System.err.println(para + "\t" + result);
-		System.out.println(para);
 		System.out.println("============");
 		System.out.println("Hit: " + hit);
 		System.out.println("Gold: " + gold);
@@ -1326,202 +883,59 @@ public class ApplyTK {
 
 		zeroses.clear();
 		entitieses.clear();
-		bads.clear();
-		goods.clear();
 		pronounID = 0;
 	}
 
+	static ArrayList<String> tkLines = new ArrayList<String>();
+	static int tkID = 0;
+
 	static int maximam = 0;
 
-	static String[] tuneBN = { "0.008 0.008 0.04 0.008",
-			"0.008 0.008 0.04 0.01", "0.008 0.008 0.06 0.01",
-			"0.008 0.008 0.08 0.008", "0.008 0.008 0.08 0.01",
-			"0.008 0.01 0.04 0.008", "0.008 0.01 0.04 0.01",
-			"0.008 0.01 0.08 0.008", "0.008 0.01 0.08 0.01",
-			"0.008 0.008 0.008 0.008", "0.008 0.008 0.008 0.01",
-			"0.008 0.008 0.01 0.008", "0.008 0.008 0.01 0.01",
-			"0.008 0.008 0.02 0.008", "0.008 0.008 0.02 0.01",
-			"0.008 0.008 0.06 0.008", "0.008 0.01 0.008 0.008",
-			"0.008 0.01 0.008 0.01", "0.008 0.01 0.01 0.008",
-			"0.008 0.01 0.01 0.01", "0.008 0.01 0.02 0.008",
-			"0.008 0.01 0.02 0.01", "0.008 0.01 0.06 0.008",
-			"0.008 0.01 0.06 0.01", "0.01 0.008 0.008 0.008",
-			"0.01 0.008 0.008 0.01", "0.01 0.008 0.01 0.008",
-			"0.01 0.008 0.01 0.01", "0.01 0.008 0.02 0.008",
-			"0.01 0.008 0.02 0.01", "0.01 0.008 0.04 0.008",
-			"0.01 0.008 0.04 0.01", "0.01 0.008 0.06 0.008",
-			"0.01 0.008 0.06 0.01", "0.01 0.008 0.08 0.008",
-			"0.01 0.008 0.08 0.01", "0.01 0.01 0.008 0.008",
-			"0.01 0.01 0.008 0.01", "0.01 0.01 0.01 0.008",
-			"0.01 0.01 0.02 0.008", "0.01 0.01 0.02 0.01",
-			"0.01 0.01 0.04 0.008", "0.01 0.01 0.04 0.01",
-			"0.01 0.01 0.06 0.008", "0.01 0.01 0.06 0.01",
-			"0.01 0.01 0.08 0.008", "0.01 0.01 0.08 0.01" };
-
-	static String[] tuneMZ = { "0.008 0.02 0.04 0.008", "0.008 0.02 0.04 0.01",
-			"0.02 0.008 0.01 0.008", "0.02 0.008 0.02 0.008",
-			"0.02 0.008 0.04 0.008", "0.02 0.008 0.06 0.008",
-			"0.02 0.008 0.06 0.01", "0.02 0.008 0.08 0.008",
-			"0.02 0.01 0.01 0.008", "0.02 0.01 0.02 0.008",
-			"0.02 0.01 0.04 0.008", "0.02 0.01 0.06 0.008",
-			"0.02 0.01 0.06 0.01", "0.02 0.01 0.08 0.008",
-			"0.02 0.02 0.02 0.008", "0.02 0.02 0.02 0.01",
-			"0.02 0.02 0.04 0.008", "0.02 0.02 0.04 0.01",
-			"0.008 0.02 0.02 0.01", "0.008 0.02 0.06 0.008",
-			"0.008 0.02 0.06 0.01", "0.008 0.02 0.08 0.008",
-			"0.008 0.02 0.08 0.01", "0.01 0.01 0.02 0.01",
-			"0.01 0.01 0.04 0.01", "0.01 0.01 0.06 0.01",
-			"0.01 0.02 0.02 0.008", "0.01 0.02 0.02 0.01",
-			"0.01 0.02 0.04 0.008", "0.01 0.02 0.04 0.01",
-			"0.02 0.008 0.008 0.008", "0.02 0.008 0.008 0.01",
-			"0.02 0.008 0.01 0.01", "0.02 0.008 0.02 0.01",
-			"0.02 0.008 0.04 0.01", "0.02 0.008 0.08 0.01",
-			"0.02 0.01 0.008 0.008", "0.02 0.01 0.008 0.01",
-			"0.02 0.01 0.01 0.01", "0.02 0.01 0.02 0.01",
-			"0.02 0.01 0.04 0.01", "0.02 0.01 0.08 0.01",
-			"0.02 0.02 0.008 0.01", "0.02 0.02 0.01 0.008",
-			"0.02 0.02 0.06 0.008", "0.02 0.02 0.06 0.01",
-			"0.02 0.02 0.08 0.008", "0.02 0.02 0.08 0.01",
-			"0.04 0.008 0.06 0.008", "0.04 0.01 0.06 0.008" };
-
-	static String[] tuneTC = { "0.008 0.008 0.02 0.04",
-			"0.008 0.008 0.02 0.06", "0.008 0.008 0.04 0.04",
-			"0.008 0.008 0.06 0.02", "0.008 0.01 0.02 0.04",
-			"0.008 0.01 0.02 0.06", "0.008 0.01 0.04 0.04",
-			"0.008 0.01 0.06 0.02", "0.008 0.02 0.04 0.008",
-			"0.008 0.02 0.04 0.01", "0.008 0.02 0.04 0.02",
-			"0.008 0.02 0.04 0.04", "0.008 0.02 0.04 0.06",
-			"0.008 0.02 0.06 0.02", "0.008 0.04 0.04 0.04",
-			"0.008 0.04 0.06 0.02", "0.01 0.008 0.02 0.04",
-			"0.01 0.008 0.02 0.06", "0.01 0.008 0.04 0.04",
-			"0.01 0.008 0.06 0.02", "0.01 0.01 0.02 0.04",
-			"0.01 0.01 0.02 0.06", "0.01 0.01 0.04 0.04",
-			"0.01 0.01 0.06 0.02", "0.01 0.02 0.04 0.008",
-			"0.01 0.02 0.04 0.01", "0.01 0.02 0.04 0.02",
-			"0.01 0.02 0.04 0.04", "0.01 0.02 0.04 0.06",
-			"0.01 0.02 0.06 0.02", "0.01 0.04 0.04 0.04",
-			"0.01 0.04 0.06 0.02", "0.02 0.008 0.02 0.04",
-			"0.02 0.008 0.02 0.06", "0.02 0.008 0.04 0.04",
-			"0.02 0.01 0.02 0.04", "0.02 0.01 0.02 0.06",
-			"0.02 0.01 0.04 0.04", "0.02 0.02 0.04 0.008",
-			"0.02 0.02 0.04 0.01", "0.02 0.02 0.04 0.04",
-			"0.02 0.02 0.04 0.02", "0.02 0.02 0.04 0.06",
-			"0.02 0.02 0.06 0.02", "0.02 0.04 0.04 0.04",
-			"0.02 0.04 0.06 0.02", "0.02 0.06 0.008 0.06",
-			"0.02 0.06 0.01 0.06", "0.02 0.06 0.04 0.04",
-			"0.02 0.08 0.06 0.02", "0.04 0.008 0.02 0.04",
-			"0.04 0.008 0.02 0.06", "0.04 0.01 0.02 0.04",
-			"0.04 0.01 0.02 0.06", "0.04 0.02 0.04 0.008",
-			"0.04 0.02 0.04 0.01", "0.04 0.02 0.04 0.02",
-			"0.04 0.02 0.04 0.04", "0.04 0.04 0.008 0.08",
-			"0.04 0.04 0.01 0.08", "0.04 0.04 0.06 0.02",
-			"0.04 0.06 0.008 0.06", "0.04 0.06 0.01 0.06",
-			"0.04 0.06 0.02 0.06", "0.04 0.08 0.008 0.06",
-			"0.04 0.08 0.02 0.04", "0.06 0.06 0.008 0.06",
-			"0.06 0.06 0.01 0.06" };
-
 	public static void main(String args[]) {
-		if (args.length < 1) {
+		if (args.length < 2) {
 			System.err.println("java ~ folder [mode]");
 			System.exit(1);
 		}
-		if(args.length==3) {
-			sigID = Integer.parseInt(args[2]);
-		}
 		if (args[1].equals("prepare")) {
 			mode = prepare;
-			run(args[0]);
-			return;
 		} else if (args[1].equals("load")) {
 			mode = load;
-		} else if (args[1].equals("classify")) {
-			mode = classify;
-			run(args[0]);
-			return;
-		} else {
-			Common.bangErrorPOS("");
+			tkLines = Common
+					.getLines("/users/yzcchen/tool/svm-light-TK-1.2/svm-light-TK-1.2.1/"
+							+ args[0] + ".result");
+			// tkLines = Common.getLines("/users/yzcchen/tool/svmrank/" +
+			// args[0] + ".result");
 		}
+		run(args[0]);
 
-		if (mode == load) {
-			personRS = Common.getLines("/users/yzcchen/tool/YASMET/person.rs"
-					+ args[0]);
-			genderRS = Common.getLines("/users/yzcchen/tool/YASMET/gender.rs"
-					+ args[0]);
-			numberRS = Common.getLines("/users/yzcchen/tool/YASMET/number.rs"
-					+ args[0]);
-			animacyRS = Common.getLines("/users/yzcchen/tool/YASMET/animacy.rs"
-					+ args[0]);
-			anteRS = Common.getLines("/users/yzcchen/tool/YASMET/ante.rs"
-					+ args[0]);
+		if (mode == prepare) {
+			Common.outputLines(tkLines, "TKTest." + args[0]);
+			Common.outputLines(svmRanks, "FlatTest." + args[0]);
 		}
-		double para[] = { 0, 0.008, 0.01, 0.02, 0.04, 0.06, 0.08 };
-
-		String paras[] = { "0.008 0.01 0.06 0.01", "0.0075 0.01 0.06 0.01",
-				"0.0085 0.01 0.06 0.01", "0.008 0.005 0.06 0.01",
-				"0.008 0.015 0.06 0.01", "0.008 0.01 0.065 0.01",
-				"0.008 0.01 0.055 0.01", "0.008 0.01 0.06 0.015",
-				"0.008 0.01 0.06 0.0095", "0.008 0.009 0.055 0.01",
-				"0.008 0.01 0.06 0.01", "0.008 0.009 0.06 0.01",
-				"0.008 0.01 0.06 0.009", "0.008 0.01 0.06 0.012",
-				"0.009 0.01 0.06 0.01", "0.009 0.012 0.06 0.01",
-				"0.008 0.015 0.06 0.012" };
-
-		// for (int a = 0; a < para.length; a++) {
-		// for (int b = 0; b < para.length; b++) {
-		// for (int c = 0; c < para.length; c++) {
-		// for (int d = 0; d < para.length; d++) {
-		// ILP.a_num = para[a];
-		// ILP.b_gen = para[b];
-		// ILP.c_per = para[c];
-		// ILP.d_ani = para[d];
-		// // while(true) {
-		
-		if(args[0].equalsIgnoreCase("bn")) {
-			paras = tuneBN;
-		} else if(args[0].equalsIgnoreCase("tc")) {
-			paras = tuneTC;
-		} else if(args[0].equalsIgnoreCase("mz")) {
-			paras = tuneMZ;
-		}
-		
-		for (int i=0;i<paras.length;i++) {
-			String par = paras[i];
-			String tks[] = par.trim().split("\\s+");
-			ILP.a_num = Double.parseDouble(tks[0]);
-			ILP.b_gen = Double.parseDouble(tks[1]);
-			ILP.c_per = Double.parseDouble(tks[2]);
-			ILP.d_ani = Double.parseDouble(tks[3]);
-			System.err.println(i + "/" + paras.length);
-			run(args[0]);
-			// // if(ILP.c_per>ILP.d_ani && ILP.c_per>ILP.b_gen)
-			//
-			// if (para[a] <= 0.04 && para[a] > 0 && para[b] <= 0.01
-			// && para[c] >= 0.04 && para[d] >= 0.02) {
-//			if (ILP.a_num + ILP.b_gen + ILP.c_per + ILP.d_ani == 0
-//					|| ILP.a_num * ILP.b_gen * ILP.c_per * ILP.d_ani != 0)
-				
-			// }
-			// // Common.input("");
-			// // System.exit(1);
-			// // run("nw");
-			// // run("mz");
-			// // run("wb");
-			// // run("bn");
-			// // run("bc");
-			// // run("tc");
-			// // }
-			// // System.exit(1);
-		}
+		// if (args[1].equals("prepare")) {
+		// mode = prepare;
+		// run(args[0]);
+		// return;
+		// } else if (args[1].equals("load")) {
+		// mode = load;
+		// } else if (args[1].equals("classify")) {
+		// mode = classify;
+		// run(args[0]);
+		// return;
+		// } else {
+		// Common.bangErrorPOS("");
 		// }
+		//
+		// for (int i=0;i<paras.length;i++) {
+		// String par = paras[i];
+		// String tks[] = par.trim().split("\\s+");
+		// ILP.a_num = Double.parseDouble(tks[0]);
+		// ILP.b_gen = Double.parseDouble(tks[1]);
+		// ILP.c_per = Double.parseDouble(tks[2]);
+		// ILP.d_ani = Double.parseDouble(tks[3]);
+		// System.err.println(i + "/" + paras.length);
+		// run(args[0]);
 		// }
-		// }
-
-		// run("nw");
-		// run("mz");
-		// run("wb");
-		// run("bn");
-		// run("bc");
-		// run("tc");
 	}
 
 	public static void run(String folder) {
@@ -1532,23 +946,11 @@ public class ApplyTK {
 		// System.out.println(EMUtil.missed);
 		System.out.println(EMUtil.missed.size());
 
-		Common.outputLines(goods, "goods");
-		Common.outputLines(bads, "bas");
-
 		Common.outputHashMap(EMUtil.NEMap, "NEMAP");
 
 		Common.outputHashSet(Context.ss, "miniS");
 		Common.outputHashSet(Context.vs, "miniV");
 
-		if (mode == prepare) {
-			Common.outputLines(numberTest, "number.test" + folder);
-			Common.outputLines(genderTest, "gender.test" + folder);
-			Common.outputLines(personTest, "person.test" + folder);
-			Common.outputLines(animacyTest, "animacy.test" + folder);
-			Common.outputLines(anteTest, "ante.test" + folder);
-			System.out.println("MAX: " + maximam);
-			System.exit(1);
-		}
 		System.out.println("MAX: " + maximam);
 		// Common.input("!!");
 	}
