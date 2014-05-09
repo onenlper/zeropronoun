@@ -88,8 +88,8 @@ public class MaxEntLearn {
 			if (m.gram == EMUtil.Grammatic.subject && m.start == m.end
 					&& part.getWord(m.end).posTag.equals("PN")) {
 				String ext = m.extent;
-				if(map.containsKey(ext)) {
-					map.put(ext, map.get(ext)+1);
+				if (map.containsKey(ext)) {
+					map.put(ext, map.get(ext) + 1);
 				} else {
 					map.put(ext, 1);
 				}
@@ -168,22 +168,22 @@ public class MaxEntLearn {
 						rank = -1;
 					}
 					// coref = coref && m.extent.equals(goldPro);
-					
-//					//
-//					if (sameSpeaker) {
-//						pStr = entry.person.name() + "=" + EMUtil.getPerson(pronoun).name();
-//					} else {
-//						pStr = entry.person.name() + "!="
-//								+ EMUtil.getPerson(pronoun).name();
-//					}
-//					String nStr = entry.number.name() + "="
-//							+ EMUtil.getNumber(pronoun).name();
-//					String gStr = entry.gender.name() + "="
-//							+ EMUtil.getGender(pronoun).name();
-//					String aStr = entry.animacy.name() + "="
-//							+ EMUtil.getAnimacy(pronoun).name();
-					
-					
+
+					// //
+					// if (sameSpeaker) {
+					// pStr = entry.person.name() + "=" +
+					// EMUtil.getPerson(pronoun).name();
+					// } else {
+					// pStr = entry.person.name() + "!="
+					// + EMUtil.getPerson(pronoun).name();
+					// }
+					// String nStr = entry.number.name() + "="
+					// + EMUtil.getNumber(pronoun).name();
+					// String gStr = entry.gender.name() + "="
+					// + EMUtil.getGender(pronoun).name();
+					// String aStr = entry.animacy.name() + "="
+					// + EMUtil.getAnimacy(pronoun).name();
+
 					ysb.append(getYamset(coref, ant, m, context, sameSpeaker,
 							entry, superFea, corefCount, part));
 					svmRanks.add(getSVMRank(rank, ant, m, context, sameSpeaker,
@@ -226,29 +226,32 @@ public class MaxEntLearn {
 
 			String feaStr = guessFea.getSVMFormatString();
 			String v = EMUtil.getFirstVerb(pronoun.V);
-			
 
 			// TODO Yasmet format
 			// NUMBER, GENDER, PERSON, ANIMACY
 			String tks[] = feaStr.split("\\s+");
 			int all = EMUtil.Number.values().length;
 			int y = pronoun.number.ordinal();
-			double[] numberProbs = ApplyMaxEnt.selectRestriction("number", all, v);
+			double[] numberProbs = ApplyMaxEnt.selectRestriction("number", all,
+					v);
 			String nYSB = transform(tks, all, y, numberProbs);
 
 			all = EMUtil.Gender.values().length - 1;
 			y = pronoun.gender.ordinal();
-			double[] genderProbs = ApplyMaxEnt.selectRestriction("gender", all, v);
+			double[] genderProbs = ApplyMaxEnt.selectRestriction("gender", all,
+					v);
 			String gYSB = transform(tks, all, y, genderProbs);
 
 			all = EMUtil.Person.values().length;
 			y = pronoun.person.ordinal();
-			double[] personProbs = ApplyMaxEnt.selectRestriction("person", all, v);
+			double[] personProbs = ApplyMaxEnt.selectRestriction("person", all,
+					v);
 			String pYSB = transform(tks, all, y, personProbs);
 
 			all = EMUtil.Animacy.values().length - 1;
 			y = pronoun.animacy.ordinal();
-			double[] animacyProbs = ApplyMaxEnt.selectRestriction("animacy", all, v);
+			double[] animacyProbs = ApplyMaxEnt.selectRestriction("animacy",
+					all, v);
 			String aYSB = transform(tks, all, y, animacyProbs);
 
 			numberWriter.write(nYSB + "\n");
@@ -263,7 +266,8 @@ public class MaxEntLearn {
 		}
 	}
 
-	private static String transform(String[] tks, int all, int y, double probs[]) {
+	private static String transform(String[] tks, int all, int y,
+			double probs[]) {
 		StringBuilder ysb = new StringBuilder();
 		ysb.append(y);
 		ysb.append(" @ ");
@@ -283,9 +287,10 @@ public class MaxEntLearn {
 				String v = tk.substring(k + 1);
 				ysb.append(f + "_" + i).append(" ").append(v).append(" ");
 			}
-			
-			for(int j=0;j<probs.length;j++) {
-				ysb.append(j + "_" + i).append(" ").append(probs[j]).append(" ");
+
+			for (int j = 0; j < probs.length; j++) {
+				ysb.append(j + "_" + i).append(" ").append(probs[j])
+						.append(" ");
 			}
 			ysb.append("# ");
 		}
@@ -330,6 +335,45 @@ public class MaxEntLearn {
 		// return ysb.toString();
 	}
 
+	public static String getYamset2(boolean coref, Mention ant, Mention pro,
+			String proPerson, String proNumber, String proGender,
+			String proAnimacy, Context context, boolean sameSpeaker,
+			Entry entry, SuperviseFea superFea, double corefCount,
+			CoNLLPart part) {
+		String pStr = "";
+		if (sameSpeaker) {
+			pStr = entry.person.name() + "=" + proPerson;
+		} else {
+			pStr = entry.person.name() + "!=" + proPerson;
+		}
+		String nStr = entry.number.name() + "=" + proNumber;
+		String gStr = entry.gender.name() + "=" + proGender;
+		String aStr = entry.animacy.name() + "=" + proAnimacy;
+		
+
+		superFea.configure(pStr, nStr, gStr, aStr, context, ant, pro, part);
+
+		
+		String fea = superFea.getSVMFormatString();
+		String tks[] = fea.split("\\s+");
+		StringBuilder ysb = new StringBuilder();
+		ysb.append("@ ");
+		if (coref) {
+			ysb.append(1.0 / corefCount + " ");
+		} else {
+			ysb.append("0 ");
+		}
+		for (String tk : tks) {
+			int k = tk.indexOf(":");
+			String f = tk.substring(0, k);
+			String v = tk.substring(k + 1);
+			ysb.append(f).append(" ").append(v).append(" ");
+			// System.out.println(part.folder);
+		}
+		ysb.append("# ");
+		return ysb.toString();
+	}
+
 	public static String getYamset(boolean coref, Mention ant, Mention pro,
 			Context context, boolean sameSpeaker, Entry entry,
 			SuperviseFea superFea, double corefCount, CoNLLPart part) {
@@ -364,7 +408,7 @@ public class MaxEntLearn {
 			String f = tk.substring(0, k);
 			String v = tk.substring(k + 1);
 			ysb.append(f).append(" ").append(v).append(" ");
-//			System.out.println(part.folder);
+			// System.out.println(part.folder);
 		}
 		ysb.append("# ");
 		return ysb.toString();
@@ -418,8 +462,8 @@ public class MaxEntLearn {
 		numberWriter.close();
 		personWriter.close();
 		animacyWriter.close();
-		
-		for(String k : map.keySet()) {
+
+		for (String k : map.keySet()) {
 			System.out.println(k + ":" + map.get(k));
 		}
 	}
