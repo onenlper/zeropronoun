@@ -25,6 +25,7 @@ import model.CoNLL.CoNLLWord;
 import model.CoNLL.OntoCorefXMLReader;
 import model.syntaxTree.MyTreeNode;
 import util.Common;
+import util.YYFeature;
 import edu.stanford.nlp.classify.LinearClassifier;
 import edu.stanford.nlp.ling.Datum;
 import edu.stanford.nlp.stats.Counter;
@@ -129,7 +130,7 @@ public class ApplyMaxEntMoreTrainingData {
 
 			// modelInput2.close();
 			// loadGuessProb();
-			superFea = new SuperviseFea(false, "supervise");
+			superFea = new SuperviseFea(false, "zeroFea");
 			EMUtil.loadPredictNE(folder, "dev");
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -254,7 +255,7 @@ public class ApplyMaxEntMoreTrainingData {
 				// && !file.contains("/bn/")
 				// && !file.contains("/mz/")&& !file.contains("/wb/")
 				) {
-					candidates.addAll(anaphorZeros);
+					// candidates.addAll(anaphorZeros);
 				}
 				Collections.sort(candidates);
 
@@ -382,6 +383,8 @@ public class ApplyMaxEntMoreTrainingData {
 
 			ArrayList<String> units = new ArrayList<String>();
 
+			ArrayList<String> svmMP = new ArrayList<String>();
+
 			for (int i = 0; i < cands.size(); i++) {
 				Mention cand = cands.get(i);
 				if (cand.extent.isEmpty()) {
@@ -398,6 +401,8 @@ public class ApplyMaxEntMoreTrainingData {
 
 				superFea.configure("", "", "", "", context, cand, zero, part);
 				String fea = superFea.getSVMFormatString();
+
+				svmMP.add("-1 " + fea);
 
 				// boolean sameSpeaker = proSpeaker.equals(antSpeaker);
 
@@ -420,7 +425,7 @@ public class ApplyMaxEntMoreTrainingData {
 					for (Mention a : wholeCluster) {
 						cluster.add(a);
 						if (a.toName().equals(cand.toName())) {
-							break;
+							// break;
 						}
 					}
 					HashMap<Integer, Integer> feaMap = new HashMap<Integer, Integer>();
@@ -441,11 +446,16 @@ public class ApplyMaxEntMoreTrainingData {
 							int comma = tk.indexOf(":");
 							int feaIdx = Integer.parseInt(tk
 									.substring(0, comma));
-							if (feaMap.containsKey(feaIdx)) {
-								feaMap.put(feaIdx, feaMap.get(feaIdx)
-										.intValue() + 1);
-							} else {
-								feaMap.put(feaIdx, 1);
+
+							if (feaIdx > YYFeature.strFeaFrom
+									|| cant.equals(cand)) {
+
+								if (feaMap.containsKey(feaIdx)) {
+									feaMap.put(feaIdx, feaMap.get(feaIdx)
+											.intValue() + 1);
+								} else {
+									feaMap.put(feaIdx, 1);
+								}
 							}
 						}
 					}
@@ -455,14 +465,15 @@ public class ApplyMaxEntMoreTrainingData {
 					StringBuilder crunitSb = new StringBuilder();
 					for (int feaIdx : feaIdxes) {
 						int amount = feaMap.get(feaIdx);
-						int newFea = feaIdx * 3;
-						if (amount == cluster.size()) {
-							newFea += 0;
-						} else if (amount >= cluster.size() / 2) {
-							newFea += 1;
-						} else if (amount > 0) {
-							newFea += 2;
-						}
+						int newFea = feaIdx;
+						// * 3;
+						// if (amount == cluster.size()) {
+						// newFea += 0;
+						// } else if (amount >= cluster.size() / 2) {
+						// newFea += 1;
+						// } else if (amount > 0) {
+						// newFea += 2;
+						// }
 						crunitSb.append(newFea).append(":1 ");
 					}
 					svmRanksCR.add(MaxEntLearnMoreTrainData.getSVMRank(-1,
@@ -479,6 +490,8 @@ public class ApplyMaxEntMoreTrainingData {
 			}
 			Common.outputLines(svmRanks, "svmRank.test");
 			Common.outputLines(svmRanksCR, "svmRankCR.test");
+
+			Common.outputLines(svmMP, "svmMP.test");
 			// Common.pause("");
 			// break;
 			// }
@@ -487,29 +500,32 @@ public class ApplyMaxEntMoreTrainingData {
 			}
 
 			double probAnt[] = new double[cands.size()];
+			for (int i = 0; i < probAnt.length; i++) {
+				probAnt[i] = -1000000000;
+			}
 
 			double[] probAntMR = getMRProb(mrYSB, antCount);
 			// antecedent-based weight
 			for (int i = 0; i < probAntMR.length; i++) {
-				probAnt[idMap.get(i)] += probAntMR[i];
+				probAnt[idMap.get(i)] = probAntMR[i];
 			}
-			
-			double[] probAntCR = getCRProb(crYSB, clusterIdMap.size());
-			for (int i = 0; i < probAntCR.length; i++) {
-				probAnt[clusterIdMap.get(i)] += probAntCR[i];
-			}
-//
-//			// probAnt = getSVMRankProb(svmRanks);
-//			double probAntSVMMR[] = runSVMRank("");
-//			for(int i=0;i<probAntSVMMR.length;i++) {
-//				probAnt[idMap.get(i)] += probAntSVMMR[i];
-//			}
-			
-//			double probAntSVMCR[] = runSVMRank("CR");
-//			for(int i=0;i<probAntSVMCR.length;i++) {
-//				probAnt[clusterIdMap.get(i)] += probAntSVMCR[i];
-//			}
-			
+			//
+			// double[] probAntCR = getCRProb(crYSB, clusterIdMap.size());
+			// for (int i = 0; i < probAntCR.length; i++) {
+			// probAnt[clusterIdMap.get(i)] += probAntCR[i];
+			// }
+			//
+			// double probAntSVMMR[] = runSVMRank("");
+			// for(int i=0;i<probAntSVMMR.length;i++) {
+			// probAnt[idMap.get(i)] = probAntSVMMR[i];
+			// }
+			// TODO
+			// double probAntSVMCR[] = runSVMRank("CR");
+			// for(int i=0;i<probAntSVMCR.length;i++) {
+			// probAnt[clusterIdMap.get(i)] = probAntSVMCR[i];
+			// }
+			// probAnt = probAntSVMCR;
+
 			pronounID++;
 			// System.err.println(cands.size());
 			if (antCount != 0 && (mode == classify || mode == load)) {
@@ -523,7 +539,7 @@ public class ApplyMaxEntMoreTrainingData {
 						rankID = i;
 					}
 				}
-//				 antecedent = cands.get(clusterIdMap.get(rankID));
+				// antecedent = cands.get(clusterIdMap.get(rankID));
 				antecedent = cands.get(rankID);
 			}
 			if (antecedent != null) {
@@ -1131,7 +1147,7 @@ public class ApplyMaxEntMoreTrainingData {
 		return ret;
 	}
 
-	static int maxAnts = 1200;
+	static int maxAnts = 200;
 
 	private double[] runYasmet(String str, int antCount, String modelName) {
 		String tks[] = str.split("@");
@@ -1216,6 +1232,10 @@ public class ApplyMaxEntMoreTrainingData {
 			}
 			for (int i = 0; i < antCount; i++) {
 				ret[i] = ret[i] / norm;
+//				System.out.println(ret[i]);
+			}
+			if(true) {
+//				Common.pause("!!!");
 			}
 			return ret;
 		}
@@ -1228,7 +1248,7 @@ public class ApplyMaxEntMoreTrainingData {
 	// dd
 	private static double[] runSVMRank(String model) {
 		String lineStr = "";
-		String cmd = "./svmRank" + model +".sh";
+		String cmd = "./svmRank" + model + ".sh";
 
 		Runtime run = Runtime.getRuntime();
 		try {
@@ -1250,26 +1270,27 @@ public class ApplyMaxEntMoreTrainingData {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		ArrayList<String> lines = Common.getLines("svmRank" + model +".result");
+		ArrayList<String> lines = Common
+				.getLines("svmRank" + model + ".result");
 		double[] ret = new double[lines.size()];
-		for(int i=0;i<lines.size();i++) {
+		for (int i = 0; i < lines.size(); i++) {
 			ret[i] = Double.parseDouble(lines.get(i));
 		}
 		return ret;
-//		StringBuilder sb = new StringBuilder();
-//		double maxP = Double.NEGATIVE_INFINITY;
-//		int maxIdx = -1;
-//		for (int i = 0; i < lines.size(); i++) {
-//			String line = lines.get(i);
-//			double p = Double.parseDouble(line);
-//			if (p > maxP) {
-//				maxP = p;
-//				maxIdx = i;
-//			}
-//			sb.append(p).append(" ");
-//		}
-//		sb.insert(0, maxIdx + " ");
-//		return sb.toString().trim();
+		// StringBuilder sb = new StringBuilder();
+		// double maxP = Double.NEGATIVE_INFINITY;
+		// int maxIdx = -1;
+		// for (int i = 0; i < lines.size(); i++) {
+		// String line = lines.get(i);
+		// double p = Double.parseDouble(line);
+		// if (p > maxP) {
+		// maxP = p;
+		// maxIdx = i;
+		// }
+		// sb.append(p).append(" ");
+		// }
+		// sb.insert(0, maxIdx + " ");
+		// return sb.toString().trim();
 	}
 
 	private double runSVMLight() {
@@ -1450,7 +1471,7 @@ public class ApplyMaxEntMoreTrainingData {
 		goods.clear();
 		pronounID = 0;
 
-		Common.pause("g");
+		// Common.pause("g");
 	}
 
 	static int maximam = 0;
@@ -1561,107 +1582,30 @@ public class ApplyMaxEntMoreTrainingData {
 		} else {
 			Common.bangErrorPOS("[overt|zero|both]");
 		}
-
 		if (args[1].equals("prepare")) {
 			mode = prepare;
 			run(args[0]);
 			return;
 		} else if (args[1].equals("load")) {
+			anteRS = Common.getLines("anteAZP.rs"
+					+ args[0]);
 			mode = load;
+			run(args[0]);
+			return;
 		} else if (args[1].equals("classify")) {
 			mode = classify;
 			run(args[0]);
-			run("nw");
-			run("mz");
-			run("wb");
-			run("bn");
-			run("bc");
-			run("tc");
+			// run("nw");
+			// run("mz");
+			// run("wb");
+			// run("bn");
+			// run("bc");
+			// run("tc");
 			return;
 		} else {
 			Common.bangErrorPOS("");
 		}
 
-		if (mode == load) {
-			personRS = Common.getLines("/users/yzcchen/tool/YASMET/person.rs"
-					+ args[0]);
-			genderRS = Common.getLines("/users/yzcchen/tool/YASMET/gender.rs"
-					+ args[0]);
-			numberRS = Common.getLines("/users/yzcchen/tool/YASMET/number.rs"
-					+ args[0]);
-			animacyRS = Common.getLines("/users/yzcchen/tool/YASMET/animacy.rs"
-					+ args[0]);
-			anteRS = Common.getLines("/users/yzcchen/tool/YASMET/ante.rs"
-					+ args[0]);
-		}
-		double para[] = { 0, 0.008, 0.01, 0.02, 0.04, 0.06, 0.08 };
-
-		String paras[] = { "0.008 0.01 0.06 0.01", "0.0075 0.01 0.06 0.01",
-				"0.0085 0.01 0.06 0.01", "0.008 0.005 0.06 0.01",
-				"0.008 0.015 0.06 0.01", "0.008 0.01 0.065 0.01",
-				"0.008 0.01 0.055 0.01", "0.008 0.01 0.06 0.015",
-				"0.008 0.01 0.06 0.0095", "0.008 0.009 0.055 0.01",
-				"0.008 0.01 0.06 0.01", "0.008 0.009 0.06 0.01",
-				"0.008 0.01 0.06 0.009", "0.008 0.01 0.06 0.012",
-				"0.009 0.01 0.06 0.01", "0.009 0.012 0.06 0.01",
-				"0.008 0.015 0.06 0.012" };
-
-		// for (int a = 0; a < para.length; a++) {
-		// for (int b = 0; b < para.length; b++) {
-		// for (int c = 0; c < para.length; c++) {
-		// for (int d = 0; d < para.length; d++) {
-		// ILP.a_num = para[a];
-		// ILP.b_gen = para[b];
-		// ILP.c_per = para[c];
-		// ILP.d_ani = para[d];
-		// // while(true) {
-
-		if (args[0].equalsIgnoreCase("bn")) {
-			paras = tuneBN;
-		} else if (args[0].equalsIgnoreCase("tc")) {
-			paras = tuneTC;
-		} else if (args[0].equalsIgnoreCase("mz")) {
-			paras = tuneMZ;
-		}
-
-		for (int i = 0; i < paras.length; i++) {
-			String par = paras[i];
-			String tks[] = par.trim().split("\\s+");
-			ILP.a_num = Double.parseDouble(tks[0]);
-			ILP.b_gen = Double.parseDouble(tks[1]);
-			ILP.c_per = Double.parseDouble(tks[2]);
-			ILP.d_ani = Double.parseDouble(tks[3]);
-			System.err.println(i + "/" + paras.length);
-			run(args[0]);
-			// // if(ILP.c_per>ILP.d_ani && ILP.c_per>ILP.b_gen)
-			//
-			// if (para[a] <= 0.04 && para[a] > 0 && para[b] <= 0.01
-			// && para[c] >= 0.04 && para[d] >= 0.02) {
-			// if (ILP.a_num + ILP.b_gen + ILP.c_per + ILP.d_ani == 0
-			// || ILP.a_num * ILP.b_gen * ILP.c_per * ILP.d_ani != 0)
-
-			// }
-			// // Common.input("");
-			// // System.exit(1);
-			// // run("nw");
-			// // run("mz");
-			// // run("wb");
-			// // run("bn");
-			// // run("bc");
-			// // run("tc");
-			// // }
-			// // System.exit(1);
-		}
-		// }
-		// }
-		// }
-
-		// run("nw");
-		run("mz");
-		run("wb");
-		run("bn");
-		run("bc");
-		run("tc");
 	}
 
 	public static void run(String folder) {

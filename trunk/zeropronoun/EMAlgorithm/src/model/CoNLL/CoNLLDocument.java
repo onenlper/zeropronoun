@@ -35,7 +35,7 @@ public class CoNLLDocument {
 
 	private String filePrefix;
 
-	private String language;
+	public String language;
 
 	private ArrayList<CoNLLPart> parts;
 
@@ -57,7 +57,10 @@ public class CoNLLDocument {
 		this.filePath = path;
 		if (filePath.contains("chinese") || filePath.contains("chi")) {
 			this.language = "chinese";
-		} 
+		}
+		if (filePath.contains("english") || filePath.contains("eng")) {
+			this.language = "english";
+		}
 		this.rawLines = Common.getLines(path);
 		int i = path.lastIndexOf(".");
 		if (i != -1) {
@@ -65,7 +68,6 @@ public class CoNLLDocument {
 		}
 		this.parts = new ArrayList<CoNLLPart>();
 		this.parseFile();
-		
 	}
 	
 	public CoNLLWord getWord(int id) {

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import model.Mention;
 import model.SemanticRole;
 import model.syntaxTree.MyTree;
+import model.syntaxTree.MyTreeNode;
 import util.Common;
 
 public class CoNLLSentence implements Serializable{
@@ -155,4 +156,37 @@ public class CoNLLSentence implements Serializable{
 		this.syntaxTree = Common.constructTree(syntaxStr);
 	}
 
+	public Mention getSpan(int startInS, int endInS) {
+		Mention m = new Mention();
+		m.startInS = startInS;
+		m.endInS = endInS;
+		
+		m.start = this.getWord(startInS).index;
+		m.end = this.getWord(endInS).index;
+		m.s = this;
+		
+		MyTreeNode lNode = this.getSyntaxTree().leaves.get(startInS);
+		MyTreeNode rNode = this.getSyntaxTree().leaves.get(endInS);
+
+		ArrayList<MyTreeNode> lAns = lNode.getAncestors();
+		ArrayList<MyTreeNode> rAns = rNode.getAncestors();
+		MyTreeNode node = null;
+		for (int i = 0; i < lAns.size() && i < rAns.size(); i++) {
+			if (lAns.get(i) == rAns.get(i)) {
+				node = lAns.get(i);
+			} else {
+				break;
+			}
+		}
+		
+		if(node==null || node.leafIdx<lNode.leafIdx || node.leafIdx>lNode.leafIdx) {
+			node = this.syntaxTree.leaves.get(endInS);
+		}
+		m.NP = node;
+		
+		m.head = node.getHeadLeaf().value;
+		m.headInS = node.getHeadLeaf().leafIdx;
+		
+		return m;
+	}
 }

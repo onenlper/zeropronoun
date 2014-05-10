@@ -13,6 +13,9 @@ import model.Mention;
 import model.SemanticRole;
 import model.CoNLL.CoNLLDocument.DocType;
 import model.syntaxTree.MyTreeNode;
+import util.Common;
+import align.DocumentMap;
+import align.DocumentMap.DocForAlign;
 import em.EMUtil;
 
 /*
@@ -32,13 +35,76 @@ public class CoNLLPart {
 
 	private ArrayList<Entity> chains;
 
-	public ArrayList<Mention> getMentions() {
-		return mentions;
-	}
+	public DocumentMap documentMap;
+	
+	public static HashMap<String, DocumentMap> mapCache = new HashMap<String, DocumentMap>();
+	
+	public DocForAlign itself;
+	public DocForAlign counterpart;
+
+	public String rawText;
+
+	public String label;
+	
 
 	public HashMap<String, String> headExtendMap;
 
 	private String partName;
+
+	private ArrayList<Mention> mentions;
+
+	public String folder;
+	
+	public String lang;
+	
+	public static boolean MTDoc = false;
+	
+	public CoNLLPart() {
+		this.sentences = new ArrayList<CoNLLSentence>();
+		this.nameEntities = new ArrayList<Element>();
+		this.chains = new ArrayList<Entity>();
+		this.mentions = new ArrayList<Mention>();
+	}
+	
+	public CoNLLPart(CoNLLDocument doc) {
+		this.document = doc;
+		if(this.document.language!=null && this.document.language.length()>3) {
+			this.lang = this.document.language.substring(0, 3);
+		}
+		this.sentences = new ArrayList<CoNLLSentence>();
+		this.nameEntities = new ArrayList<Element>();
+		this.chains = new ArrayList<Entity>();
+		this.mentions = new ArrayList<Mention>();
+		
+		if (mapCache.containsKey(docName + this.lang) && !MTDoc) {
+			documentMap = mapCache.get(docName + this.lang);
+		} else if (DocumentMap.isInited()) {
+			documentMap = DocumentMap.getDocumentMap(docName, this.lang);
+			if (!MTDoc) {
+				// store for future use
+				mapCache.put(docName + this.lang, documentMap);
+			}
+		}
+		if (documentMap != null) {
+			if (this.lang.equalsIgnoreCase("eng")) {
+				itself = documentMap.engDoc;
+				counterpart = documentMap.chiDoc;
+			} else if (this.lang.equalsIgnoreCase("chi")) {
+				itself = documentMap.chiDoc;
+				counterpart = documentMap.engDoc;
+			} else {
+				Common.bangErrorPOS("Not Supported Language");
+			}
+		}
+	}
+	
+	public ArrayList<Mention> getMentions() {
+		return mentions;
+	}
+	
+	public int getPartID() {
+		return partID;
+	}
 
 	public String getPartName() {
 		return partName;
@@ -51,26 +117,8 @@ public class CoNLLPart {
 	public void setMentions(ArrayList<Mention> mentions) {
 		this.mentions = mentions;
 	}
-
-	private ArrayList<Mention> mentions;
-
-	public String folder;
 	
-	public CoNLLPart() {
-		this.sentences = new ArrayList<CoNLLSentence>();
-		this.nameEntities = new ArrayList<Element>();
-		this.chains = new ArrayList<Entity>();
-		this.mentions = new ArrayList<Mention>();
-	}
-
-	public String rawText;
-
-	public String label;
-
-	public int getPartID() {
-		return partID;
-	}
-
+	
 	public CoNLLWord getWord(int wordIdx) {
 		for (int i = 0; i < sentences.size(); i++) {
 			CoNLLSentence sentence = sentences.get(i);
