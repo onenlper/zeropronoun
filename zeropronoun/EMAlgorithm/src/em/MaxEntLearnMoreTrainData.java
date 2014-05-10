@@ -17,6 +17,7 @@ import model.CoNLL.CoNLLSentence;
 import model.CoNLL.OntoCorefXMLReader;
 import model.syntaxTree.MyTreeNode;
 import util.Common;
+import util.YYFeature;
 import edu.stanford.nlp.ling.Datum;
 
 public class MaxEntLearnMoreTrainData {
@@ -232,8 +233,11 @@ public class MaxEntLearnMoreTrainData {
 
 				HashSet<Integer> processedClusters = new HashSet<Integer>();
 				int clusterID = 0;
+				
+				StringBuilder sb = new StringBuilder();
+				sb.append(m.toName() + "\n");
+				sb.append("======\n");
 				for (int k = 0; k < ants.size(); k++) {
-
 					Mention ant = ants.get(k);
 
 					// System.out.println(ant.entity.entityIdx + " # " +
@@ -258,13 +262,13 @@ public class MaxEntLearnMoreTrainData {
 						rank = 1;
 					}
 					mrYSB.append(getYamset(coref, fea, corefCount));
-					if (corefCount > 0) {
+//					if (corefCount > 0) {
 						if (m.isAZP) {
 							svmRanksAZP.add(getSVMRank(rank, fea));
 						} else {
 							svmRanks.add(getSVMRank(rank, fea));
 						}
-					}
+//					}
 					
 					if(goldMentionToClusterIDMap.containsKey(ant.toName()) && 
 							processedClusters.contains(goldMentionToClusterIDMap.get(ant.toName()))) {
@@ -278,12 +282,13 @@ public class MaxEntLearnMoreTrainData {
 						for (Mention a : wholeCluster) {
 							cluster.add(a);
 							if (a.toName().equals(ant.toName())) {
-								break;
+//								break;
 							}
 						}
 						HashMap<Integer, Integer> feaMap = new HashMap<Integer, Integer>();
 						for(int c=0;c<cluster.size();c++) {
 							Mention cant = cluster.get(c);
+							sb.append(cant.toName()).append(" ");
 							cant.MI = Context.calMI(cant, m);
 							if (m.s.getSentenceIdx() - cant.s.getSentenceIdx() > 2) {
 								cant.isBest = false;
@@ -296,26 +301,32 @@ public class MaxEntLearnMoreTrainData {
 							for(String tk : tks) {
 								int comma = tk.indexOf(":");
 								int feaIdx = Integer.parseInt(tk.substring(0, comma));
-								if(feaMap.containsKey(feaIdx)) {
-									feaMap.put(feaIdx, feaMap.get(feaIdx).intValue() + 1);
-								} else {
-									feaMap.put(feaIdx, 1);
+								
+								if(feaIdx>YYFeature.strFeaFrom || cant.equals(ant)) {
+									if(feaMap.containsKey(feaIdx)) {
+										feaMap.put(feaIdx, feaMap.get(feaIdx).intValue() + 1);
+									} else {
+										feaMap.put(feaIdx, 1);
+									}
 								}
 							}
 						}
+						sb.append("\n");
 						ArrayList<Integer> feaIdxes = new ArrayList<Integer>(feaMap.keySet());
 						Collections.sort(feaIdxes);
 						StringBuilder crunitSb = new StringBuilder();
 						for(int feaIdx : feaIdxes) {
+							
 							int amount = feaMap.get(feaIdx);
-							int newFea = feaIdx * 3;
-							if(amount==cluster.size()) {
-								newFea += 0;
-							} else if(amount>=cluster.size()/2) {
-								newFea += 1;
-							} else if(amount>0) {
-								newFea += 2;
-							}
+							int newFea = feaIdx;
+//									* 3;
+//							if(amount==cluster.size()) {
+//								newFea += 0;
+//							} else if(amount>=cluster.size()/2) {
+//								newFea += 1;
+//							} else if(amount>0) {
+//								newFea += 2;
+//							}
 							crunitSb.append(newFea).append(":1 ");
 						}
 						crYSB.append(getYamset(coref, crunitSb.toString().trim(), 1));
@@ -328,9 +339,11 @@ public class MaxEntLearnMoreTrainData {
 						} else {
 							svmRanksCR.add(getSVMRank(rank, crunitSb.toString().trim()));
 						}
-						
 						clusterID++;
 					}
+				}
+				if(m.isAZP) {
+//					System.out.println(sb.toString());
 				}
 				for (int k = ants.size(); k < 100; k++) {
 					mrYSB.append("@ 0 NOCLASS 1 # ");
@@ -351,7 +364,7 @@ public class MaxEntLearnMoreTrainData {
 				// m.extent = goldPro;
 				CoNLLSentence s = part.getWord(m.start).sentence;
 				// try {
-				extractGuessPronounFea(m, s, part);
+//				extractGuessPronounFea(m, s, part);
 				// } catch (Exception e) {
 				// System.out.println(s.getText());
 				// System.out.println(m.extent);
@@ -515,7 +528,6 @@ public class MaxEntLearnMoreTrainData {
 
 		ArrayList<String> lines = Common.getLines("chinese_list_all_train");
 		for (String line : lines) {
-			// System.out.println(line);
 			CoNLLDocument d = new CoNLLDocument(line);
 
 			OntoCorefXMLReader.addGoldZeroPronouns(d, false);
@@ -524,6 +536,7 @@ public class MaxEntLearnMoreTrainData {
 				extractGroups(part);
 			}
 		}
+		
 		// CoNLLDocument d = new CoNLLDocument("train_gold_conll");
 		// parts.addAll(d.getParts());
 		// int i = d.getParts().size();
@@ -587,7 +600,7 @@ public class MaxEntLearnMoreTrainData {
 		animacyWriter.close();
 
 		for (String k : map.keySet()) {
-			System.out.println(k + ":" + map.get(k));
+//			System.out.println(k + ":" + map.get(k));
 		}
 	}
 

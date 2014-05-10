@@ -1,10 +1,16 @@
 package model;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 
+import model.CoNLL.CoNLLPart;
 import model.CoNLL.CoNLLSentence;
 import model.syntaxTree.MyTreeNode;
+import align.DocumentMap.Unit;
 import em.EMUtil;
+import em.EMUtil.MentionType;
 
 
 public class Mention implements Comparable<Mention>, Serializable{
@@ -12,6 +18,27 @@ public class Mention implements Comparable<Mention>, Serializable{
 	/**
 	 * 
 	 */
+	double th = 0.2;
+	
+	public int PRONOUN_TYPE;
+	
+	public MentionType mentionType;
+	
+	public boolean isNNP = false;
+	
+	public ArrayList<String> modifyList = new ArrayList<String>();
+	
+	public boolean isProperNoun = false;
+	
+	public boolean isPronoun = false;
+	
+	public boolean generic = false; 
+	
+	public static int assignMode = 0;
+	
+	public int xSpanType = 0;
+
+	public double alignProb = 0;
 	
 	public boolean isAZP = false;
 	
@@ -42,6 +69,8 @@ public class Mention implements Comparable<Mention>, Serializable{
 	public int endInS;
 	
 	public int headInS;
+	
+	public int headID;
 
 	public EMUtil.Grammatic gram;
 	public EMUtil.MentionType mType;
@@ -50,6 +79,8 @@ public class Mention implements Comparable<Mention>, Serializable{
 	public EMUtil.Gender gender;
 	public EMUtil.Person person;
 	public EMUtil.Animacy animacy;
+	
+	public EMUtil.PersonEng personEng;
 	
 	public MyTreeNode V;
 	
@@ -73,7 +104,7 @@ public class Mention implements Comparable<Mention>, Serializable{
 	}
 
 	public int hashCode() {
-		String str = this.start + "," + this.end;
+		String str = this.s.part.getPartName() + "#" + this.start + "," + this.end;
 		return str.hashCode();
 	}
 
@@ -166,4 +197,226 @@ public class Mention implements Comparable<Mention>, Serializable{
 		String str = this.start + "," + this.end;
 		return str;
 	}
+	
+	// find mapped span
+	public Mention getXSpan() {
+
+		if (this.s.part.documentMap == null) {
+			return null;
+		}
+
+		Mention xSpan = this.getXSpanFromCache();
+		if (xSpan == null && assignMode >= 1 && assignMode <= 4) {
+			assignXSpan();
+		}
+		
+		if(xSpan!=null && this.s.part.lang.equals("chi")) {
+//			mappedChiMs.add(this.getMK());
+		}
+		
+		return xSpan;
+	}
+	
+	// enforce one-one map
+	public static HashMap<String, Mention> chiSpanMaps = new HashMap<String, Mention>();
+	public static HashMap<String, Mention> engSpanMaps = new HashMap<String, Mention>();
+
+	public static HashMap<String, HashSet<String>> headMaps = new HashMap<String, HashSet<String>>();
+	
+	
+	public String getReadName() {
+		return this.s.part.getPartName() + ":" + this.s.part.lang + ":" + this.start + "," + this.end; 
+	}
+	
+	private Mention getXSpanFromCache() {
+		if (this.s.part.lang.equals("chi")) {
+			Mention xSpan = chiSpanMaps.get(this.getReadName());
+			if (xSpan != null) {
+				this.xSpanType = xSpan.xSpanType;
+				this.alignProb = xSpan.alignProb;
+			}
+			return xSpan;
+		} else {
+			Mention xSpan = engSpanMaps.get(this.getReadName());
+			if (xSpan != null) {
+				this.xSpanType = xSpan.xSpanType;
+				this.alignProb = xSpan.alignProb;
+			}
+			return xSpan;
+		}
+	}
+	
+	private void assignXSpan() {
+		Mention xSpan = null;
+		if (assignMode == 1) {
+			xSpan = this.getExactMatchXSpan();
+			if (xSpan != null) {
+				// xSpan.xSpanType = 1;
+				this.xSpanType = xSpan.xSpanType;
+				this.alignProb = xSpan.alignProb;
+			}
+		}
+		if (assignMode == 2) {
+			// xSpan = this.getPartialMatchXSpan();
+			if (xSpan != null) {
+				xSpan.xSpanType = 5;
+				this.xSpanType = xSpan.xSpanType;
+				this.alignProb = xSpan.alignProb;
+			}
+		}
+		if (assignMode == 3) {
+			// xSpan = this.getSameTextMapSpan();
+			if (xSpan != null) {
+				xSpan.xSpanType = 6;
+				this.xSpanType = xSpan.xSpanType;
+				this.alignProb = xSpan.alignProb;
+			}
+		}
+		if (assignMode == 4) {
+			xSpan = this.getCreatedSpan();
+			if (xSpan != null) {
+				xSpan.xSpanType = 7;
+				this.xSpanType = xSpan.xSpanType;
+				this.alignProb = xSpan.alignProb;
+			}
+		}
+
+		if (xSpan != null) {
+			if(this.s.part.lang.equalsIgnoreCase("chi")) {
+//				System.out.println(this.getText() + "#" + xSpan.getText() + "#");
+//				System.out.println(this.s.toString());
+//				System.out.println(xSpan.s.toString());
+//				System.out.println("==" + (a++) +"==");
+			}
+			
+			boolean put = false;
+			if (this.s.part.lang.equals("eng")
+					&& (chiSpanMaps.get(xSpan.getReadName()) == null || chiSpanMaps
+							.get(xSpan.getReadName())
+							.equals(this.getReadName()))) {
+				put = true;
+			} else if (this.s.part.lang.equals("chi")
+					&& (engSpanMaps.get(xSpan.getReadName()) == null || engSpanMaps
+							.get(xSpan.getReadName())
+							.equals(this.getReadName()))) {
+				put = true;
+			}
+			if (put) {
+				if (this.s.part.lang.equals("eng")) {
+					engSpanMaps.put(this.getReadName(), xSpan);
+					chiSpanMaps.put(xSpan.getReadName(), this);
+				} else {
+					chiSpanMaps.put(this.getReadName(), xSpan);
+					engSpanMaps.put(xSpan.getReadName(), this);
+				}
+				String head = this.head;
+				HashSet<String> xHeads = headMaps.get(head);
+				if (xHeads == null) {
+					xHeads = new HashSet<String>();
+					headMaps.put(head, xHeads);
+				}
+				String xHead = xSpan.head.toLowerCase();
+				xHeads.add(xHead);
+			}
+		}
+	}
+	
+	private Mention getExactMatchXSpan() {
+		// match head id
+		CoNLLPart d = this.s.part;
+		if (d.itself == null) {
+			return null;
+		}
+		int hdID = this.headID;
+		Mention xSpan = null;
+		if (d.itself.getUnit(hdID) != null) {
+			Unit unit = d.itself.getUnit(hdID);
+			// ordered
+			ArrayList<Unit> xUnits = unit.getMapUnit();
+			loop: for (int i = 0; i < xUnits.size(); i++) {
+				Unit xUnit = xUnits.get(i);
+				double prob = 1;
+				if (unit.getMapProb().size() != 0) {
+					prob = unit.getMapProb().get(i);
+					if (prob < th) {
+						continue;
+					}
+				}
+				for (Mention xs : xUnit.mentions) {
+					int hdId = xs.headID;
+					if (hdId == xUnit.getId()
+							&& xs.ccStruct() == this.ccStruct()) {
+						xSpan = xs;
+						xSpan.xSpanType = (int) Math.ceil((prob / 0.25));
+						xSpan.alignProb = prob;
+						// TODO
+						break loop;
+					}
+				}
+			}
+		}
+		return xSpan;
+	}
+
+	private boolean ccStruct() {
+		boolean cc = false;
+		for (int i = this.startInS; i <= this.endInS; i++) {
+			String tag = this.s.getWord(i).posTag;
+			if (tag.equalsIgnoreCase("CC")) {
+				cc = true;
+				break;
+			}
+		}
+		return cc;
+	}
+
+	public Mention getCreatedSpan() {
+		Mention xSpan = null;
+		// int hdID = this.s.ids[this.hd];
+
+		int leftID = this.start;
+		int rightID = this.end;
+
+		Unit xStartU = null;
+		if (this.s.part.itself.getUnit(leftID) != null) {
+			Unit unit = this.s.part.itself.getUnit(leftID);
+			ArrayList<Unit> xUnits = unit.getMapUnit();
+			for (int i = 0; i < xUnits.size(); i++) {
+				Unit xUnit = xUnits.get(i);
+				if (xUnit.sentence == null) {
+					continue;
+				}
+				double prob = unit.getMapProb().get(i);
+				if (prob < th) {
+					continue;
+				}
+				xStartU = xUnit;
+				break;
+			}
+		}
+
+		if (xStartU != null) {
+			if (this.s.part.itself.getUnit(rightID) != null) {
+				Unit unit = this.s.part.itself.getUnit(rightID);
+				ArrayList<Unit> xUnits = unit.getMapUnit();
+				for (int i = 0; i < xUnits.size(); i++) {
+					Unit xUnit = xUnits.get(i);
+					if (xUnit.sentence == null
+							|| xUnit.sentence != xStartU.sentence) {
+						continue;
+					}
+					double prob = unit.getMapProb().get(i);
+					if (prob < th) {
+						continue;
+					}
+					xSpan = xUnit.sentence.getSpan(xStartU.indexInSentence,
+							xUnit.indexInSentence);
+					xSpan.alignProb = prob;
+					break;
+				}
+			}
+		}
+		return xSpan;
+	}
+	
 }

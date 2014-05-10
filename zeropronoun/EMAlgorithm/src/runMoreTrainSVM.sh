@@ -5,11 +5,11 @@ java -Xmx32g -cp $path em/MaxEntLearnMoreTrainData
 cd /users/yzcchen/tool/YASMET
 
 cd /users/yzcchen/tool/svmrank
-./svm_rank_learn -c 3 /users/yzcchen/chen3/zeroEM/EMAlgorithm/src/svmRankAZPCR.train azpCR.model
-./svm_rank_learn -c 3 /users/yzcchen/chen3/zeroEM/EMAlgorithm/src/svmRankAZP.train azp.model
+./svm_rank_learn -c 30 /users/yzcchen/chen3/zeroEM/EMAlgorithm/src/svmRankAZPCR.train azpCR.model
+#./svm_rank_learn -c 300 /users/yzcchen/chen3/zeroEM/EMAlgorithm/src/svmRankAZP.train azp.model
 
 cd /users/yzcchen/chen3/zeroEM/EMAlgorithm/src
-java -Xmx32g -cp $path -Djava.library.path=../lib/ux64/  em/ApplyMaxEntMoreTrainingData $1 classify both
+java -Xmx32g -cp $path -Djava.library.path=../lib/ux64/  em/ApplyMaxEntMoreTrainingData all classify both
 
 #java -Xmx16g -cp ../lib/lpsolve55j.jar:.:../lib/stanford-classifier-3.2.0.jar -Djava.library.path=../lib/ux64/  em/ApplyMaxEntMoreTrainingData $1 prepare
 cd /users/yzcchen/tool/YASMET

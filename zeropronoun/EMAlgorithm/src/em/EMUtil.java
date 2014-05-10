@@ -67,6 +67,10 @@ public class EMUtil {
 	public static enum Gender {
 		male, female, neuter, unknown
 	};
+	
+	public static enum PersonEng {
+		I, YOU, HE, SHE, WE, THEY, IT, UNKNOWN, YOUS
+	}
 
 	public static enum Animacy {
 		animate, unanimate, unknown

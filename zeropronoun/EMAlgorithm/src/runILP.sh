@@ -9,13 +9,13 @@ cat ~/chen3/zeroEM/EMAlgorithm/src/yasmet.train | ./a.out -deltaPP 0.0 -iter 100
 #cat ~/chen3/zeroEM/EMAlgorithm/src/animacy.train | ./a.out -deltaPP 0.0 -iter 100 > animacy.model
 
 cp /users/yzcchen/tool/YASMET/WT /dev/shm/
-cp person.model /dev/shm
+#cp person.model /dev/shm
 #cp gender.model /dev/shm
 #cp number.model /dev/shm
 #cp animacy.model /dev/shm
 
 cd /users/yzcchen/chen3/zeroEM/EMAlgorithm/src
-java -Xmx16g -cp ../lib/lpsolve55j.jar:.:../lib/stanford-classifier-3.2.0.jar -Djava.library.path=../lib/ux64/  em/ApplyMaxEnt $1 classify
+java -Xmx16g -cp ../lib/lpsolve55j.jar:.:../lib/stanford-classifier-3.2.0.jar -Djava.library.path=../lib/ux64/  em/ApplyMaxEnt all classify
 
 #java -Xmx16g -cp ../lib/lpsolve55j.jar:.:../lib/stanford-classifier-3.2.0.jar -Djava.library.path=../lib/ux64/  em/ApplyMaxEnt $1 prepare
 cd /users/yzcchen/tool/YASMET
