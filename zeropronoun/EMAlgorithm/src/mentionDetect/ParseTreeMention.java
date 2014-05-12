@@ -452,7 +452,7 @@ public class ParseTreeMention extends MentionDetect {
 		// get Pronoun type
 		em.PRONOUN_TYPE = Common.getPronounType(em.getHead());
 		em.head = em.head.replace("\n", "").replaceAll("\\s+", "");
-		em.extent = em.extent.replace("\n", "").replaceAll("\\s+", "");
+		em.extent = em.extent;
 		for (int i = em.start; i <= em.end; i++) {
 			if (i != em.headID) {
 				CoNLLWord word = part.getWord(i);
