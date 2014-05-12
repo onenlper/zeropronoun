@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import util.Common;
+import align.DocumentMap;
 
 /*
  * CoNLL-2012 Format Document
@@ -43,6 +44,28 @@ public class CoNLLDocument {
 		this.parts = new ArrayList<CoNLLPart>();
 	}
 
+	public CoNLLDocument(String path, String lang) {
+		path = path.replace("v6", "v4").replace("_gold_parse_conll",
+				"_auto_conll");
+		if (!(new File(path).exists())) {
+			path = path.replace("v5", "v4").replace("v6", "v4");
+		}
+
+		if (!(new File(path).exists())) {
+			path = path.replace("_auto_conll", "_gold_conll");
+		}
+		this.setType(DocType.Article);
+		this.filePath = path;
+		this.language = lang;
+		this.rawLines = Common.getLines(path);
+		int i = path.lastIndexOf(".");
+		if (i != -1) {
+			this.filePrefix = path.substring(0, i);
+		}
+		this.parts = new ArrayList<CoNLLPart>();
+		this.parseFile();
+	}
+	
 	public CoNLLDocument(String path) {
 		path = path.replace("v6", "v4").replace("_gold_parse_conll",
 				"_auto_conll");
@@ -55,10 +78,10 @@ public class CoNLLDocument {
 		}
 		this.setType(DocType.Article);
 		this.filePath = path;
-		if (filePath.contains("chinese") || filePath.contains("chi")) {
+		if (this.language==null && (filePath.contains("chinese") || filePath.contains("chi"))) {
 			this.language = "chinese";
 		}
-		if (filePath.contains("english") || filePath.contains("eng")) {
+		if (this.language==null && (filePath.contains("english") || filePath.contains("eng"))) {
 			this.language = "english";
 		}
 		this.rawLines = Common.getLines(path);
@@ -99,9 +122,8 @@ public class CoNLLDocument {
 			}
 			// new part
 			if (line.startsWith("#begin document")) {
-				part = new CoNLLPart();
+				part = new CoNLLPart(this);
 				part.label = line;
-				
 				int a = line.indexOf("(");
 				int b = line.indexOf(")");
 				part.docName = line.substring(a+1, b);
@@ -109,6 +131,22 @@ public class CoNLLDocument {
 				part.setDocument(this);
 				this.parts.add(part);
 				sentence = null;
+				
+				if(DocumentMap.isInited()) {
+					part.documentMap = DocumentMap.getDocumentMap(part.docName, part.lang);
+
+					if (part.documentMap != null) {
+						if (part.lang.equalsIgnoreCase("eng")) {
+							part.itself = part.documentMap.engDoc;
+							part.counterpart = part.documentMap.chiDoc;
+						} else if (part.lang.equalsIgnoreCase("chi")) {
+							part.itself = part.documentMap.chiDoc;
+							part.counterpart = part.documentMap.engDoc;
+						} else {
+							Common.bangErrorPOS("Not Supported Language");
+						}
+					}
+				}
 				continue;
 			}
 			// end of one sentence

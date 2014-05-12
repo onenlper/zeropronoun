@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
+import align.DocumentMap.Unit;
+
 import model.Element;
 import model.Mention;
 import model.CoNLL.CoNLLDocument.DocType;
@@ -42,6 +44,20 @@ public class ParseTreeMention extends MentionDetect {
 		removeDuplicateMentions(mentions);
 		this.pruneMentions(mentions, part);
 		this.setBarePlural(mentions, part);
+		
+		for(Mention m : mentions) {
+			CoNLLSentence s = m.s;
+			if (s.part.itself != null) {
+				for (int i = m.start; i <= m.end; i++) {
+					Unit unit = s.part.itself.getUnit(i);
+					if (unit != null) {
+						unit.addMention(m);
+//						System.out.println("add");
+					}
+				}
+			}
+		}
+		
 		return mentions;
 	}
 	
@@ -67,6 +83,7 @@ public class ParseTreeMention extends MentionDetect {
 				}
 			}
 			Mention mention = new Mention(start, end);
+			
 			StringBuilder sb = new StringBuilder();
 			StringBuilder sb2 = new StringBuilder();
 			for (int i = start; i <= end; i++) {
@@ -74,6 +91,22 @@ public class ParseTreeMention extends MentionDetect {
 				sb2.append(part.getWord(i).orig).append(" ");
 			}
 			mention.extent = sb.toString().trim().toLowerCase();
+			
+			mention.s = part.getWord(start).sentence;
+
+			MyTreeNode t1 = mention.s.syntaxTree.leaves.get(part.getWord(start).indexInSentence);
+			MyTreeNode t2 = mention.s.syntaxTree.leaves.get(part.getWord(end).indexInSentence);
+			ArrayList<MyTreeNode> anc1 = t1.getAncestors();
+			ArrayList<MyTreeNode> anc2 = t2.getAncestors();
+			MyTreeNode node = null;
+			for(int i=0;i<anc1.size()&&i<anc2.size();i++) {
+				if(anc1.get(i)==anc2.get(i)) {
+					node = anc1.get(i);
+				} else {
+					break;
+				}
+			}
+			mention.NP = node;
 			if (!mentions.contains(mention)) {
 				mentions.add(mention);
 			}
@@ -95,6 +128,7 @@ public class ParseTreeMention extends MentionDetect {
 		em.start = start;
 		em.end = end;
 		em.extent = sb.toString().trim();
+		em.NP = treeNode;
 		return em;
 	}
 	
@@ -148,6 +182,7 @@ public class ParseTreeMention extends MentionDetect {
 				sb2.append(part.getWord(i).orig).append(" ");
 			}
 			npMention.extent = sb2.toString().trim();
+			npMention.s = part.getWord(start).sentence;
 			// System.out.println(start + " " + end + " " + npMention.source);
 
 			// for (Element NE : part.getNameEntities()) {
