@@ -8,6 +8,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import align.DocumentMap.Unit;
+
 import model.Element;
 import model.Entity;
 import model.GraphNode;
@@ -67,7 +69,7 @@ public class EMUtil {
 	public static enum Gender {
 		male, female, neuter, unknown
 	};
-	
+
 	public static enum PersonEng {
 		I, YOU, HE, SHE, WE, THEY, IT, UNKNOWN, YOUS
 	}
@@ -237,28 +239,30 @@ public class EMUtil {
 	}
 
 	public static void setPronounAttri(Mention m, CoNLLPart part) {
-		if(m.isAZP) {
+		if (m.isAZP) {
 			ArrayList<Mention> corefs = new ArrayList<Mention>();
 			Mention represent = null;
-			for(Mention t : m.entity.mentions) {
-				if((!t.equals(m)) && t.end!=-1) {
+			for (Mention t : m.entity.mentions) {
+				if ((!t.equals(m)) && t.end != -1) {
 					corefs.add(t);
 				}
-				if(EMUtil.pronouns.contains(t.extent)) {
+				if (EMUtil.pronouns.contains(t.extent)) {
 					represent = t;
 				}
 			}
-			if(represent!=null) {
+			if (represent != null) {
 				setPronounAttri(represent, part);
 				m.number = represent.number;
 				m.gender = represent.gender;
-				
-				if(part.getWord(m.start).speaker.equals(part.getWord(represent.start).speaker)) {
+
+				if (part.getWord(m.start).speaker.equals(part
+						.getWord(represent.start).speaker)) {
 					m.person = represent.person;
-				} else if(!part.getWord(m.start).speaker.equals(part.getWord(represent.start).speaker)) {
-					if(represent.person.equals(Person.first)) {
+				} else if (!part.getWord(m.start).speaker.equals(part
+						.getWord(represent.start).speaker)) {
+					if (represent.person.equals(Person.first)) {
 						m.person = Person.second;
-					} else if(represent.person.equals(Person.second)) {
+					} else if (represent.person.equals(Person.second)) {
 						m.person = Person.first;
 					} else {
 						m.person = Person.third;
@@ -270,75 +274,73 @@ public class EMUtil {
 				int[] genders = new int[Gender.values().length];
 				int[] persons = new int[Person.values().length];
 				int[] animacys = new int[Animacy.values().length];
-				for(Mention t : corefs) {
-					//TODO
+				for (Mention t : corefs) {
+					// TODO
 					t.animacy = EMUtil.getAntAnimacy(t);
 					animacys[t.animacy.ordinal()]++;
-					
+
 					t.gender = EMUtil.getAntGender(t);
 					genders[t.gender.ordinal()]++;
 					t.number = EMUtil.getAntNumber(t);
 					numbers[t.number.ordinal()]++;
-					
+
 					t.person = EMUtil.getAntPerson(t.head);
-					if(part.getWord(m.start).speaker.equals(part.getWord(t.start).speaker)) {
+					if (part.getWord(m.start).speaker.equals(part
+							.getWord(t.start).speaker)) {
 						persons[t.person.ordinal()]++;
 					} else {
-						if(t.person==Person.first) {
+						if (t.person == Person.first) {
 							persons[Person.second.ordinal()]++;
-						} else if(t.person.equals(Person.second)) {
+						} else if (t.person.equals(Person.second)) {
 							persons[Person.first.ordinal()]++;
 						} else {
 							persons[Person.third.ordinal()]++;
 						}
 					}
 				}
-				
+
 				m.number = Number.single;
 				int max = 0;
-				for(int i=0;i<numbers.length;i++) {
-					if(numbers[i]>max) {
+				for (int i = 0; i < numbers.length; i++) {
+					if (numbers[i] > max) {
 						max = numbers[i];
 						m.number = Number.values()[i];
 					}
 				}
-				
+
 				m.gender = Gender.male;
 				max = 0;
-				for(int i=0;i<genders.length;i++) {
-					if(genders[i]>max) {
+				for (int i = 0; i < genders.length; i++) {
+					if (genders[i] > max) {
 						max = genders[i];
 						m.gender = Gender.values()[i];
 					}
 				}
-				
+
 				m.person = Person.third;
 				max = 0;
-				for(int i=0;i<persons.length;i++) {
-					if(persons[i]>max) {
+				for (int i = 0; i < persons.length; i++) {
+					if (persons[i] > max) {
 						max = persons[i];
 						m.person = Person.values()[i];
 					}
 				}
-				
+
 				m.animacy = Animacy.animate;
 				max = 0;
-				for(int i=0;i<animacys.length;i++) {
-					if(animacys[i]>max) {
+				for (int i = 0; i < animacys.length; i++) {
+					if (animacys[i] > max) {
 						max = animacys[i];
 						m.animacy = Animacy.values()[i];
 					}
 				}
 			}
-			
+
 			// find most reprsentive
-//			for(Mention m)
+			// for(Mention m)
 			return;
 		}
-		
-		
-		
-		
+
 		// assign number, gender, person, animacy
 		if (EMUtil.singles.contains(m.head)) {
 			m.number = EMUtil.Number.single;
@@ -535,6 +537,7 @@ public class EMUtil {
 
 		MyTreeNode head = treeNode.getHeadLeaf();
 
+		em.headID = sentence.getWord(head.leafIdx).index;
 		em.headInS = head.leafIdx;
 		em.head = head.value;
 		em.NP = treeNode;
@@ -597,6 +600,15 @@ public class EMUtil {
 			}
 		}
 
+		CoNLLSentence s = em.s;
+		if (s.part.itself != null) {
+			for (int i = em.start; i <= em.end; i++) {
+				Unit unit = s.part.itself.getUnit(i);
+				if (unit != null) {
+					unit.addMention(em);
+				}
+			}
+		}
 		// changeStr(em);
 
 		return em;

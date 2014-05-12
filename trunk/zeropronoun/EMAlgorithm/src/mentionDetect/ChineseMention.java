@@ -1,18 +1,15 @@
 package mentionDetect;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Set;
 
 import model.Element;
 import model.Mention;
 import model.CoNLL.CoNLLDocument;
 import model.CoNLL.CoNLLPart;
 import model.CoNLL.CoNLLSentence;
-import util.Common;
+import align.DocumentMap.Unit;
 import em.EMUtil;
 
 public class ChineseMention {
@@ -33,6 +30,19 @@ public class ChineseMention {
 	
 		EMUtil.assignNE(mentions, part.getNameEntities());
 //		EMUtil.pruneChMentions(mentions, part);
+		
+		for(Mention m : mentions) {
+			CoNLLSentence s = m.s;
+			if (s.part.itself != null) {
+				for (int i = m.start; i <= m.end; i++) {
+					Unit unit = s.part.itself.getUnit(i);
+					if (unit != null) {
+						unit.addMention(m);
+					}
+				}
+			}
+		}
+		
 		return mentions;
 	}
 

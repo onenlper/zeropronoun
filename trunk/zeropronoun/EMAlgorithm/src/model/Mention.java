@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import util.Common;
+
 import model.CoNLL.CoNLLPart;
 import model.CoNLL.CoNLLSentence;
 import model.syntaxTree.MyTreeNode;
@@ -200,11 +202,9 @@ public class Mention implements Comparable<Mention>, Serializable{
 	
 	// find mapped span
 	public Mention getXSpan() {
-
 		if (this.s.part.documentMap == null) {
 			return null;
 		}
-
 		Mention xSpan = this.getXSpanFromCache();
 		if (xSpan == null && assignMode >= 1 && assignMode <= 4) {
 			assignXSpan();
@@ -292,12 +292,12 @@ public class Mention implements Comparable<Mention>, Serializable{
 			boolean put = false;
 			if (this.s.part.lang.equals("eng")
 					&& (chiSpanMaps.get(xSpan.getReadName()) == null || chiSpanMaps
-							.get(xSpan.getReadName())
+							.get(xSpan.getReadName()).getReadName()
 							.equals(this.getReadName()))) {
 				put = true;
 			} else if (this.s.part.lang.equals("chi")
 					&& (engSpanMaps.get(xSpan.getReadName()) == null || engSpanMaps
-							.get(xSpan.getReadName())
+							.get(xSpan.getReadName()).getReadName()
 							.equals(this.getReadName()))) {
 				put = true;
 			}
@@ -331,6 +331,11 @@ public class Mention implements Comparable<Mention>, Serializable{
 		Mention xSpan = null;
 		if (d.itself.getUnit(hdID) != null) {
 			Unit unit = d.itself.getUnit(hdID);
+			
+//			System.out.println("HEE?" + unit.mentions.size());
+			if(unit.mentions.size()>0) {
+//				System.out.println(unit.mentions.get(0).extent + "#" + this.s.part.lang);
+			}
 			// ordered
 			ArrayList<Unit> xUnits = unit.getMapUnit();
 			loop: for (int i = 0; i < xUnits.size(); i++) {
@@ -342,6 +347,7 @@ public class Mention implements Comparable<Mention>, Serializable{
 						continue;
 					}
 				}
+//				System.out.println("HEE?" + xUnit.mentions.size());
 				for (Mention xs : xUnit.mentions) {
 					int hdId = xs.headID;
 					if (hdId == xUnit.getId()
@@ -378,6 +384,9 @@ public class Mention implements Comparable<Mention>, Serializable{
 		int rightID = this.end;
 
 		Unit xStartU = null;
+//		System.out.println(this.s);
+//		System.out.println(this.s.part);
+//		System.out.println(this.s.part.itself);
 		if (this.s.part.itself.getUnit(leftID) != null) {
 			Unit unit = this.s.part.itself.getUnit(leftID);
 			ArrayList<Unit> xUnits = unit.getMapUnit();
