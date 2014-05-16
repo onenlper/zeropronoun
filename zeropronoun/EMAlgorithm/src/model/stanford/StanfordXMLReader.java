@@ -108,7 +108,7 @@ public class StanfordXMLReader extends DefaultHandler {
 			tag2 = tags.get(tags.size() - 2);
 		}
 		if (tag.equalsIgnoreCase("word")) {
-			token.setWord(new String(ch, start, length));
+			token.word += new String(ch, start, length);
 		} else if (tag.equalsIgnoreCase("lemma")) {
 			token.setLemma(new String(ch, start, length));
 		} else if (tag.equalsIgnoreCase("CharacterOffsetBegin")) {

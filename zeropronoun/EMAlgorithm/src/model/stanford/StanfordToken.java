@@ -1,7 +1,7 @@
 package model.stanford;
 
 public class StanfordToken {
-	public String word;
+	public String word = "";
 	public String lemma;
 	public int CharacterOffsetBegin;
 	public int CharacterOffsetEnd;
