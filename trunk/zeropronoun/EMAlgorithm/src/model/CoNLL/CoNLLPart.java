@@ -282,9 +282,13 @@ public class CoNLLPart {
 			}
 		}
 		this.chains.addAll(clusters.values());
-		processDiscourse();
+		if(processDiscourse) {
+			processDiscourse();
+		}
 		formSRLs();
 	}
+	
+	public static boolean processDiscourse = true;
 
 	public boolean isPU(String word) {
 		HashSet<String> PUs = new HashSet<String>();

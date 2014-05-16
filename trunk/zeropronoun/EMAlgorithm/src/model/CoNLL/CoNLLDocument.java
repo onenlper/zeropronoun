@@ -65,7 +65,7 @@ public class CoNLLDocument {
 		this.parts = new ArrayList<CoNLLPart>();
 		this.parseFile();
 	}
-	
+
 	public CoNLLDocument(String path) {
 		path = path.replace("v6", "v4").replace("_gold_parse_conll",
 				"_auto_conll");
@@ -78,10 +78,12 @@ public class CoNLLDocument {
 		}
 		this.setType(DocType.Article);
 		this.filePath = path;
-		if (this.language==null && (filePath.contains("chinese") || filePath.contains("chi"))) {
+		if (this.language == null
+				&& (filePath.contains("chinese") || filePath.contains("chi"))) {
 			this.language = "chinese";
 		}
-		if (this.language==null && (filePath.contains("english") || filePath.contains("eng"))) {
+		if (this.language == null
+				&& (filePath.contains("english") || filePath.contains("eng"))) {
 			this.language = "english";
 		}
 		this.rawLines = Common.getLines(path);
@@ -92,10 +94,10 @@ public class CoNLLDocument {
 		this.parts = new ArrayList<CoNLLPart>();
 		this.parseFile();
 	}
-	
+
 	public CoNLLWord getWord(int id) {
-		for(CoNLLPart part : this.getParts()) {
-			if(id>=part.getWordCount()) {
+		for (CoNLLPart part : this.getParts()) {
+			if (id >= part.getWordCount()) {
 				id -= part.getWordCount();
 			} else {
 				return part.getWord(id);
@@ -126,14 +128,15 @@ public class CoNLLDocument {
 				part.label = line;
 				int a = line.indexOf("(");
 				int b = line.indexOf(")");
-				part.docName = line.substring(a+1, b);
+				part.docName = line.substring(a + 1, b);
 				wordIdx = 0;
 				part.setDocument(this);
 				this.parts.add(part);
 				sentence = null;
-				
-				if(DocumentMap.isInited()) {
-					part.documentMap = DocumentMap.getDocumentMap(part.docName, part.lang);
+
+				if (DocumentMap.isInited()) {
+					part.documentMap = DocumentMap.getDocumentMap(part.docName,
+							part.lang);
 
 					if (part.documentMap != null) {
 						if (part.lang.equalsIgnoreCase("eng")) {
@@ -175,8 +178,9 @@ public class CoNLLDocument {
 
 			// 1 Document ID
 			int a = tokens[0].indexOf("/");
-			part.folder = tokens[0].substring(0, a);
-			
+			if (a != -1) {
+				part.folder = tokens[0].substring(0, a);
+			}
 			this.documentID = tokens[0];
 			// 2 Part number
 			part.setPartID(Integer.valueOf(tokens[1]));
@@ -284,46 +288,47 @@ public class CoNLLDocument {
 		String conllPath = "";
 		// conllPath =
 		// "/users/yzcchen/CoNLL-2012/conll-2012/v1/data/train/data/chinese/annotations/nw/xinhua/00/chtb_0001.v1_gold_conll";
-//		conllPath = "/users/yzcchen/CoNLL-2012/conll-2012/v1/data/train/data/english/annotations/bc/cctv/00/cctv_0001.v1_auto_conll";
-//		CoNLLDocument document = new CoNLLDocument(conllPath);
-//		System.out.println("Document ID: " + document.getDocumentID());
-//		for (CoNLLPart part : document.parts) {
-//			System.out.println("Part ID: " + part.getPartID());
-//			System.out
-//					.println("===================sentences===================");
-//			for (CoNLLSentence sentence : part.getCoNLLSentences()) {
-//				System.out.println(sentence.getSentence());
-//			}
-//		}
-//		for (CoNLLPart part : document.parts) {
-//			System.out.println("Part ID: " + part.getPartID());
-//			System.out
-//					.println("===================named entities================");
-//			for (Element element : part.getNameEntities()) {
-//				System.out.println(element);
-//			}
-//		}
-//		for (CoNLLPart part : document.parts) {
-//			System.out.println("Part ID: " + part.getPartID());
-//			System.out
-//					.println("===================coreference chains================");
-//			for (Entity entity : part.getChains()) {
-//				StringBuilder sb = new StringBuilder();
-//				for (Mention em : entity.mentions) {
-//					sb.append(em).append(" ");
-//				}
-//				System.out.println(sb.toString());
-//			}
-//		}
+		// conllPath =
+		// "/users/yzcchen/CoNLL-2012/conll-2012/v1/data/train/data/english/annotations/bc/cctv/00/cctv_0001.v1_auto_conll";
+		// CoNLLDocument document = new CoNLLDocument(conllPath);
+		// System.out.println("Document ID: " + document.getDocumentID());
+		// for (CoNLLPart part : document.parts) {
+		// System.out.println("Part ID: " + part.getPartID());
+		// System.out
+		// .println("===================sentences===================");
+		// for (CoNLLSentence sentence : part.getCoNLLSentences()) {
+		// System.out.println(sentence.getSentence());
+		// }
+		// }
+		// for (CoNLLPart part : document.parts) {
+		// System.out.println("Part ID: " + part.getPartID());
+		// System.out
+		// .println("===================named entities================");
+		// for (Element element : part.getNameEntities()) {
+		// System.out.println(element);
+		// }
+		// }
+		// for (CoNLLPart part : document.parts) {
+		// System.out.println("Part ID: " + part.getPartID());
+		// System.out
+		// .println("===================coreference chains================");
+		// for (Entity entity : part.getChains()) {
+		// StringBuilder sb = new StringBuilder();
+		// for (Mention em : entity.mentions) {
+		// sb.append(em).append(" ");
+		// }
+		// System.out.println(sb.toString());
+		// }
+		// }
 		HashMap<String, Integer> pnCount = new HashMap<String, Integer>();
 		int overall = 0;
 		CoNLLDocument d = new CoNLLDocument("train_auto_conll");
-		for(CoNLLPart part : d.getParts()) {
-			for(CoNLLSentence s : part.getCoNLLSentences()) {
-				for(CoNLLWord w : s.getWords()) {
-					if(w.getPosTag().equals("PN")) {
+		for (CoNLLPart part : d.getParts()) {
+			for (CoNLLSentence s : part.getCoNLLSentences()) {
+				for (CoNLLWord w : s.getWords()) {
+					if (w.getPosTag().equals("PN")) {
 						Integer c = pnCount.get(w.getWord());
-						if(c==null) {
+						if (c == null) {
 							pnCount.put(w.getWord(), 1);
 						} else {
 							pnCount.put(w.getWord(), 1 + c.intValue());
@@ -333,10 +338,11 @@ public class CoNLLDocument {
 				}
 			}
 		}
-		for(String key : pnCount.keySet()) {
-			if(pnCount.get(key)>300) {
-				double percent = pnCount.get(key)/(overall * 1.0);
-				System.out.println(key + ":" + pnCount.get(key) + "\t" + percent);
+		for (String key : pnCount.keySet()) {
+			if (pnCount.get(key) > 300) {
+				double percent = pnCount.get(key) / (overall * 1.0);
+				System.out.println(key + ":" + pnCount.get(key) + "\t"
+						+ percent);
 			}
 		}
 		System.out.println(overall);
