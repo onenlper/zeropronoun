@@ -57,13 +57,13 @@ public class DocumentMap {
 		this.id = id;
 		this.parallel = parallel;
 		String tokens[] = parallel.split("#");
-		chiDoc = new DocForAlign(tokens[0].trim());
-		engDoc = new DocForAlign(tokens[1].trim());
+		chiDoc = new DocForAlign("chi");
+		engDoc = new DocForAlign("eng");
 		chiDoc.mapDoc = engDoc;
 		engDoc.mapDoc = chiDoc;
 
-		chiDocMaps.put(tokens[0].trim(), this);
-		engDocMaps.put(tokens[1].trim(), this);
+		chiDocMaps.put("chi", this);
+		engDocMaps.put("eng", this);
 		documentMaps.add(this);
 	}
 
@@ -309,22 +309,24 @@ public class DocumentMap {
 			Common.bangErrorPOS("Already inited!!!");
 		}
 		initialized = true;
-		ArrayList<String> lines = Common.getLines(alignFolder + "/parallelMap");
-		for (int i = 0; i < lines.size(); i++) {
-			String parallel = lines.get(i);
-			DocumentMap documentMap = new DocumentMap(parallel, i);
+//		ArrayList<String> lines = Common.getLines(alignFolder + "/parallelMap");
+//		for (int i = 0; i < lines.size(); i++) {
+//			String parallel = lines.get(i);
+			int i = 0;
+			DocumentMap documentMap = new DocumentMap("", i);
 
 			// ArrayList<String> alignContent = Common.getLines(alignFolder
 			// + File.separator + i + ".align");
-			ArrayList<String> alignIDs = Common.getLines(alignFolder
-					+ File.separator + i + ".id");
+//			ArrayList<String> alignIDs = Common.getLines(alignFolder
+//					+ File.separator + i + ".id");
+			
 			ArrayList<String> alignsoftContent = Common.getLines(alignFolder
-					+ File.separator + i + ".alignsoft");
+					+ File.separator + "training.alignsoft");
 
 			ArrayList<String> engStrs = Common.getLines(alignFolder
-					+ File.separator + i + ".eng");
+					+ File.separator + "training.e");
 			ArrayList<String> chiStrs = Common.getLines(alignFolder
-					+ File.separator + i + ".chi");
+					+ File.separator + "training.f");
 
 			// assign the most confidence map, other than map with confidence
 			// greater than 0.5
@@ -337,11 +339,11 @@ public class DocumentMap {
 				documentMap.engDoc.addSent(engSent);
 				documentMap.chiDoc.addSent(chiSent);
 
-				String chiIDStr = alignIDs.get(j * 3 + 1).trim();
-				String chiIDs[] = chiIDStr.split("\\s+");
+//				String chiIDStr = alignIDs.get(j * 3 + 1).trim();
+//				String chiIDs[] = chiIDStr.split("\\s+");
 
-				String engIDStr = alignIDs.get(j * 3 + 2).trim();
-				String engIDs[] = engIDStr.split("\\s+");
+//				String engIDStr = alignIDs.get(j * 3 + 2).trim();
+//				String engIDs[] = engIDStr.split("\\s+");
 
 				String alignsoftStr = alignsoftContent.get(j);
 				String alignsofts[] = alignsoftStr.split("\\s+");
@@ -352,7 +354,7 @@ public class DocumentMap {
 				// create units
 				try {
 					for (int m = 0; m < chiTks.length; m++) {
-						int id = Integer.parseInt(chiIDs[m]);
+						int id = m;
 						String tk = chiTks[m];
 						Unit unit = new Unit(id, tk);
 						chiSent.addUnit(unit);
@@ -362,7 +364,7 @@ public class DocumentMap {
 				}
 
 				for (int m = 0; m < engTks.length; m++) {
-					int id = Integer.parseInt(engIDs[m]);
+					int id = m;
 					String tk = engTks[m];
 					Unit unit = new Unit(id, tk);
 					engSent.addUnit(unit);
@@ -383,7 +385,7 @@ public class DocumentMap {
 					}
 				}
 			}
-		}
+//		}
 	}
 
 	public static void loadRealGizaAlignResult(String alignFolder) {

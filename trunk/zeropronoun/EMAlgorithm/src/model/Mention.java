@@ -106,8 +106,14 @@ public class Mention implements Comparable<Mention>, Serializable{
 	}
 
 	public int hashCode() {
-		String str = this.s.part.getPartName() + "#" + this.start + "," + this.end;
-		return str.hashCode();
+		if(this.s!=null && this.s.part!=null) {
+			String str = this.s.part.getPartName() + "#" + this.start + "," + this.end;
+			return str.hashCode();
+		} else {
+			String str = this.start + "," + this.end;
+			return str.hashCode();
+		}
+		
 	}
 
 	public boolean equals(Object em2) {

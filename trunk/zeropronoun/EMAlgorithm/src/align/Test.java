@@ -59,7 +59,6 @@ public class Test {
 			if(xm!=null) {
 				System.out.println(m.extent + "#" + xm.extent);
 			}
-			
 		}
 		
 		Mention.assignMode = 5;
