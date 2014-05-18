@@ -134,22 +134,6 @@ public class CoNLLDocument {
 				this.parts.add(part);
 				sentence = null;
 
-				if (DocumentMap.isInited()) {
-					part.documentMap = DocumentMap.getDocumentMap(part.docName,
-							part.lang);
-
-					if (part.documentMap != null) {
-						if (part.lang.equalsIgnoreCase("eng")) {
-							part.itself = part.documentMap.engDoc;
-							part.counterpart = part.documentMap.chiDoc;
-						} else if (part.lang.equalsIgnoreCase("chi")) {
-							part.itself = part.documentMap.chiDoc;
-							part.counterpart = part.documentMap.engDoc;
-						} else {
-							Common.bangErrorPOS("Not Supported Language");
-						}
-					}
-				}
 				continue;
 			}
 			// end of one sentence

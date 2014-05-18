@@ -9,6 +9,8 @@ public class CoNLLWord {
 
 	public Mention speakerM;
 	
+	public boolean isZeroWord = false;
+	
 	public String sourceLine;
 	
 	public int utterOrder = -2;

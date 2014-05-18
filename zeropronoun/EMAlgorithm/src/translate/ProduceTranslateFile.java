@@ -60,7 +60,7 @@ public class ProduceTranslateFile {
 					int start = s.getWord(0).index;
 					int end = s.getWord(s.getWords().size() - 1).index;
 
-					ArrayList<Mention> zerosInS = EMUtil.getProperZeros(allZeros,
+					ArrayList<Mention> zerosInS = EMUtil.getInBetweenMention(allZeros,
 							start, end);
 					Collections.sort(zerosInS);
 
@@ -68,7 +68,7 @@ public class ProduceTranslateFile {
 
 					for (int i=0;i<groups.size();i++) {
 						ArrayList<CoNLLWord> group = groups.get(i);
-						ArrayList<Mention> zeroInGroup = EMUtil.getProperZeros(
+						ArrayList<Mention> zeroInGroup = EMUtil.getInBetweenMention(
 								zerosInS, group.get(0).index,
 								group.get(group.size() - 1).index);
 						Collections.sort(zeroInGroup);
