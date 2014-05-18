@@ -35,12 +35,12 @@ public class CoNLLPart {
 
 	private ArrayList<Entity> chains;
 
-	public DocumentMap documentMap;
+//	public DocumentMap documentMap;
 	
-	public static HashMap<String, DocumentMap> mapCache = new HashMap<String, DocumentMap>();
+//	public static HashMap<String, DocumentMap> mapCache = new HashMap<String, DocumentMap>();
 	
-	public DocForAlign itself;
-	public DocForAlign counterpart;
+//	public DocForAlign itself;
+//	public DocForAlign counterpart;
 
 	public String rawText;
 
@@ -76,26 +76,26 @@ public class CoNLLPart {
 		this.chains = new ArrayList<Entity>();
 		this.mentions = new ArrayList<Mention>();
 		
-		if (mapCache.containsKey(docName + this.lang) && !MTDoc) {
-			documentMap = mapCache.get(docName + this.lang);
-		} else if (DocumentMap.isInited()) {
-			documentMap = DocumentMap.getDocumentMap(docName, this.lang);
-			if (!MTDoc) {
-				// store for future use
-				mapCache.put(docName + this.lang, documentMap);
-			}
-		}
-		if (documentMap != null) {
-			if (this.lang.equalsIgnoreCase("eng")) {
-				itself = documentMap.engDoc;
-				counterpart = documentMap.chiDoc;
-			} else if (this.lang.equalsIgnoreCase("chi")) {
-				itself = documentMap.chiDoc;
-				counterpart = documentMap.engDoc;
-			} else {
-				Common.bangErrorPOS("Not Supported Language");
-			}
-		}
+//		if (mapCache.containsKey(docName + this.lang) && !MTDoc) {
+//			documentMap = mapCache.get(docName + this.lang);
+//		} else if (DocumentMap.isInited()) {
+//			documentMap = DocumentMap.getDocumentMap(docName, this.lang);
+//			if (!MTDoc) {
+//				// store for future use
+//				mapCache.put(docName + this.lang, documentMap);
+//			}
+//		}
+//		if (documentMap != null) {
+//			if (this.lang.equalsIgnoreCase("eng")) {
+//				itself = documentMap.engDoc;
+//				counterpart = documentMap.chiDoc;
+//			} else if (this.lang.equalsIgnoreCase("chi")) {
+//				itself = documentMap.chiDoc;
+//				counterpart = documentMap.engDoc;
+//			} else {
+//				Common.bangErrorPOS("Not Supported Language");
+//			}
+//		}
 	}
 	
 	public ArrayList<Mention> getMentions() {
@@ -202,6 +202,7 @@ public class CoNLLPart {
 						end = wordIdx;
 						Element element = new Element(start, end, neType);
 						this.nameEntities.add(element);
+						sentence.namedEntities.add(element);
 					}
 				}
 				wordIdx++;

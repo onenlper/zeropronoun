@@ -23,13 +23,13 @@ import util.Common;
 public class GetTokenization {
 
 	public static void main(String args[]) {
-//		ArrayList<String> lines = new ArrayList<String>();
-//		lines.addAll(parse("std/3/3.eng.aa.xml"));
-//		lines.addAll(parse("std/3/3.eng.ab.xml"));
-//		lines.addAll(parse("std/3/3.eng.ac.xml"));
-////		lines.addAll(parse("std/3/3.eng.ad.xml"));
-//		
-//		Common.outputLines(lines, "setting3.eng.tok");
+		ArrayList<String> lines = new ArrayList<String>();
+		lines.addAll(parse("setting1/std/1.eng.aa.xml"));
+		lines.addAll(parse("setting1/std/1.eng.ab.xml"));
+		lines.addAll(parse("setting1/std/1.eng.ac.xml"));
+//		lines.addAll(parse("setting2/std/2.eng.ad.xml"));
+		
+		Common.outputLines(lines, "setting1.eng.tok");
 	}
 
 	private static ArrayList<String> parse(String file) {

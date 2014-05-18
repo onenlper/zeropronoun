@@ -19,6 +19,21 @@ public class ChineseMention {
 
 	public static boolean goldNE = false;
 
+	public ArrayList<Mention> getChineseMention(CoNLLSentence s) {
+		ArrayList<Mention> mentions = new ArrayList<Mention>();
+		CoNLLPart part = s.part;
+		part.setNameEntities(getChNE(part));
+		// part.setNameEntities(this.getChGoldNE(part));
+
+		mentions.addAll(this.getChNPMention(s));
+		removeDuplicateMentions(mentions);
+	
+		EMUtil.assignNE(mentions, part.getNameEntities());
+//		EMUtil.pruneChMentions(mentions, part);
+		
+		return mentions;
+	}
+	
 	public ArrayList<Mention> getChineseMention(CoNLLPart part) {
 		ArrayList<Mention> mentions = new ArrayList<Mention>();
 
@@ -30,18 +45,6 @@ public class ChineseMention {
 	
 		EMUtil.assignNE(mentions, part.getNameEntities());
 //		EMUtil.pruneChMentions(mentions, part);
-		
-		for(Mention m : mentions) {
-			CoNLLSentence s = m.s;
-			if (s.part.itself != null) {
-				for (int i = m.start; i <= m.end; i++) {
-					Unit unit = s.part.itself.getUnit(i);
-					if (unit != null) {
-						unit.addMention(m);
-					}
-				}
-			}
-		}
 		
 		return mentions;
 	}
@@ -110,6 +113,29 @@ public class ChineseMention {
 			part.getCoNLLSentences().get(i)
 					.setSyntaxTree(goldSentence.getSyntaxTree());
 		}
+	}
+	
+	private ArrayList<Mention> getChNPMention(CoNLLSentence s) {
+		ArrayList<Mention> npMentions = EMUtil.extractMention(s);
+
+		// MentionDetect md = new GoldBoundaryMentionTest();
+		// npMentions = md.getMentions(part);
+
+		// Gold Mention
+		// MentionDetect md = new GoldMentionTest();
+		// npMentions = md.getMentions(part);
+		CoNLLPart part = s.part;
+		for (int g = 0; g < npMentions.size(); g++) {
+			Mention npMention = npMentions.get(g);
+			int end = npMention.end;
+			int start = npMention.start;
+			StringBuilder sb = new StringBuilder();
+			for (int i = start; i <= end; i++) {
+				sb.append(part.getWord(i).word).append(" ");
+			}
+			npMention.extent = sb.toString().trim().toLowerCase();
+		}
+		return npMentions;
 	}
 
 	private ArrayList<Mention> getChNPMention(CoNLLPart part) {

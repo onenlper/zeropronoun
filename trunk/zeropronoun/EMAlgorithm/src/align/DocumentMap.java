@@ -1,6 +1,5 @@
 package align;
 
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -76,26 +75,25 @@ public class DocumentMap {
 		String token;
 		public SentForAlign sentForAlign;
 
-		
 		public CoNLLPart part;
 		public CoNLLSentence sentence;
 
 		public int indexInSentence;
 
-//		public ArrayList<Span> spans;
+		// public ArrayList<Span> spans;
 
 		public ArrayList<Mention> mentions;
 
-//		public void addSpan(Span s) {
-//			// check whether contain it already
-//			for (Span tmp : spans) {
-//				if (tmp.start == s.start && tmp.end == s.end) {
-//					return;
-//				}
-//			}
-//			// may need to check here
-//			this.spans.add(s);
-//		}
+		// public void addSpan(Span s) {
+		// // check whether contain it already
+		// for (Span tmp : spans) {
+		// if (tmp.start == s.start && tmp.end == s.end) {
+		// return;
+		// }
+		// }
+		// // may need to check here
+		// this.spans.add(s);
+		// }
 
 		public void addMention(Mention m) {
 			for (Mention tmp : this.mentions) {
@@ -108,7 +106,7 @@ public class DocumentMap {
 
 		public Unit() {
 			this.mapUnit = new ArrayList<Unit>();
-//			this.spans = new ArrayList<Span>();
+			// this.spans = new ArrayList<Span>();
 			this.mapProb = new ArrayList<Double>();
 			this.visable = 0;
 			this.mentions = new ArrayList<Mention>();
@@ -183,6 +181,14 @@ public class DocumentMap {
 			this.units.add(unit);
 			unit.sentForAlign = this;
 			this.doc.units.put(unit.id, unit);
+		}
+
+		public String getText() {
+			StringBuilder sb = new StringBuilder();
+			for (Unit u : units) {
+				sb.append(u.token).append(" ");
+			}
+			return sb.toString().trim();
 		}
 	}
 
@@ -304,88 +310,100 @@ public class DocumentMap {
 		}
 	}
 
-	public static void loadRealBAAlignResult(String alignFolder) {
+	public static ArrayList<SentForAlign[]> loadRealBAAlignResult(
+			String alignFolder) {
 		if (initialized) {
 			Common.bangErrorPOS("Already inited!!!");
 		}
+		ArrayList<SentForAlign[]> alignCache = new ArrayList<SentForAlign[]>();
 		initialized = true;
-//		ArrayList<String> lines = Common.getLines(alignFolder + "/parallelMap");
-//		for (int i = 0; i < lines.size(); i++) {
-//			String parallel = lines.get(i);
-			int i = 0;
-			DocumentMap documentMap = new DocumentMap("", i);
+		// ArrayList<String> lines = Common.getLines(alignFolder +
+		// "/parallelMap");
+		// for (int i = 0; i < lines.size(); i++) {
+		// String parallel = lines.get(i);
+		int i = 0;
+		DocumentMap documentMap = new DocumentMap("", i);
 
-			// ArrayList<String> alignContent = Common.getLines(alignFolder
-			// + File.separator + i + ".align");
-//			ArrayList<String> alignIDs = Common.getLines(alignFolder
-//					+ File.separator + i + ".id");
-			
-			ArrayList<String> alignsoftContent = Common.getLines(alignFolder
-					+ File.separator + "training.alignsoft");
+		// ArrayList<String> alignContent = Common.getLines(alignFolder
+		// + File.separator + i + ".align");
+		// ArrayList<String> alignIDs = Common.getLines(alignFolder
+		// + File.separator + i + ".id");
 
-			ArrayList<String> engStrs = Common.getLines(alignFolder
-					+ File.separator + "training.e");
-			ArrayList<String> chiStrs = Common.getLines(alignFolder
-					+ File.separator + "training.f");
+		ArrayList<String> alignsoftContent = Common.getLines(alignFolder
+				+ File.separator + "training.alignsoft");
 
-			// assign the most confidence map, other than map with confidence
-			// greater than 0.5
-			for (int j = 0; j < alignsoftContent.size(); j++) {
-				SentForAlign engSent = new SentForAlign(j);
-				SentForAlign chiSent = new SentForAlign(j);
-				engSent.mapSentence = chiSent;
-				chiSent.mapSentence = engSent;
+		ArrayList<String> engStrs = Common.getLines(alignFolder
+				+ File.separator + "training.e");
+		ArrayList<String> chiStrs = Common.getLines(alignFolder
+				+ File.separator + "training.f");
 
-				documentMap.engDoc.addSent(engSent);
-				documentMap.chiDoc.addSent(chiSent);
+		// assign the most confidence map, other than map with confidence
+		// greater than 0.5
+		for (int j = 0; j < alignsoftContent.size(); j++) {
+			SentForAlign[] pair = new SentForAlign[2];
 
-//				String chiIDStr = alignIDs.get(j * 3 + 1).trim();
-//				String chiIDs[] = chiIDStr.split("\\s+");
+			SentForAlign engSent = new SentForAlign(j);
+			SentForAlign chiSent = new SentForAlign(j);
 
-//				String engIDStr = alignIDs.get(j * 3 + 2).trim();
-//				String engIDs[] = engIDStr.split("\\s+");
+			pair[0] = chiSent;
+			pair[1] = engSent;
 
-				String alignsoftStr = alignsoftContent.get(j);
-				String alignsofts[] = alignsoftStr.split("\\s+");
+			engSent.mapSentence = chiSent;
+			chiSent.mapSentence = engSent;
 
-				String chiTks[] = chiStrs.get(j).split("\\s+");
-				String engTks[] = engStrs.get(j).split("\\s+");
+			documentMap.engDoc.addSent(engSent);
+			documentMap.chiDoc.addSent(chiSent);
 
-				// create units
-				try {
-					for (int m = 0; m < chiTks.length; m++) {
-						int id = m;
-						String tk = chiTks[m];
-						Unit unit = new Unit(id, tk);
-						chiSent.addUnit(unit);
-					}
-				} catch (Exception e) {
-					Common.bangErrorPOS(alignFolder + " # " + i + " $ " + j);
-				}
+			// String chiIDStr = alignIDs.get(j * 3 + 1).trim();
+			// String chiIDs[] = chiIDStr.split("\\s+");
 
-				for (int m = 0; m < engTks.length; m++) {
+			// String engIDStr = alignIDs.get(j * 3 + 2).trim();
+			// String engIDs[] = engIDStr.split("\\s+");
+
+			String alignsoftStr = alignsoftContent.get(j);
+			String alignsofts[] = alignsoftStr.split("\\s+");
+
+			String chiTks[] = chiStrs.get(j).split("\\s+");
+			String engTks[] = engStrs.get(j).split("\\s+");
+
+			alignCache.add(pair);
+
+			// create units
+			try {
+				for (int m = 0; m < chiTks.length; m++) {
 					int id = m;
-					String tk = engTks[m];
+					String tk = chiTks[m];
 					Unit unit = new Unit(id, tk);
-					engSent.addUnit(unit);
+					chiSent.addUnit(unit);
 				}
+			} catch (Exception e) {
+				Common.bangErrorPOS(alignFolder + " # " + i + " $ " + j);
+			}
 
-				// create map
-				for (int m = 0; m < alignsofts.length; m++) {
-					// chi-eng-prob
-					Matcher matcher = baPattern.matcher(alignsofts[m]);
-					if (matcher.find()) {
-						Unit chiUnit = chiSent.units.get(Integer
-								.parseInt(matcher.group(1)));
-						Unit engUnit = engSent.units.get(Integer
-								.parseInt(matcher.group(2)));
+			for (int m = 0; m < engTks.length; m++) {
+				int id = m;
+				String tk = engTks[m];
+				Unit unit = new Unit(id, tk);
+				engSent.addUnit(unit);
+			}
 
-						chiUnit.addMapUnit(engUnit,
-								Double.valueOf(matcher.group(3)));
-					}
+			// create map
+			for (int m = 0; m < alignsofts.length; m++) {
+				// chi-eng-prob
+				Matcher matcher = baPattern.matcher(alignsofts[m]);
+				if (matcher.find()) {
+					Unit chiUnit = chiSent.units.get(Integer.parseInt(matcher
+							.group(1)));
+					Unit engUnit = engSent.units.get(Integer.parseInt(matcher
+							.group(2)));
+
+					chiUnit.addMapUnit(engUnit,
+							Double.valueOf(matcher.group(3)));
 				}
 			}
-//		}
+		}
+		// }
+		return alignCache;
 	}
 
 	public static void loadRealGizaAlignResult(String alignFolder) {

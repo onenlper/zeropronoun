@@ -14,6 +14,7 @@ import model.Element;
 import model.Entity;
 import model.GraphNode;
 import model.Mention;
+import model.CoNLL.CoNLLDocument;
 import model.CoNLL.CoNLLPart;
 import model.CoNLL.CoNLLSentence;
 import model.CoNLL.CoNLLWord;
@@ -43,7 +44,7 @@ public class EMUtil {
 		/**
 				 * 
 				 */
-		private static final long serialVersionUID = 1L;
+		public static final long serialVersionUID = 1L;
 		{
 			put("你", 1);
 			put("我", 2);
@@ -140,6 +141,18 @@ public class EMUtil {
 		empty.addChild(child);
 		child.emptyCategory = true;
 		zero.NP = newNP;
+	}
+
+	public static HashMap<String, CoNLLSentence> loadTranslateEngCoNLL(
+			CoNLLDocument doc, String setting) {
+		ArrayList<String> chiLines = Common.getLines(setting + "/docs/train.f");
+		HashMap<String, CoNLLSentence> sMap = new HashMap<String, CoNLLSentence>();
+		for (int i = 0; i < chiLines.size(); i++) {
+			String chi = chiLines.get(i);
+			CoNLLSentence s = doc.getParts().get(0).getCoNLLSentences().get(i);
+			sMap.put(chi, s);
+		}
+		return sMap;
 	}
 
 	public static short getProIdx(String extent) {
@@ -536,7 +549,7 @@ public class EMUtil {
 		em.s = sentence;
 
 		MyTreeNode head = treeNode.getHeadLeaf();
-
+//		head = treeNode.getLeaves().get(treeNode.getLeaves().size());
 		em.headID = sentence.getWord(head.leafIdx).index;
 		em.headInS = head.leafIdx;
 		em.head = head.value;
@@ -601,20 +614,11 @@ public class EMUtil {
 		}
 
 		CoNLLSentence s = em.s;
-		if (s.part.itself != null) {
-			for (int i = em.start; i <= em.end; i++) {
-				Unit unit = s.part.itself.getUnit(i);
-				if (unit != null) {
-					unit.addMention(em);
-				}
-			}
-		}
 		// changeStr(em);
-
 		return em;
 	}
 
-	private static void changeStr(Mention em) {
+	public static void changeStr(Mention em) {
 		if (em.extent.equals("这些")) {
 			em.extent = "它们";
 			em.head = "它们";
@@ -1435,6 +1439,109 @@ public class EMUtil {
 			}
 		}
 		return map;
+	}
+
+	public static ArrayList<Mention> getInBetweenMention(
+			ArrayList<Mention> mentions, int start, int end) {
+		ArrayList<Mention> zeros = new ArrayList<Mention>();
+		for (Mention m : mentions) {
+			if (m.start >= start && m.start <= end
+					&& (m.end == -1 || (m.end >= start && m.end <= end))) {
+				zeros.add(m);
+			}
+		}
+		return zeros;
+	}
+
+	public static ArrayList<ArrayList<CoNLLWord>> split(CoNLLSentence s,
+			ArrayList<Mention> zeros) {
+		ArrayList<ArrayList<CoNLLWord>> groups = new ArrayList<ArrayList<CoNLLWord>>();
+
+		ArrayList<Integer> spliter = new ArrayList<Integer>();
+		Collections.sort(zeros);
+		spliter.add(0);
+		for (int i = 0; i < zeros.size() - 1; i++) {
+			Mention z1 = zeros.get(i);
+			Mention z2 = zeros.get(i + 1);
+			int split = -1;
+			for (int p = z1.start; p <= z2.start; p++) {
+				String word = s.part.getWord(p).word;
+				if (word.equals(".") || word.equals("。") || word.equals("？")
+						|| word.equals("?")) {
+					split = s.part.getWord(p).indexInSentence + 1;
+					break;
+				}
+				if (split == -1
+						&& (word.equals(",") || word.equals("，")
+								|| word.equals("，") || word.equals("、"))) {
+					split = s.part.getWord(p).indexInSentence + 1;
+				}
+			}
+			if (split != -1) {
+				spliter.add(split);
+			}
+		}
+		spliter.add(s.getWords().size());
+
+		for (int i = 0; i < spliter.size() - 1; i++) {
+			ArrayList<CoNLLWord> group = new ArrayList<CoNLLWord>();
+			group.addAll(s.getWords().subList(spliter.get(i),
+					spliter.get(i + 1)));
+			groups.add(group);
+		}
+		return groups;
+	}
+
+	public static ArrayList<CoNLLWord> addZero(ArrayList<CoNLLWord> list,
+			Mention z, String pronoun) {
+		ArrayList<CoNLLWord> newList = new ArrayList<CoNLLWord>(list);
+		CoNLLWord zp = new CoNLLWord();
+		zp.word = pronoun;
+		for (int i = 0; i < newList.size(); i++) {
+			if (newList.get(i).index == z.start) {
+				zp.index = z.start;
+				zp.indexInSentence = newList.get(i).indexInSentence;
+				zp.isZeroWord = true;
+				newList.add(i, zp);
+				break;
+			}
+		}
+		return newList;
+	}
+
+	public static String listToString(ArrayList<CoNLLWord> tks) {
+		StringBuilder sb = new StringBuilder();
+		for (CoNLLWord tk : tks) {
+			sb.append(tk.word).append(" ");
+		}
+		return sb.toString().trim();
+	}
+
+	public static ArrayList<ArrayList<CoNLLWord>> getAllPossibleFill(
+			ArrayList<CoNLLWord> group, ArrayList<Mention> zeroInGroup) {
+		ArrayList<ArrayList<CoNLLWord>> combinations = new ArrayList<ArrayList<CoNLLWord>>();
+		combinations.add(group);
+
+		for (Mention z : zeroInGroup) {
+			ArrayList<ArrayList<CoNLLWord>> tmpCombinations = new ArrayList<ArrayList<CoNLLWord>>();
+			for (String op : EMUtil.pronouns) {
+				for (ArrayList<CoNLLWord> combination : combinations) {
+					ArrayList<CoNLLWord> newList = EMUtil.addZero(combination,
+							z, op);
+					tmpCombinations.add(newList);
+				}
+			}
+			combinations = tmpCombinations;
+		}
+		return combinations;
+	}
+
+	public static ArrayList<Mention> removeDuplcate(
+			ArrayList<Mention> anaphorZeros) {
+		HashSet<Mention> zeroSet = new HashSet<Mention>(anaphorZeros);
+		anaphorZeros = new ArrayList<Mention>(zeroSet);
+		Collections.sort(anaphorZeros);
+		return anaphorZeros;
 	}
 
 	public static void main(String args[]) {
