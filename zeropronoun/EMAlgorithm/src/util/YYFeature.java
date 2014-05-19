@@ -79,10 +79,10 @@ public abstract class YYFeature {
 		ArrayList<Feature> features = this.getCategoryFeatures();
 
 		if (features != null) {
-			if (categoryFeaSize != -1 && categoryFeaSize != features.size()) {
-				System.err.println("Category fea size not equal!");
-				System.exit(1);
-			}
+//			if (categoryFeaSize != -1 && categoryFeaSize != features.size()) {
+//				System.err.println("Category fea size not equal!");
+//				System.exit(1);
+//			}
 			categoryFeaSize = features.size();
 
 			String feasToString = Common.feasToSVMString(features);

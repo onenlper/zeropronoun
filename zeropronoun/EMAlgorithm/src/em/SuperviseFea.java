@@ -22,7 +22,7 @@ public class SuperviseFea extends YYFeature {
 	Context context;
 
 	public static boolean plusNumberGenderPersonAnimacy = true;
-	
+
 	String personStr;
 	String numberStr;
 	String genderStr;
@@ -48,29 +48,31 @@ public class SuperviseFea extends YYFeature {
 	@Override
 	public ArrayList<Feature> getCategoryFeatures() {
 		ArrayList<Feature> feas = new ArrayList<Feature>();
-		String str = this.context.feaL;
-		for (int i = 0; i < str.length(); i++) {
-			int idx = Integer.parseInt(str.substring(i, i + 1));
-			Feature feature = new Feature(idx, 1, 10);
-			feas.add(feature);
+		String str = "";
+		feas.addAll(this.getEMNLPCate());
+		if (this.context != null) {
+			str = this.context.feaL;
+			for (int i = 0; i < str.length(); i++) {
+				int idx = Integer.parseInt(str.substring(i, i + 1));
+				Feature feature = new Feature(idx, 1, 10);
+				feas.add(feature);
+			}
 		}
-
-		 feas.addAll(this.getEMNLPCate());
 		return feas;
 	}
 
 	public ArrayList<String> getFeas() {
 		ArrayList<String> strs = new ArrayList<String>();
-		
-		if(plusNumberGenderPersonAnimacy) {
-		 strs.add(personStr);
-		 strs.add(numberStr);
-		 strs.add(genderStr);
-		 strs.add(animacyStr);
+
+		if (plusNumberGenderPersonAnimacy) {
+			strs.add(personStr);
+			strs.add(numberStr);
+			strs.add(genderStr);
+			strs.add(animacyStr);
 		}
 
-//		 strs.add(this.part.folder);
-//				 strs.add(context.feaL);
+		// strs.add(this.part.folder);
+		// strs.add(context.feaL);
 		strs.addAll(getEMLNLPStrFeatures());
 		return strs;
 	}
@@ -88,11 +90,13 @@ public class SuperviseFea extends YYFeature {
 
 	public ArrayList<Feature> getEMNLPCate() {
 		ArrayList<Feature> feas = new ArrayList<Feature>();
-		feas.addAll(this.getNPFeature());
 		feas.addAll(this.getZeroFeature());
-		feas.addAll(this.getZeroAnaphorFeature());
-
-		feas.addAll(this.getCFeatures());
+		
+		if(!this.cand.fake) {
+			feas.addAll(this.getNPFeature());
+			feas.addAll(this.getZeroAnaphorFeature());
+			feas.addAll(this.getCFeatures());
+		}
 		return feas;
 	}
 
@@ -405,18 +409,18 @@ public class SuperviseFea extends YYFeature {
 				break;
 			}
 		}
-		if(nearest==1) {
+		if (nearest == 1) {
 			features.add(new Feature(0, 1, 2));
 		} else {
 			features.add(new Feature(1, 1, 2));
 		}
-		
+
 		// int npIndex = this.candidates.indexOf(cand);
 		// if (npIndex == this.candidates.size() - 1 ||
 		// this.candidates.get(npIndex + 1).compareTo(zero) > 0) {
 		// features.add(new Feature(0, 1, 2));
 		// } else {
-		// 
+		//
 		// }
 		return features;
 	}
@@ -479,24 +483,20 @@ public class SuperviseFea extends YYFeature {
 	}
 
 	public ArrayList<String> getEMLNLPStrFeatures() {
-		CoNLLWord zeroWord = part.getWord(zero.start);
-		CoNLLWord candWord = part.getWord(cand.start);
-
-		String zeroSpeaker = zeroWord.speaker;
-		String candSpeaker = candWord.speaker;
 		String canHead = cand.head;
 
-//		if (!zeroSpeaker.equals(candSpeaker)) {
-//			if (canHead.equals("我")) {
-//				canHead = "你";
-//			} else if (canHead.equals("你")) {
-//				canHead = "我";
-//			}
-//		}
+		// if (!zeroSpeaker.equals(candSpeaker)) {
+		// if (canHead.equals("我")) {
+		// canHead = "你";
+		// } else if (canHead.equals("你")) {
+		// canHead = "我";
+		// }
+		// }
 		ArrayList<String> strFeas = new ArrayList<String>();
 		strFeas.add(canHead);
-		 strFeas.add(canHead + "#" + EMUtil.getPredicateNode(zero.V));
-		 strFeas.add(canHead + "#" + EMUtil.getPredicateNode(zero.V) + "#" + EMUtil.getObjectNP(zero.V));
+		strFeas.add(canHead + "#" + EMUtil.getPredicateNode(zero.V));
+		strFeas.add(canHead + "#" + EMUtil.getPredicateNode(zero.V) + "#"
+				+ EMUtil.getObjectNP(zero.V));
 		MyTreeNode v1 = cand.V;
 		MyTreeNode v2 = zero.V;
 		if (v1 != null & v2 != null) {

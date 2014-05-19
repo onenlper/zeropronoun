@@ -21,6 +21,8 @@ public class Mention implements Comparable<Mention>, Serializable {
 	 */
 	double th = 0.0;
 
+	public boolean fake = false;
+	
 	public ArrayList<Unit> units = new ArrayList<Unit>();
 
 	public int PRONOUN_TYPE;
