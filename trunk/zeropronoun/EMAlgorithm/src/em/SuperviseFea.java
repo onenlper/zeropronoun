@@ -92,7 +92,7 @@ public class SuperviseFea extends YYFeature {
 		ArrayList<Feature> feas = new ArrayList<Feature>();
 		feas.addAll(this.getZeroFeature());
 		
-		if(!this.cand.fake) {
+		if(!this.cand.isFake) {
 			feas.addAll(this.getNPFeature());
 			feas.addAll(this.getZeroAnaphorFeature());
 			feas.addAll(this.getCFeatures());
