@@ -113,7 +113,8 @@ public class ApplyMaxEnt10bEng {
 	}
 
 	static int sigID = 0;
-
+	ParseTreeMention ptm = new ParseTreeMention();
+	
 	public void test() {
 		ArrayList<String> files = Common.getLines("chinese_list_" + folder
 				+ "_development");
@@ -148,7 +149,6 @@ public class ApplyMaxEnt10bEng {
 				ArrayList<Mention> corefResult = new ArrayList<Mention>();
 				corefResults.add(corefResult);
 
-				ParseTreeMention ptm = new ParseTreeMention();
 				ArrayList<Mention> goldBoundaryNPMentions = ptm
 						.getMentions(part);
 
@@ -187,12 +187,12 @@ public class ApplyMaxEnt10bEng {
 
 					for (int sid = 0; sid < wordsArr.size(); sid++) {
 						ArrayList<CoNLLWord> words = wordsArr.get(sid);
-						int segStart = words.get(0).index;
-						int segEnd = words.get(words.size() - 1).index;
+						int chiSegStart = words.get(0).index;
+						int chiSegEnd = words.get(words.size() - 1).index;
 						ArrayList<Mention> zeros = EMUtil.getInBetweenMention(
-								zerosInS, segStart, segEnd);
+								zerosInS, chiSegStart, chiSegEnd);
 						ArrayList<Mention> nps = EMUtil.getInBetweenMention(
-								candidates, segStart, segEnd);
+								candidates, chiSegStart, chiSegEnd);
 
 						// fill all gaps with ta
 						for (int z = 0; z < zeros.size(); z++) {
@@ -214,16 +214,6 @@ public class ApplyMaxEnt10bEng {
 							words.add(w, newW);
 						}
 
-						HashMap<Integer, Integer> offsetMap = new HashMap<Integer, Integer>();
-						int offset = 0;
-						for (CoNLLWord w : words) {
-							if (w.isZeroWord) {
-								offset++;
-							} else {
-								offsetMap.put(w.index, offset);
-							}
-						}
-
 						for (int z = 0; z < zeros.size(); z++) {
 							if (z != 0
 									&& zeros.get(z).start == zeros.get(z - 1).start) {
@@ -235,6 +225,16 @@ public class ApplyMaxEnt10bEng {
 							}
 						}
 
+						HashMap<Integer, Integer> offsetMap = new HashMap<Integer, Integer>();
+						int offset = 0;
+						for (CoNLLWord w : words) {
+							if (w.isZeroWord) {
+								offset++;
+							} else {
+								offsetMap.put(w.index, offset);
+							}
+						}
+						
 						String chiStr = EMUtil.listToString(words);
 						SentForAlign[] align = alignMap.get(chiStr).get(0);
 						String engStr = align[1].getText();
@@ -243,14 +243,16 @@ public class ApplyMaxEnt10bEng {
 						// construct mention map between two s
 						for (Mention cm : nps) {
 							cm.units.clear();
-							cm.head = cm.extent;
+							if(cm.end==-1) {
+								cm.head = cm.extent;
+							}
 						}
 						for (Mention em : nps) {
-							int from = em.start - segStart
+							int from = em.start - chiSegStart
 									+ offsetMap.get(em.start);
 							int to = from;
 							if (em.end != -1) {
-								to = em.end - segStart + offsetMap.get(em.end);
+								to = em.end - chiSegStart + offsetMap.get(em.end);
 							} else {
 								from--;
 								to = from;
@@ -296,24 +298,34 @@ public class ApplyMaxEnt10bEng {
 							}
 						}
 
-						for (int ii = 1; ii <= 3; ii++) {
-							Mention.assignMode = ii;
+						for (int g = 1; g <= 4; g++) {
+							Mention.assignMode = g;
+							for (Mention m : engMentions) {
+								m.getXSpan();
+							}
 							for (Mention m : nps) {
 								m.getXSpan();
 							}
 						}
+						
 						for (Mention m : nps) {
 							Mention xm = m.getXSpan();
 							if (xm != null 
-									&& m.end == -1 
+//									&& m.end == -1 
 //									&& m.xSpanType!=7
 									) {
 								System.out.println(m.extent + "#" + xm.extent);
-								System.out.println(EMUtil.listToString(words));
-								System.out.println(xm.s.getText());
-								System.out.println(m.xSpanType);
-								Common.pause("GOOD!!!");
+//								System.out.println(EMUtil.listToString(words));
+//								System.out.println(xm.s.getText());
+//								System.out.println(m.xSpanType);
+//								Common.pause("GOOD!!!");
+								alignn++;
+								
+								if(m.extent.trim().split("\\s+").length!=1) {
+//									Common.pause("!!!");
+								}
 							}
+							all++;
 						}
 					}
 				}
@@ -327,6 +339,9 @@ public class ApplyMaxEnt10bEng {
 		good = 0;
 		evaluate(corefResults, goldEntities);
 	}
+	
+	static double all = 0;
+	static double alignn = 0;
 
 	private void findAntecedent(String file, CoNLLPart part,
 			HashMap<String, Integer> chainMap, ArrayList<Mention> corefResult,
@@ -847,7 +862,6 @@ public class ApplyMaxEnt10bEng {
 			run(args[0]);
 
 			// TODO output
-
 			return;
 		} else if (args[1].equals("load")) {
 			mode = load;
@@ -882,7 +896,8 @@ public class ApplyMaxEnt10bEng {
 
 		Common.outputHashSet(Context.ss, "miniS");
 		Common.outputHashSet(Context.vs, "miniV");
-
+		
+		System.out.println(alignn/all + "##");
 		if (mode == prepare) {
 			Common.outputLines(anteTest, "ante10.test" + folder);
 			System.out.println("MAX: " + maximam);
