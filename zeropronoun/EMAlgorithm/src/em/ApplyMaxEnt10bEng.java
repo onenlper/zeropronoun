@@ -225,105 +225,22 @@ public class ApplyMaxEnt10bEng {
 							}
 						}
 
-						HashMap<Integer, Integer> offsetMap = new HashMap<Integer, Integer>();
-						int offset = 0;
-						for (CoNLLWord w : words) {
-							if (w.isZeroWord) {
-								offset++;
-							} else {
-								offsetMap.put(w.index, offset);
-							}
-						}
-						
-						String chiStr = EMUtil.listToString(words);
-						SentForAlign[] align = alignMap.get(chiStr).get(0);
-						String engStr = align[1].getText();
-						CoNLLSentence engCoNLLS = engSMap.get(engStr).get(0);
-
-						// construct mention map between two s
-						for (Mention cm : nps) {
-							cm.units.clear();
-							if(cm.end==-1) {
-								cm.head = cm.extent;
-							}
-						}
-						for (Mention em : nps) {
-							int from = em.start - chiSegStart
-									+ offsetMap.get(em.start);
-							int to = from;
-							if (em.end != -1) {
-								to = em.end - chiSegStart + offsetMap.get(em.end);
-							} else {
-								from--;
-								to = from;
-							}
-							StringBuilder sb = new StringBuilder();
-							for (int g = from; g <= to; g++) {
-								Unit unit = align[0].units.get(g);
-								unit.sentence = chiS;
-								unit.addMention(em);
-								em.units.add(unit);
-								sb.append(unit.getToken()).append(" ");
-							}
-							if(!sb.toString().trim().equalsIgnoreCase(em.extent)) {
-//								System.out.println("#" + sb.toString().trim()
-//										+ "#" + em.extent.trim() + "#");
-//								System.out.println(em.start + "," + em.end);
-//								Common.pause("");
-							} else if(em.end==-1){
-//								System.out.println("#" + sb.toString().trim()
-//										+ "#" + em.extent.trim() + "#");
-//								System.out.println(em.start + "," + em.end);
-//								Common.pause("");
-							}
-						}
-						ArrayList<Mention> engMentions = ptm
-								.getMentions(engCoNLLS);
-						int engStart = engCoNLLS.getWords().get(0).index;
-						for (Mention em : engMentions) {
-							StringBuilder sb = new StringBuilder();
-							for (int g = em.start - engStart; g <= em.end
-									- engStart; g++) {
-								Unit unit = align[1].units.get(g);
-								unit.sentence = engCoNLLS;
-								unit.addMention(em);
-								em.units.add(unit);
-								sb.append(unit.getToken()).append(" ");
-							}
-							if (!em.extent.trim().equalsIgnoreCase(
-									sb.toString().trim())) {
-								System.out.println("#" + sb.toString().trim()
-										+ "#" + em.extent.trim() + "#");
-								Common.bangErrorPOS("");
-							}
-						}
-
-						for (int g = 1; g <= 4; g++) {
-							Mention.assignMode = g;
-							for (Mention m : engMentions) {
-								m.getXSpan();
-							}
-							for (Mention m : nps) {
-								m.getXSpan();
-							}
-						}
+						alignMentions(chiS, words, chiSegStart, nps);
 						
 						for (Mention m : nps) {
 							Mention xm = m.getXSpan();
-							if (xm != null 
-//									&& m.end == -1 
-//									&& m.xSpanType!=7
-									) {
-								System.out.println(m.extent + "#" + xm.extent);
+//							if (xm != null 
+//									&& xm.extent.isEmpty()
+//									) {
+//								System.out.println(m.extent + "#" + xm.extent);
+//								System.out.println(m.start + "," + m.end + "#" + xm.start + "," + xm.end);
 //								System.out.println(EMUtil.listToString(words));
 //								System.out.println(xm.s.getText());
 //								System.out.println(m.xSpanType);
 //								Common.pause("GOOD!!!");
+//							}
+							if(xm!=null) {
 								alignn++;
-								
-								if(m.extent.trim().split("\\s+").length!=1) {
-//									Common.pause("!!!");
-								}
 							}
 							all++;
 						}
@@ -338,6 +255,90 @@ public class ApplyMaxEnt10bEng {
 		bad = 0;
 		good = 0;
 		evaluate(corefResults, goldEntities);
+	}
+
+	private void alignMentions(CoNLLSentence chiS, ArrayList<CoNLLWord> words,
+			int chiSegStart, ArrayList<Mention> nps) {
+		HashMap<Integer, Integer> offsetMap = new HashMap<Integer, Integer>();
+		int offset = 0;
+		for (CoNLLWord w : words) {
+			if (w.isZeroWord) {
+				offset++;
+			} else {
+				offsetMap.put(w.index, offset);
+			}
+		}
+		
+		String chiStr = EMUtil.listToString(words);
+		SentForAlign[] align = alignMap.get(chiStr).get(0);
+		String engStr = align[1].getText();
+		CoNLLSentence engCoNLLS = engSMap.get(engStr).get(0);
+
+		// construct mention map between two s
+		for (Mention cm : nps) {
+			cm.units.clear();
+			Mention.chiSpanMaps.remove(cm.getReadName());
+		}
+		for (Mention em : nps) {
+			int from = em.start - chiSegStart
+					+ offsetMap.get(em.start);
+			int to = from;
+			if (em.end != -1) {
+				to = em.end - chiSegStart + offsetMap.get(em.end);
+			} else {
+				from--;
+				to = from;
+			}
+			StringBuilder sb = new StringBuilder();
+			for (int g = from; g <= to; g++) {
+				Unit unit = align[0].units.get(g);
+				unit.sentence = chiS;
+				unit.addMention(em);
+				em.units.add(unit);
+				sb.append(unit.getToken()).append(" ");
+			}
+			if(!sb.toString().trim().equalsIgnoreCase(em.extent)) {
+//								System.out.println("#" + sb.toString().trim()
+//										+ "#" + em.extent.trim() + "#");
+//								System.out.println(em.start + "," + em.end);
+//								Common.pause("");
+			} else if(em.end==-1){
+//								System.out.println("#" + sb.toString().trim()
+//										+ "#" + em.extent.trim() + "#");
+//								System.out.println(em.start + "," + em.end);
+//								Common.pause("");
+			}
+		}
+		ArrayList<Mention> engMentions = ptm
+				.getMentions(engCoNLLS);
+		int engStart = engCoNLLS.getWords().get(0).index;
+		for (Mention em : engMentions) {
+			StringBuilder sb = new StringBuilder();
+			for (int g = em.start - engStart; g <= em.end
+					- engStart; g++) {
+				Unit unit = align[1].units.get(g);
+				unit.sentence = engCoNLLS;
+				unit.addMention(em);
+				em.units.add(unit);
+				sb.append(unit.getToken()).append(" ");
+			}
+			if (!em.extent.trim().equalsIgnoreCase(
+					sb.toString().trim())) {
+				System.out.println("#" + sb.toString().trim()
+						+ "#" + em.extent.trim() + "#");
+				Common.bangErrorPOS("");
+			}
+		}
+
+		for (int g = 1; g <= 4; g++) {
+			Mention.assignMode = g;
+//							for (Mention m : engMentions) {
+//								m.getXSpan();
+//							}
+			for (Mention m : nps) {
+				m.getXSpan();
+			}
+		}
 	}
 	
 	static double all = 0;
@@ -425,6 +426,7 @@ public class ApplyMaxEnt10bEng {
 			}
 
 			zero.extent = pronoun;
+			zero.head = pronoun;
 			for (int i = 0; i < cands.size(); i++) {
 				Mention cand = cands.get(i);
 				String unit = "";
