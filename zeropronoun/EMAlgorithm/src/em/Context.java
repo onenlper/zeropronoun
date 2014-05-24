@@ -72,7 +72,7 @@ public class Context implements Serializable {
 	}
 
 	public static SVOStat svoStat;
-
+	static short[] feas = new short[18];
 	public static Context buildContext(Mention ant, Mention pronoun,
 			CoNLLPart part, boolean isFS) {
 		MI = calMI(ant, pronoun);
@@ -181,9 +181,7 @@ public class Context implements Serializable {
 				}
 			}
 		}
-
 		// maximum 18 features because of the restriction of Long
-		short[] feas = new short[18];
 		feas[15] = senDis;
 
 //		 moreFea(antPos, proPos, antSynactic, antType, nearest, NPClause,
