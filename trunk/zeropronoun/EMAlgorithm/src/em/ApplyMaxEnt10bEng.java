@@ -70,11 +70,11 @@ public class ApplyMaxEnt10bEng {
 
 	static String setting = "setting1";
 
-	HashMap<String, SentForAlign[]> alignMap = new HashMap<String, SentForAlign[]>();;
-	HashMap<String, CoNLLSentence> engSsMap = new HashMap<String, CoNLLSentence>();
+	HashMap<String, ArrayList<SentForAlign[]>> alignMap = new HashMap<String, ArrayList<SentForAlign[]>>();;
+	HashMap<String, ArrayList<CoNLLSentence>> engSMap = new HashMap<String, ArrayList<CoNLLSentence>>();
 
 	CoNLLPart engPart;
-	
+
 	@SuppressWarnings("unchecked")
 	public ApplyMaxEnt10bEng(String folder) {
 
@@ -85,18 +85,28 @@ public class ApplyMaxEnt10bEng {
 
 		ArrayList<SentForAlign[]> alignCachelist = DocumentMap
 				.loadRealBAAlignResult("/users/yzcchen/chen3/zeroEM/EMAlgorithm/src/setting1/ba/");
-		for(SentForAlign[] align : alignCachelist) {
+		for (SentForAlign[] align : alignCachelist) {
 			String chi = align[0].getText();
-			alignMap.put(chi, align);
+			ArrayList<SentForAlign[]> lst = alignMap.get(chi);
+			if (lst == null) {
+				lst = new ArrayList<SentForAlign[]>();
+				alignMap.put(chi, lst);
+			}
+			lst.add(align);
 		}
-		
+
 		System.out.println("Done1.");
 		CoNLLPart.processDiscourse = false;
 		CoNLLDocument engDoc = new CoNLLDocument(setting + "/conll/eng.conll");
 		CoNLLPart.processDiscourse = true;
-		for(CoNLLSentence s : engDoc.getParts().get(0).getCoNLLSentences()) {
+		for (CoNLLSentence s : engDoc.getParts().get(0).getCoNLLSentences()) {
 			String engS = s.getText();
-			engSsMap.put(engS, s);
+			ArrayList<CoNLLSentence> lst = engSMap.get(engS);
+			if (lst == null) {
+				lst = new ArrayList<CoNLLSentence>();
+				engSMap.put(engS, lst);
+			}
+			lst.add(s);
 		}
 		System.out.println("Done2.");
 	}
@@ -165,30 +175,51 @@ public class ApplyMaxEnt10bEng {
 				Collections.sort(candidates);
 				Collections.sort(anaphorZeros);
 
-				for(int i=0;i<part.getCoNLLSentences().size();i++) {
+				for (int i = 0; i < part.getCoNLLSentences().size(); i++) {
 					CoNLLSentence chiS = part.getCoNLLSentences().get(i);
 					int start = chiS.getWord(0).index;
 					int end = chiS.getWord(chiS.getWords().size() - 1).index;
 
 					ArrayList<Mention> zerosInS = EMUtil.getInBetweenMention(
 							anaphorZeros, start, end);
-					ArrayList<ArrayList<CoNLLWord>> wordsArr = EMUtil.split(chiS,
-							zerosInS);
-					
-					for (ArrayList<CoNLLWord> words : wordsArr) {
+					ArrayList<ArrayList<CoNLLWord>> wordsArr = EMUtil.split(
+							chiS, zerosInS);
+
+					for (int sid = 0; sid < wordsArr.size(); sid++) {
+						ArrayList<CoNLLWord> words = wordsArr.get(sid);
 						int segStart = words.get(0).index;
 						int segEnd = words.get(words.size() - 1).index;
 						ArrayList<Mention> zeros = EMUtil.getInBetweenMention(
 								zerosInS, segStart, segEnd);
 
-						ArrayList<ArrayList<CoNLLWord>> combinations = EMUtil
-								.getAllPossibleFill(words, zeros);
 
-						
-						for(Mention z : zeros) {
-							findAntecedent(file, part, chainMap, corefResult, z,
-									candidates);
+						// fill all gaps with ta
+						for (int z = 0; z < zeros.size(); z++) {
+							if(z!=0 && zeros.get(z).start==zeros.get(z-1).start) {
+								continue;
+							}
+							Mention zero = zeros.get(z);
+							int w = -1;
+							for (; w < words.size(); w++) {
+								if (w!=-1 && words.get(w).index == zero.start) {
+									break;
+								}
+							}
+							CoNLLWord newW = new CoNLLWord();
+							newW.index = zeros.get(z).start;
+							newW.word = EMUtil.pronounList.get(0);
+							words.add(w, newW);
 						}
+
+						for (int z = 0; z < zeros.size(); z++) {
+							if(z!=0 && zeros.get(z).start==zeros.get(z-1).start) {
+								zeros.get(z).antecedent = zeros.get(z-1).antecedent;
+							} else {
+								findAntecedent(file, part, chainMap, corefResult,
+									zeros.get(z), candidates, words);
+							}
+						}
+						
 					}
 				}
 			}
@@ -204,186 +235,210 @@ public class ApplyMaxEnt10bEng {
 
 	private void findAntecedent(String file, CoNLLPart part,
 			HashMap<String, Integer> chainMap, ArrayList<Mention> corefResult,
-			Mention zero, ArrayList<Mention> allCandidates) {
-			zero.sentenceID = part.getWord(zero.start).sentence
-					.getSentenceIdx();
-			zero.s = part.getWord(zero.start).sentence;
-			EMUtil.assignVNode(zero, part);
-			
-			Mention antecedent = null;
-			Collections.sort(allCandidates);
-			String proSpeaker = part.getWord(zero.start).speaker;
+			Mention zero, ArrayList<Mention> allCandidates,
+			ArrayList<CoNLLWord> words) {
+		
+		zero.sentenceID = part.getWord(zero.start).sentence.getSentenceIdx();
+		zero.s = part.getWord(zero.start).sentence;
+		EMUtil.assignVNode(zero, part);
 
-			ArrayList<Mention> cands = new ArrayList<Mention>();
-			boolean findFS = false;
-			for (int h = allCandidates.size() - 1; h >= 0; h--) {
-				Mention cand = allCandidates.get(h);
+		Mention antecedent = null;
+		Collections.sort(allCandidates);
+		String proSpeaker = part.getWord(zero.start).speaker;
+
+		ArrayList<Mention> cands = new ArrayList<Mention>();
+		boolean findFS = false;
+		for (int h = allCandidates.size() - 1; h >= 0; h--) {
+			Mention cand = allCandidates.get(h);
+			cand.sentenceID = part.getWord(cand.start).sentence
+					.getSentenceIdx();
+			cand.s = part.getWord(cand.start).sentence;
+			cand.isFS = false;
+			cand.isBest = false;
+			cand.MI = Context.calMI(cand, zero);
+			if (cand.start < zero.start
+					&& zero.sentenceID - cand.sentenceID <= 2 && cand.NP!=null && cand.end==-1) {
+				if (!findFS && cand.gram == EMUtil.Grammatic.subject
+				// && !cand.s.getWord(cand.headInS).posTag.equals("NT")
+				// && MI>0
+				) {
+					cand.isFS = true;
+					findFS = true;
+				}
+				cands.add(cand);
+			}
+		}
+		findBest(zero, cands);
+
+		String v = EMUtil.getFirstVerb(zero.V);
+		// Yasmet format
+		// NUMBER, GENDER, PERSON, ANIMACY
+		int all = EMUtil.Number.values().length;
+		double probNum[] = runAttri("number", all, v);
+
+		all = EMUtil.Gender.values().length - 1;
+		double probGen[] = runAttri("gender", all, v);
+
+		all = EMUtil.Person.values().length;
+		double probPer[] = runAttri("person", all, v);
+
+		all = EMUtil.Animacy.values().length - 1;
+		double probAni[] = runAttri("animacy", all, v);
+		// TODO
+
+		// init yasmet
+		double maxProb = 0;
+		StringBuilder ysb = new StringBuilder();
+		ysb.append("0 @ ");
+
+		int w = -1;
+		for (; w < words.size(); w++) {
+			if (w!=-1 && words.get(w).index == zero.start) {
+				break;
+			}
+		}
+		
+		for (int m = 0; m < EMUtil.pronounList.size(); m++) {
+			String pronoun = EMUtil.pronounList.get(m);
+
+			words.get(w).word = pronoun;
+			String chiS = EMUtil.listToString(words);
+			
+//			System.out.println(chiS + "@@@");
+			
+			SentForAlign[] align = alignMap.get(chiS).get(0);
+			String engS = align[1].getText();
+			CoNLLSentence engCoNLLS = engSMap.get(engS).get(0);
+			if(engCoNLLS==null) {
+				Common.bangErrorPOS("");
+			}
+			
+			zero.extent = pronoun;
+			for (int i = 0; i < cands.size(); i++) {
+				Mention cand = cands.get(i);
+				String unit = "";
+
+				String antSpeaker = part.getWord(cand.start).speaker;
 				cand.sentenceID = part.getWord(cand.start).sentence
 						.getSentenceIdx();
-				cand.s = part.getWord(cand.start).sentence;
-				cand.isFS = false;
-				cand.isBest = false;
-				cand.MI = Context.calMI(cand, zero);
-				if (cand.start < zero.start
-						&& zero.sentenceID - cand.sentenceID <= 2) {
-					if (!findFS && cand.gram == EMUtil.Grammatic.subject
-					// && !cand.s.getWord(cand.headInS).posTag.equals("NT")
-					// && MI>0
-					) {
-						cand.isFS = true;
-						findFS = true;
-					}
-					cands.add(cand);
-				}
+
+				//
+				Context context = Context.buildContext(cand, zero, part,
+						cand.isFS);
+				cand.msg = Context.message;
+				cand.MI = Context.MI;
+
+				boolean sameSpeaker = proSpeaker.equals(antSpeaker);
+				Entry entry = new Entry(cand, context, sameSpeaker, cand.isFS);
+				unit = MaxEntLearn10b.getYamset(false, cand, zero, context,
+						sameSpeaker, entry, superFea, 1, part);
+				ysb.append(unit);
+
 			}
-			findBest(zero, cands);
-
-			String v = EMUtil.getFirstVerb(zero.V);
-			// Yasmet format
-			// NUMBER, GENDER, PERSON, ANIMACY
-			int all = EMUtil.Number.values().length;
-			double probNum[] = runAttri("number", all, v);
-
-			all = EMUtil.Gender.values().length - 1;
-			double probGen[] = runAttri("gender", all, v);
-
-			all = EMUtil.Person.values().length;
-			double probPer[] = runAttri("person", all, v);
-
-			all = EMUtil.Animacy.values().length - 1;
-			double probAni[] = runAttri("animacy", all, v);
-			// TODO
-
-			// init yasmet
-			double maxProb = 0;
-			StringBuilder ysb = new StringBuilder();
-			ysb.append("0 @ ");
-
-			for (int m = 0; m < EMUtil.pronounList.size(); m++) {
-				String pronoun = EMUtil.pronounList.get(m);
-				zero.extent = pronoun;
-				for (int i = 0; i < cands.size(); i++) {
-					Mention cand = cands.get(i);
-					String unit = "";
-
-					String antSpeaker = part.getWord(cand.start).speaker;
-					cand.sentenceID = part.getWord(cand.start).sentence
-							.getSentenceIdx();
-
-					//
-					Context context = Context.buildContext(cand, zero, part,
-							cand.isFS);
-					cand.msg = Context.message;
-					cand.MI = Context.MI;
-
-					boolean sameSpeaker = proSpeaker.equals(antSpeaker);
-					Entry entry = new Entry(cand, context, sameSpeaker,
-							cand.isFS);
-					unit = MaxEntLearn10b.getYamset(false, cand, zero, context,
-							sameSpeaker, entry, superFea, 1, part);
-					ysb.append(unit);
-
-				}
-				if (cands.size() == 0) {
-					continue;
-				}
+			if (cands.size() == 0) {
+				continue;
 			}
-			double probAnt[] = runYasmet(ysb.toString(), cands.size()
-					* EMUtil.pronounList.size());
-			pronounID++;
-			for (int i = 0; i < probAnt.length; i++) {
-				if (probAnt[i] > maxProb) {
-					maxProb = probAnt[i];
-					antecedent = cands.get(i % cands.size());
-				}
+		}
+		double probAnt[] = runYasmet(ysb.toString(), cands.size()
+				* EMUtil.pronounList.size());
+		pronounID++;
+		String op = null;
+		for (int i = 0; i < probAnt.length; i++) {
+			if (probAnt[i] > maxProb) {
+				maxProb = probAnt[i];
+				antecedent = cands.get(i % cands.size());
+				op = EMUtil.pronounList.get(i / EMUtil.pronounList.size());
 			}
+		}
+		if(op!=null) {
+			words.get(w).word = op;
+		}
+		// find the op filled english sentence
 
-			// System.err.println(cands.size());
-
-			if (antecedent != null) {
-				if (antecedent.end != -1) {
-					zero.antecedent = antecedent;
-				} else {
-					zero.antecedent = antecedent.antecedent;
-				}
-				zero.extent = antecedent.extent;
-				zero.head = antecedent.head;
-				zero.gram = Grammatic.subject;
-				zero.mType = antecedent.mType;
-				zero.NE = antecedent.NE;
-				this.addEmptyCategoryNode(zero);
-				// System.out.println(zero.start);
-				// System.out.println(antecedent.extent);
-			}
-			if (zero.antecedent != null
-					&& zero.antecedent.end != -1
-					&& chainMap.containsKey(zero.toName())
-					&& chainMap.containsKey(zero.antecedent.toName())
-					&& chainMap.get(zero.toName()).intValue() == chainMap.get(
-							zero.antecedent.toName()).intValue()) {
-				good++;
-				// if(antecedent.mType==MentionType.tmporal) {
-				// System.out.println(antecedent.extent + "GOOD!");
-				// }
-				// System.out.println(overtPro + "  " + zero.antecedent.extent);
-				// System.out.println("+++");
-				// printResult(zero, zero.antecedent, part);
-				// System.out.println("Predicate: " +
-				// this.getPredicate(zero.V));
-				// System.out.println("Object NP: " +
-				// this.getObjectNP(zero));
-				// System.out.println("===");
-				// if (zero.antecedent.MI < 0) {
-				// System.out.println("Right!!! " + good + "/" + bad);
-				// System.out.println(zero.antecedent.msg);
-				// }
+		// System.err.println(cands.size());
+		if (antecedent != null) {
+			if (antecedent.end != -1) {
+				zero.antecedent = antecedent;
 			} else {
-				// if(antecedent!=null && antecedent.mType==MentionType.tmporal)
-				// {
-				// System.out.println(antecedent.extent + "BAD !");
-				// }
-				bad++;
-				System.out.println("Error??? " + good + "/" + bad);
-				if (zero.antecedent != null) {
-					System.out.println(zero.antecedent.msg);
-				}
+				zero.antecedent = antecedent.antecedent;
 			}
-			String conllPath = file;
-			int aa = conllPath.indexOf(anno);
-			int bb = conllPath.indexOf(".");
-			String middle = conllPath.substring(aa + anno.length(), bb);
-			String path = prefix + middle + suffix;
-			System.out.println(path);
-			// System.out.println("=== " + file);
-			EMUtil.addEmptyCategoryNode(zero);
-
-			// if (antecedent != null) {
-			// CoNLLWord candWord = part.getWord(antecedent.start);
-			// CoNLLWord zeroWord = part.getWord(zero.start);
-			//
-			// String zeroSpeaker = part.getWord(zero.start).speaker;
-			// String candSpeaker = part.getWord(antecedent.start).speaker;
-			// // if (!zeroSpeaker.equals(candSpeaker)) {
-			// // if (antecedent.source.equals("我") &&
-			// // zeroWord.toSpeaker.contains(candSpeaker)) {
-			// // zero.head = "你";
-			// // zero.source = "你";
-			// // } else if (antecedent.source.equals("你") &&
-			// // candWord.toSpeaker.contains(zeroSpeaker)) {
-			// // zero.head = "我";
-			// // zero.source = "我";
-			// // }
-			// // } else {
-			// zero.extent = antecedent.extent;
-			// zero.head = antecedent.head;
-			// // }
-			//
+			zero.extent = antecedent.extent;
+			zero.head = antecedent.head;
+			zero.gram = Grammatic.subject;
+			zero.mType = antecedent.mType;
+			zero.NE = antecedent.NE;
+			this.addEmptyCategoryNode(zero);
+			// System.out.println(zero.start);
+			// System.out.println(antecedent.extent);
+		}
+		if (zero.antecedent != null
+				&& zero.antecedent.end != -1
+				&& chainMap.containsKey(zero.toName())
+				&& chainMap.containsKey(zero.antecedent.toName())
+				&& chainMap.get(zero.toName()).intValue() == chainMap.get(
+						zero.antecedent.toName()).intValue()) {
+			good++;
+			// if(antecedent.mType==MentionType.tmporal) {
+			// System.out.println(antecedent.extent + "GOOD!");
 			// }
+			// System.out.println(overtPro + "  " + zero.antecedent.extent);
+			// System.out.println("+++");
+			// printResult(zero, zero.antecedent, part);
+			// System.out.println("Predicate: " +
+			// this.getPredicate(zero.V));
+			// System.out.println("Object NP: " +
+			// this.getObjectNP(zero));
+			// System.out.println("===");
+			// if (zero.antecedent.MI < 0) {
+			// System.out.println("Right!!! " + good + "/" + bad);
+			// System.out.println(zero.antecedent.msg);
+			// }
+		} else {
+			// if(antecedent!=null && antecedent.mType==MentionType.tmporal)
+			// {
+			// System.out.println(antecedent.extent + "BAD !");
+			// }
+			bad++;
+			System.out.println("Error??? " + good + "/" + bad);
 			if (zero.antecedent != null) {
-				corefResult.add(zero);
+				System.out.println(zero.antecedent.msg);
 			}
-	}
+		}
+		String conllPath = file;
+		int aa = conllPath.indexOf(anno);
+		int bb = conllPath.indexOf(".");
+		String middle = conllPath.substring(aa + anno.length(), bb);
+		String path = prefix + middle + suffix;
+		System.out.println(path);
+		// System.out.println("=== " + file);
+		EMUtil.addEmptyCategoryNode(zero);
 
+		// if (antecedent != null) {
+		// CoNLLWord candWord = part.getWord(antecedent.start);
+		// CoNLLWord zeroWord = part.getWord(zero.start);
+		//
+		// String zeroSpeaker = part.getWord(zero.start).speaker;
+		// String candSpeaker = part.getWord(antecedent.start).speaker;
+		// // if (!zeroSpeaker.equals(candSpeaker)) {
+		// // if (antecedent.source.equals("我") &&
+		// // zeroWord.toSpeaker.contains(candSpeaker)) {
+		// // zero.head = "你";
+		// // zero.source = "你";
+		// // } else if (antecedent.source.equals("你") &&
+		// // candWord.toSpeaker.contains(zeroSpeaker)) {
+		// // zero.head = "我";
+		// // zero.source = "我";
+		// // }
+		// // } else {
+		// zero.extent = antecedent.extent;
+		// zero.head = antecedent.head;
+		// // }
+		//
+		// }
+		if (zero.antecedent != null) {
+			corefResult.add(zero);
+		}
+	}
 
 	private double[] runAttri(String attri, int all, String v) {
 		switch (mode) {
@@ -569,7 +624,7 @@ public class ApplyMaxEnt10bEng {
 		V.parent.addChild(VIdx, newNP);
 
 		MyTreeNode empty = new MyTreeNode();
-		empty.value = "-NONE-";
+		empty.value = "PN";
 		newNP.addChild(empty);
 
 		MyTreeNode child = new MyTreeNode();
@@ -659,11 +714,12 @@ public class ApplyMaxEnt10bEng {
 		double p = hit / system;
 		double f = 2 * r * p / (r + p);
 
-		String para = ILP.a_num + " " + ILP.b_gen + " " + ILP.c_per + " "
-				+ ILP.d_ani;
+//		String para = ILP.a_num + " " + ILP.b_gen + " " + ILP.c_per + " "
+//				+ ILP.d_ani;
 		String result = "R:" + r + " P: " + p + " F: " + f;
-		System.err.println(para + "\t" + result);
-		System.out.println(para);
+//		System.err.println(para + "\t" + result);
+//		System.out.println(para);
+		System.out.println("Gold: " + gold);
 		System.out.println("============");
 		System.out.println("Hit: " + hit);
 		System.out.println("Gold: " + gold);
