@@ -74,7 +74,7 @@ public class ApplyMaxEnt10bEng {
 	HashMap<String, ArrayList<SentForAlign[]>> alignMap = new HashMap<String, ArrayList<SentForAlign[]>>();;
 	HashMap<String, ArrayList<CoNLLSentence>> engSMap = new HashMap<String, ArrayList<CoNLLSentence>>();
 
-//	CoNLLPart activeEngPart;
+	// CoNLLPart activeEngPart;
 
 	@SuppressWarnings("unchecked")
 	public ApplyMaxEnt10bEng(String folder) {
@@ -161,7 +161,7 @@ public class ApplyMaxEnt10bEng {
 				} else {
 					anaphorZeros = ZeroDetect.getHeuristicZeros(part);
 				}
-
+				
 				ArrayList<Mention> candidates = new ArrayList<Mention>();
 				candidates.addAll(goldBoundaryNPMentions);
 
@@ -193,7 +193,7 @@ public class ApplyMaxEnt10bEng {
 								zerosInS, segStart, segEnd);
 						ArrayList<Mention> nps = EMUtil.getInBetweenMention(
 								candidates, segStart, segEnd);
-						
+
 						// fill all gaps with ta
 						for (int z = 0; z < zeros.size(); z++) {
 							if (z != 0
@@ -208,6 +208,7 @@ public class ApplyMaxEnt10bEng {
 								}
 							}
 							CoNLLWord newW = new CoNLLWord();
+							newW.isZeroWord = true;
 							newW.index = zeros.get(z).start;
 							newW.word = EMUtil.pronounList.get(0);
 							words.add(w, newW);
@@ -215,13 +216,14 @@ public class ApplyMaxEnt10bEng {
 
 						HashMap<Integer, Integer> offsetMap = new HashMap<Integer, Integer>();
 						int offset = 0;
-						for(CoNLLWord w : words) {
-							if(w.isZeroWord) {
+						for (CoNLLWord w : words) {
+							if (w.isZeroWord) {
 								offset++;
+							} else {
+								offsetMap.put(w.index, offset);
 							}
-							offsetMap.put(w.index, offset);
 						}
-						
+
 						for (int z = 0; z < zeros.size(); z++) {
 							if (z != 0
 									&& zeros.get(z).start == zeros.get(z - 1).start) {
@@ -241,18 +243,36 @@ public class ApplyMaxEnt10bEng {
 						// construct mention map between two s
 						for (Mention cm : nps) {
 							cm.units.clear();
+							cm.head = cm.extent;
 						}
 						for (Mention em : nps) {
-							int from = em.start-segStart+offsetMap.get(em.start);
+							int from = em.start - segStart
+									+ offsetMap.get(em.start);
 							int to = from;
-							if(em.end!=-1) {
-								to = em.end-segStart+offsetMap.get(em.end);
+							if (em.end != -1) {
+								to = em.end - segStart + offsetMap.get(em.end);
+							} else {
+								from--;
+								to = from;
 							}
-							for (int ii = from; ii <= to; ii++) {
-								Unit unit = align[0].units.get(ii);
+							StringBuilder sb = new StringBuilder();
+							for (int g = from; g <= to; g++) {
+								Unit unit = align[0].units.get(g);
 								unit.sentence = chiS;
 								unit.addMention(em);
 								em.units.add(unit);
+								sb.append(unit.getToken()).append(" ");
+							}
+							if(!sb.toString().trim().equalsIgnoreCase(em.extent)) {
+//								System.out.println("#" + sb.toString().trim()
+//										+ "#" + em.extent.trim() + "#");
+//								System.out.println(em.start + "," + em.end);
+//								Common.pause("");
+							} else if(em.end==-1){
+//								System.out.println("#" + sb.toString().trim()
+//										+ "#" + em.extent.trim() + "#");
+//								System.out.println(em.start + "," + em.end);
+//								Common.pause("");
 							}
 						}
 						ArrayList<Mention> engMentions = ptm
@@ -260,32 +280,38 @@ public class ApplyMaxEnt10bEng {
 						int engStart = engCoNLLS.getWords().get(0).index;
 						for (Mention em : engMentions) {
 							StringBuilder sb = new StringBuilder();
-							for (int ii = em.start - engStart; ii <= em.end - engStart; ii++) {
-								Unit unit = align[1].units.get(ii);
+							for (int g = em.start - engStart; g <= em.end
+									- engStart; g++) {
+								Unit unit = align[1].units.get(g);
 								unit.sentence = engCoNLLS;
 								unit.addMention(em);
 								em.units.add(unit);
 								sb.append(unit.getToken()).append(" ");
 							}
-							if(!em.extent.trim().equalsIgnoreCase(sb.toString().trim())) {
-								System.out.println("#" + sb.toString().trim() + "#"+ em.extent.trim() + "#");
+							if (!em.extent.trim().equalsIgnoreCase(
+									sb.toString().trim())) {
+								System.out.println("#" + sb.toString().trim()
+										+ "#" + em.extent.trim() + "#");
 								Common.bangErrorPOS("");
 							}
 						}
-						
-						for (int ii = 1; ii <= 4; ii++) {
+
+						for (int ii = 1; ii <= 3; ii++) {
 							Mention.assignMode = ii;
-//							for (Mention m : engMentions) {
-//								m.getXSpan();
-//							}
 							for (Mention m : nps) {
 								m.getXSpan();
 							}
 						}
-						for(Mention m : nps) {
+						for (Mention m : nps) {
 							Mention xm = m.getXSpan();
-							if(xm!=null && m.end==-1) {
+							if (xm != null 
+									&& m.end == -1 
+//									&& m.xSpanType!=7
+									) {
 								System.out.println(m.extent + "#" + xm.extent);
+								System.out.println(EMUtil.listToString(words));
+								System.out.println(xm.s.getText());
+								System.out.println(m.xSpanType);
 								Common.pause("GOOD!!!");
 							}
 						}
