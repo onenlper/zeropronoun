@@ -22,6 +22,7 @@ import model.syntaxTree.MyTreeNode;
 import util.Common;
 import align.DocumentMap;
 import align.DocumentMap.SentForAlign;
+import align.DocumentMap.Unit;
 import edu.stanford.nlp.classify.LinearClassifier;
 import edu.stanford.nlp.ling.Datum;
 import edu.stanford.nlp.stats.Counter;
@@ -73,7 +74,7 @@ public class ApplyMaxEnt10bEng {
 	HashMap<String, ArrayList<SentForAlign[]>> alignMap = new HashMap<String, ArrayList<SentForAlign[]>>();;
 	HashMap<String, ArrayList<CoNLLSentence>> engSMap = new HashMap<String, ArrayList<CoNLLSentence>>();
 
-	CoNLLPart engPart;
+//	CoNLLPart activeEngPart;
 
 	@SuppressWarnings("unchecked")
 	public ApplyMaxEnt10bEng(String folder) {
@@ -137,7 +138,6 @@ public class ApplyMaxEnt10bEng {
 				// continue;
 				// }
 				CoNLLPart part = document.getParts().get(k);
-				engPart = new CoNLLPart();
 				ArrayList<Entity> goldChains = part.getChains();
 
 				goldEntities.add(goldChains);
@@ -191,17 +191,19 @@ public class ApplyMaxEnt10bEng {
 						int segEnd = words.get(words.size() - 1).index;
 						ArrayList<Mention> zeros = EMUtil.getInBetweenMention(
 								zerosInS, segStart, segEnd);
-
-
+						ArrayList<Mention> nps = EMUtil.getInBetweenMention(
+								candidates, segStart, segEnd);
+						
 						// fill all gaps with ta
 						for (int z = 0; z < zeros.size(); z++) {
-							if(z!=0 && zeros.get(z).start==zeros.get(z-1).start) {
+							if (z != 0
+									&& zeros.get(z).start == zeros.get(z - 1).start) {
 								continue;
 							}
 							Mention zero = zeros.get(z);
 							int w = -1;
 							for (; w < words.size(); w++) {
-								if (w!=-1 && words.get(w).index == zero.start) {
+								if (w != -1 && words.get(w).index == zero.start) {
 									break;
 								}
 							}
@@ -211,15 +213,82 @@ public class ApplyMaxEnt10bEng {
 							words.add(w, newW);
 						}
 
+						HashMap<Integer, Integer> offsetMap = new HashMap<Integer, Integer>();
+						int offset = 0;
+						for(CoNLLWord w : words) {
+							if(w.isZeroWord) {
+								offset++;
+							}
+							offsetMap.put(w.index, offset);
+						}
+						
 						for (int z = 0; z < zeros.size(); z++) {
-							if(z!=0 && zeros.get(z).start==zeros.get(z-1).start) {
-								zeros.get(z).antecedent = zeros.get(z-1).antecedent;
+							if (z != 0
+									&& zeros.get(z).start == zeros.get(z - 1).start) {
+								zeros.get(z).antecedent = zeros.get(z - 1).antecedent;
 							} else {
-								findAntecedent(file, part, chainMap, corefResult,
-									zeros.get(z), candidates, words);
+								findAntecedent(file, part, chainMap,
+										corefResult, zeros.get(z), candidates,
+										words);
+							}
+						}
+
+						String chiStr = EMUtil.listToString(words);
+						SentForAlign[] align = alignMap.get(chiStr).get(0);
+						String engStr = align[1].getText();
+						CoNLLSentence engCoNLLS = engSMap.get(engStr).get(0);
+
+						// construct mention map between two s
+						for (Mention cm : nps) {
+							cm.units.clear();
+						}
+						for (Mention em : nps) {
+							int from = em.start-segStart+offsetMap.get(em.start);
+							int to = from;
+							if(em.end!=-1) {
+								to = em.end-segStart+offsetMap.get(em.end);
+							}
+							for (int ii = from; ii <= to; ii++) {
+								Unit unit = align[0].units.get(ii);
+								unit.sentence = chiS;
+								unit.addMention(em);
+								em.units.add(unit);
+							}
+						}
+						ArrayList<Mention> engMentions = ptm
+								.getMentions(engCoNLLS);
+						int engStart = engCoNLLS.getWords().get(0).index;
+						for (Mention em : engMentions) {
+							StringBuilder sb = new StringBuilder();
+							for (int ii = em.start - engStart; ii <= em.end - engStart; ii++) {
+								Unit unit = align[1].units.get(ii);
+								unit.sentence = engCoNLLS;
+								unit.addMention(em);
+								em.units.add(unit);
+								sb.append(unit.getToken()).append(" ");
+							}
+							if(!em.extent.trim().equalsIgnoreCase(sb.toString().trim())) {
+								System.out.println("#" + sb.toString().trim() + "#"+ em.extent.trim() + "#");
+								Common.bangErrorPOS("");
 							}
 						}
 						
+						for (int ii = 1; ii <= 4; ii++) {
+							Mention.assignMode = ii;
+//							for (Mention m : engMentions) {
+//								m.getXSpan();
+//							}
+							for (Mention m : nps) {
+								m.getXSpan();
+							}
+						}
+						for(Mention m : nps) {
+							Mention xm = m.getXSpan();
+							if(xm!=null && m.end==-1) {
+								System.out.println(m.extent + "#" + xm.extent);
+								Common.pause("GOOD!!!");
+							}
+						}
 					}
 				}
 			}
@@ -237,7 +306,7 @@ public class ApplyMaxEnt10bEng {
 			HashMap<String, Integer> chainMap, ArrayList<Mention> corefResult,
 			Mention zero, ArrayList<Mention> allCandidates,
 			ArrayList<CoNLLWord> words) {
-		
+
 		zero.sentenceID = part.getWord(zero.start).sentence.getSentenceIdx();
 		zero.s = part.getWord(zero.start).sentence;
 		EMUtil.assignVNode(zero, part);
@@ -257,7 +326,8 @@ public class ApplyMaxEnt10bEng {
 			cand.isBest = false;
 			cand.MI = Context.calMI(cand, zero);
 			if (cand.start < zero.start
-					&& zero.sentenceID - cand.sentenceID <= 2 && cand.NP!=null && cand.end==-1) {
+					&& zero.sentenceID - cand.sentenceID <= 2
+					&& cand.NP != null && cand.end == -1) {
 				if (!findFS && cand.gram == EMUtil.Grammatic.subject
 				// && !cand.s.getWord(cand.headInS).posTag.equals("NT")
 				// && MI>0
@@ -293,26 +363,26 @@ public class ApplyMaxEnt10bEng {
 
 		int w = -1;
 		for (; w < words.size(); w++) {
-			if (w!=-1 && words.get(w).index == zero.start) {
+			if (w != -1 && words.get(w).index == zero.start) {
 				break;
 			}
 		}
-		
+
 		for (int m = 0; m < EMUtil.pronounList.size(); m++) {
 			String pronoun = EMUtil.pronounList.get(m);
 
 			words.get(w).word = pronoun;
 			String chiS = EMUtil.listToString(words);
-			
-//			System.out.println(chiS + "@@@");
-			
+
+			// System.out.println(chiS + "@@@");
+
 			SentForAlign[] align = alignMap.get(chiS).get(0);
 			String engS = align[1].getText();
 			CoNLLSentence engCoNLLS = engSMap.get(engS).get(0);
-			if(engCoNLLS==null) {
+			if (engCoNLLS == null) {
 				Common.bangErrorPOS("");
 			}
-			
+
 			zero.extent = pronoun;
 			for (int i = 0; i < cands.size(); i++) {
 				Mention cand = cands.get(i);
@@ -350,7 +420,7 @@ public class ApplyMaxEnt10bEng {
 				op = EMUtil.pronounList.get(i / EMUtil.pronounList.size());
 			}
 		}
-		if(op!=null) {
+		if (op != null) {
 			words.get(w).word = op;
 		}
 		// find the op filled english sentence
@@ -714,11 +784,11 @@ public class ApplyMaxEnt10bEng {
 		double p = hit / system;
 		double f = 2 * r * p / (r + p);
 
-//		String para = ILP.a_num + " " + ILP.b_gen + " " + ILP.c_per + " "
-//				+ ILP.d_ani;
+		// String para = ILP.a_num + " " + ILP.b_gen + " " + ILP.c_per + " "
+		// + ILP.d_ani;
 		String result = "R:" + r + " P: " + p + " F: " + f;
-//		System.err.println(para + "\t" + result);
-//		System.out.println(para);
+		// System.err.println(para + "\t" + result);
+		// System.out.println(para);
 		System.out.println("Gold: " + gold);
 		System.out.println("============");
 		System.out.println("Hit: " + hit);
