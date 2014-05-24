@@ -186,9 +186,9 @@ public class ApplyMaxEnt10bEng {
 							chiS, zerosInS);
 
 					for (int sid = 0; sid < wordsArr.size(); sid++) {
-						ArrayList<CoNLLWord> words = wordsArr.get(sid);
-						int chiSegStart = words.get(0).index;
-						int chiSegEnd = words.get(words.size() - 1).index;
+						ArrayList<CoNLLWord> segWords = wordsArr.get(sid);
+						int chiSegStart = segWords.get(0).index;
+						int chiSegEnd = segWords.get(segWords.size() - 1).index;
 						ArrayList<Mention> zeros = EMUtil.getInBetweenMention(
 								zerosInS, chiSegStart, chiSegEnd);
 						ArrayList<Mention> nps = EMUtil.getInBetweenMention(
@@ -202,8 +202,8 @@ public class ApplyMaxEnt10bEng {
 							}
 							Mention zero = zeros.get(z);
 							int w = -1;
-							for (; w < words.size(); w++) {
-								if (w != -1 && words.get(w).index == zero.start) {
+							for (; w < segWords.size(); w++) {
+								if (w != -1 && segWords.get(w).index == zero.start) {
 									break;
 								}
 							}
@@ -211,7 +211,7 @@ public class ApplyMaxEnt10bEng {
 							newW.isZeroWord = true;
 							newW.index = zeros.get(z).start;
 							newW.word = EMUtil.pronounList.get(0);
-							words.add(w, newW);
+							segWords.add(w, newW);
 						}
 
 						for (int z = 0; z < zeros.size(); z++) {
@@ -221,29 +221,12 @@ public class ApplyMaxEnt10bEng {
 							} else {
 								findAntecedent(file, part, chainMap,
 										corefResult, zeros.get(z), candidates,
-										words);
+										segWords);
 							}
 						}
 
-						alignMentions(chiS, words, chiSegStart, nps);
+//						alignMentions(chiS, segWords, nps);
 						
-						for (Mention m : nps) {
-							Mention xm = m.getXSpan();
-//							if (xm != null 
-//									&& xm.extent.isEmpty()
-//									) {
-//								System.out.println(m.extent + "#" + xm.extent);
-//								System.out.println(m.start + "," + m.end + "#" + xm.start + "," + xm.end);
-//								System.out.println(EMUtil.listToString(words));
-//								System.out.println(xm.s.getText());
-//								System.out.println(m.xSpanType);
-//								Common.pause("GOOD!!!");
-//							}
-							if(xm!=null) {
-								alignn++;
-							}
-							all++;
-						}
 					}
 				}
 			}
@@ -257,11 +240,12 @@ public class ApplyMaxEnt10bEng {
 		evaluate(corefResults, goldEntities);
 	}
 
-	private void alignMentions(CoNLLSentence chiS, ArrayList<CoNLLWord> words,
-			int chiSegStart, ArrayList<Mention> nps) {
+	private void alignMentions(CoNLLSentence chiS, ArrayList<CoNLLWord> segWords,
+			ArrayList<Mention> chiNPs) {
+		int chiSegStart = segWords.get(0).index; 
 		HashMap<Integer, Integer> offsetMap = new HashMap<Integer, Integer>();
 		int offset = 0;
-		for (CoNLLWord w : words) {
+		for (CoNLLWord w : segWords) {
 			if (w.isZeroWord) {
 				offset++;
 			} else {
@@ -269,17 +253,17 @@ public class ApplyMaxEnt10bEng {
 			}
 		}
 		
-		String chiStr = EMUtil.listToString(words);
+		String chiStr = EMUtil.listToString(segWords);
 		SentForAlign[] align = alignMap.get(chiStr).get(0);
 		String engStr = align[1].getText();
 		CoNLLSentence engCoNLLS = engSMap.get(engStr).get(0);
 
 		// construct mention map between two s
-		for (Mention cm : nps) {
+		for (Mention cm : chiNPs) {
 			cm.units.clear();
 			Mention.chiSpanMaps.remove(cm.getReadName());
 		}
-		for (Mention em : nps) {
+		for (Mention em : chiNPs) {
 			int from = em.start - chiSegStart
 					+ offsetMap.get(em.start);
 			int to = from;
@@ -335,9 +319,34 @@ public class ApplyMaxEnt10bEng {
 //							for (Mention m : engMentions) {
 //								m.getXSpan();
 //							}
-			for (Mention m : nps) {
+			for (Mention m : chiNPs) {
 				m.getXSpan();
 			}
+		}
+		
+		for (Mention m : chiNPs) {
+			Mention xm = m.getXSpan();
+//			if (xm != null 
+//					&& xm.extent.isEmpty()
+//					) {
+//				System.out.println(m.extent + "#" + xm.extent);
+//				System.out.println(m.start + "," + m.end + "#" + xm.start + "," + xm.end);
+//				System.out.println(EMUtil.listToString(words));
+//				System.out.println(xm.s.getText());
+//				System.out.println(m.xSpanType);
+//				Common.pause("GOOD!!!");
+//			}
+			if(xm!=null && m.end!=-1) {
+//				System.out.println(m.extent + "#" + xm.extent);
+//				System.out.println(m.start + "," + m.end + "#" + xm.start + "," + xm.end);
+//				Common.pause("");
+			}
+			
+			if(xm!=null) {
+			
+				alignn++;
+			}
+			all++;
 		}
 	}
 	
@@ -347,7 +356,7 @@ public class ApplyMaxEnt10bEng {
 	private void findAntecedent(String file, CoNLLPart part,
 			HashMap<String, Integer> chainMap, ArrayList<Mention> corefResult,
 			Mention zero, ArrayList<Mention> allCandidates,
-			ArrayList<CoNLLWord> words) {
+			ArrayList<CoNLLWord> segChiWords) {
 
 		zero.sentenceID = part.getWord(zero.start).sentence.getSentenceIdx();
 		zero.s = part.getWord(zero.start).sentence;
@@ -369,7 +378,7 @@ public class ApplyMaxEnt10bEng {
 			cand.MI = Context.calMI(cand, zero);
 			if (cand.start < zero.start
 					&& zero.sentenceID - cand.sentenceID <= 2
-					&& cand.NP != null && cand.end == -1) {
+					&& !(cand.NP == null && cand.end == -1)) {
 				if (!findFS && cand.gram == EMUtil.Grammatic.subject
 				// && !cand.s.getWord(cand.headInS).posTag.equals("NT")
 				// && MI>0
@@ -381,7 +390,13 @@ public class ApplyMaxEnt10bEng {
 			}
 		}
 		findBest(zero, cands);
-
+		
+		int chiSegStart = segChiWords.get(0).index;
+		int chiSegEnd = segChiWords.get(segChiWords.size() - 1).index;
+		ArrayList<Mention> nps = EMUtil.getInBetweenMention(
+				cands, chiSegStart, chiSegEnd);
+		nps.add(zero);
+		
 		String v = EMUtil.getFirstVerb(zero.V);
 		// Yasmet format
 		// NUMBER, GENDER, PERSON, ANIMACY
@@ -404,8 +419,8 @@ public class ApplyMaxEnt10bEng {
 		ysb.append("0 @ ");
 
 		int w = -1;
-		for (; w < words.size(); w++) {
-			if (w != -1 && words.get(w).index == zero.start) {
+		for (; w < segChiWords.size(); w++) {
+			if (w != -1 && segChiWords.get(w).index == zero.start) {
 				break;
 			}
 		}
@@ -413,20 +428,14 @@ public class ApplyMaxEnt10bEng {
 		for (int m = 0; m < EMUtil.pronounList.size(); m++) {
 			String pronoun = EMUtil.pronounList.get(m);
 
-			words.get(w).word = pronoun;
-			String chiS = EMUtil.listToString(words);
-
-			// System.out.println(chiS + "@@@");
-
-			SentForAlign[] align = alignMap.get(chiS).get(0);
-			String engS = align[1].getText();
-			CoNLLSentence engCoNLLS = engSMap.get(engS).get(0);
-			if (engCoNLLS == null) {
-				Common.bangErrorPOS("");
-			}
+			segChiWords.get(w).word = pronoun;
 
 			zero.extent = pronoun;
 			zero.head = pronoun;
+			
+			
+			alignMentions(zero.s, segChiWords, nps);
+			
 			for (int i = 0; i < cands.size(); i++) {
 				Mention cand = cands.get(i);
 				String unit = "";
@@ -456,15 +465,26 @@ public class ApplyMaxEnt10bEng {
 				* EMUtil.pronounList.size());
 		pronounID++;
 		String op = null;
+		StringBuilder sb = new StringBuilder();
 		for (int i = 0; i < probAnt.length; i++) {
 			if (probAnt[i] > maxProb) {
 				maxProb = probAnt[i];
 				antecedent = cands.get(i % cands.size());
-				op = EMUtil.pronounList.get(i / EMUtil.pronounList.size());
+//				System.out.println(i + "/" + );
+				op = EMUtil.pronounList.get(i / cands.size());
 			}
+//			sb.append(probAnt[i]).append(" ");
 		}
+		
+		
+		
+		for(Mention cand : cands) {
+			sb.append(cand.extent).append(" ");
+		}
+//		System.out.println(sb.toString().trim());
+		
 		if (op != null) {
-			words.get(w).word = op;
+			segChiWords.get(w).word = op;
 		}
 		// find the op filled english sentence
 
@@ -482,7 +502,7 @@ public class ApplyMaxEnt10bEng {
 			zero.NE = antecedent.NE;
 			this.addEmptyCategoryNode(zero);
 			// System.out.println(zero.start);
-			// System.out.println(antecedent.extent);
+//			 System.out.println(antecedent.extent + "######" + antecedent.start + "," + antecedent.end);
 		}
 		if (zero.antecedent != null
 				&& zero.antecedent.end != -1
@@ -514,7 +534,7 @@ public class ApplyMaxEnt10bEng {
 			bad++;
 			System.out.println("Error??? " + good + "/" + bad);
 			if (zero.antecedent != null) {
-				System.out.println(zero.antecedent.msg);
+//				System.out.println(zero.antecedent.msg);
 			}
 		}
 		String conllPath = file;
@@ -572,6 +592,9 @@ public class ApplyMaxEnt10bEng {
 	}
 
 	public static double[] selectRestriction(String attri, int all, String v) {
+		if(Context.svoStat==null) {
+			return new double[all];
+		}
 		HashMap<Integer, Integer> map = null;
 		if (attri.equals("number")) {
 			map = Context.svoStat.numberStat.get(v);
@@ -862,8 +885,8 @@ public class ApplyMaxEnt10bEng {
 		if (args[1].equals("prepare")) {
 			mode = prepare;
 			run(args[0]);
-
-			// TODO output
+			Common.outputLines(anteTest, "ante10.test" + args[0]);
+			System.out.println("MAX: " + maximam);
 			return;
 		} else if (args[1].equals("load")) {
 			mode = load;
@@ -900,11 +923,7 @@ public class ApplyMaxEnt10bEng {
 		Common.outputHashSet(Context.vs, "miniV");
 		
 		System.out.println(alignn/all + "##");
-		if (mode == prepare) {
-			Common.outputLines(anteTest, "ante10.test" + folder);
-			System.out.println("MAX: " + maximam);
-			System.exit(1);
-		}
+		
 		System.out.println("MAX: " + maximam);
 		// Common.input("!!");
 	}
