@@ -20,8 +20,6 @@ import model.Entity;
 import model.Mention;
 import model.CoNLL.CoNLLDocument;
 import model.CoNLL.CoNLLPart;
-import model.CoNLL.CoNLLSentence;
-import model.CoNLL.CoNLLWord;
 import model.CoNLL.OntoCorefXMLReader;
 import model.syntaxTree.MyTreeNode;
 import util.Common;
@@ -30,7 +28,10 @@ import edu.stanford.nlp.ling.Datum;
 import edu.stanford.nlp.stats.Counter;
 import edu.stanford.nlp.stats.Distribution;
 import em.EMUtil.Animacy;
+import em.EMUtil.Gender;
 import em.EMUtil.Grammatic;
+import em.EMUtil.Number;
+import em.EMUtil.Person;
 import em.ResolveGroup.Entry;
 
 public class ApplyMaxEnt10 {
@@ -61,6 +62,8 @@ public class ApplyMaxEnt10 {
 	HashMap<Integer, HashSet<Integer>> subSpace;
 
 	HashMap<String, Double> fracContextCount;
+
+	GuessPronounFea guessFea;
 
 	LinearClassifier<String, String> classifier;
 
@@ -122,6 +125,9 @@ public class ApplyMaxEnt10 {
 			// modelInput2.readObject();
 
 			// modelInput2.close();
+			// loadGuessProb();
+			guessFea = new GuessPronounFea(false, "guessPronoun");
+
 			superFea = new SuperviseFea(false, "supervise");
 			EMUtil.loadPredictNE(folder, "dev");
 		} catch (FileNotFoundException e) {
@@ -132,6 +138,64 @@ public class ApplyMaxEnt10 {
 			e.printStackTrace();
 		} catch (Exception e) {
 			e.printStackTrace();
+		}
+	}
+
+	public void loadGuessProb() throws Exception {
+		BufferedReader reader = new BufferedReader(new FileReader(
+				"guessPronoun.train.nb"));
+		String line;
+		pronounPrior = new HashMap<Short, Double>();
+		counts = new HashMap<Integer, HashMap<Short, Integer>>();
+		denomCounts = new HashMap<Integer, Integer>();
+		subSpace = new HashMap<Integer, HashSet<Integer>>();
+		overallGuessPronoun = 0;
+		while ((line = reader.readLine()) != null) {
+			int k = line.indexOf(' ');
+			short label = (short) Integer.parseInt(line.substring(0, k));
+			overallGuessPronoun++;
+
+			Double priorPro = pronounPrior.get(label);
+			if (priorPro == null) {
+				pronounPrior.put(label, 1.0);
+			} else {
+				pronounPrior.put(label, 1.0 + priorPro.doubleValue());
+			}
+
+			String feas[] = line.substring(k + 1).split("#");
+			for (int i = 0; i < feas.length; i++) {
+				String fea = feas[i];
+				String tks[] = fea.trim().split("\\s+");
+				for (String tk : tks) {
+					int idx = Integer.parseInt(tk);
+					HashSet<Integer> subS = subSpace.get(i);
+					if (subS == null) {
+						subS = new HashSet<Integer>();
+						subSpace.put(i, subS);
+					}
+
+					HashMap<Short, Integer> count = counts.get(idx);
+					if (count == null) {
+						count = new HashMap<Short, Integer>();
+						counts.put(idx, count);
+					}
+					Integer c = count.get(label);
+					if (c == null) {
+						count.put(label, 1);
+					} else {
+						count.put(label, c.intValue() + 1);
+					}
+
+					Integer dc = denomCounts.get(idx);
+					if (dc == null) {
+						denomCounts.put(idx, 1);
+					} else {
+						denomCounts.put(idx, 1 + dc.intValue());
+					}
+
+				}
+			}
+
 		}
 	}
 
@@ -157,21 +221,29 @@ public class ApplyMaxEnt10 {
 				// }
 				CoNLLPart part = document.getParts().get(k);
 
-				for (CoNLLSentence s : part.getCoNLLSentences()) {
-					for (CoNLLWord w : s.words) {
-						if (!w.speaker.equals("-")) {
-							// System.out.println(w.speaker + "#" +
-							// s.getText());
+				ArrayList<Entity> goldChains = part.getChains();
+
+				for (Entity e : goldChains) {
+					for (Mention m : e.mentions) {
+						StringBuilder s = new StringBuilder();
+						if (m.end == -1) {
+							continue;
 						}
+						for (int i = m.start; i <= m.end; i++) {
+							s.append(part.getWord(i).word).append(" ");
+						}
+						m.extent = s.toString().trim();
+						m.head = part.getWord(m.end).word;
 					}
 				}
-
-				ArrayList<Entity> goldChains = part.getChains();
 
 				goldEntities.add(goldChains);
 
 				HashMap<String, Integer> chainMap = EMUtil
 						.formChainMap(goldChains);
+
+				HashMap<String, ArrayList<Mention>> chainMap2 = EMUtil
+						.formChainMap2(goldChains);
 
 				ArrayList<Mention> corefResult = new ArrayList<Mention>();
 				corefResults.add(corefResult);
@@ -201,7 +273,7 @@ public class ApplyMaxEnt10 {
 				Collections.sort(anaphorZeros);
 
 				findAntecedent(file, part, chainMap, corefResult, anaphorZeros,
-						candidates);
+						candidates, chainMap2);
 
 				// findSVMLight(file, part, chainMap, corefResult, anaphorZeros,
 				// candidates);
@@ -218,7 +290,8 @@ public class ApplyMaxEnt10 {
 
 	private void findAntecedent(String file, CoNLLPart part,
 			HashMap<String, Integer> chainMap, ArrayList<Mention> corefResult,
-			ArrayList<Mention> anaphorZeros, ArrayList<Mention> allCandidates) {
+			ArrayList<Mention> anaphorZeros, ArrayList<Mention> allCandidates,
+			HashMap<String, ArrayList<Mention>> chainMap2) {
 		for (Mention zero : anaphorZeros) {
 			zero.sentenceID = part.getWord(zero.start).sentence
 					.getSentenceIdx();
@@ -231,14 +304,11 @@ public class ApplyMaxEnt10 {
 				continue;
 			}
 			Mention antecedent = null;
-			double maxP = -1;
 			Collections.sort(allCandidates);
-			String proSpeaker = part.getWord(zero.start).speaker;
-			String overtPro = "";
 
 			ArrayList<Mention> cands = new ArrayList<Mention>();
 			boolean findFS = false;
-			HashSet<Integer> filters = new HashSet<Integer>();
+
 			for (int h = allCandidates.size() - 1; h >= 0; h--) {
 				Mention cand = allCandidates.get(h);
 				cand.sentenceID = part.getWord(cand.start).sentence
@@ -269,210 +339,52 @@ public class ApplyMaxEnt10 {
 
 			// call yasmet to get Prob(gender|context) Prob(number|context)
 			// Prob(person|context) Prob(animacy|context)
+			guessFea.configure(zero.start - 1, zero.start,
+					part.getWord(zero.start).sentence, part);
 
 			// label = pronoun.animacy.ordinal() + 1;
+
+			String feaStr = guessFea.getSVMFormatString();
 
 			String v = EMUtil.getFirstVerb(zero.V);
 			// Yasmet format
 			// NUMBER, GENDER, PERSON, ANIMACY
+			String tks[] = feaStr.split("\\s+");
 			int all = EMUtil.Number.values().length;
-			double probNum[] = runAttri("number", all, v);
+			double[] numberProbs = ApplyMaxEnt10.selectRestriction("number",
+					all, v);
+			String nYSB = transform(tks, all, 0, numberProbs);
+			double probNum[] = runAttri("number", nYSB, all, v);
 
 			all = EMUtil.Gender.values().length - 1;
-			double probGen[] = runAttri("gender", all, v);
+			double[] genderProbs = ApplyMaxEnt10.selectRestriction("gender",
+					all, v);
+			String gYSB = transform(tks, all, 0, genderProbs);
+			double probGen[] = runAttri("gender", gYSB, all, v);
 
 			all = EMUtil.Person.values().length;
-			double probPer[] = runAttri("person", all, v);
+			double[] personProbs = ApplyMaxEnt10.selectRestriction("person",
+					all, v);
+			String pYSB = transform(tks, all, 0, personProbs);
+			double probPer[] = runAttri("person", pYSB, all, v);
 
 			all = EMUtil.Animacy.values().length - 1;
-			double probAni[] = runAttri("animacy", all, v);
+			double[] animacyProbs = ApplyMaxEnt10.selectRestriction("animacy",
+					all, v);
+			String aYSB = transform(tks, all, 0, animacyProbs);
+			double probAni[] = runAttri("animacy", aYSB, all, v);
 			// TODO
 
-			// init yasmet
-			StringBuilder ysb = new StringBuilder();
-			ysb.append("0 @ ");
-			int antCount = 0;
-			HashMap<Integer, Integer> idMap = new HashMap<Integer, Integer>();
-			for (int m = 0; m < EMUtil.pronounList.size(); m++) {
-				String pronoun = EMUtil.pronounList.get(m);
+			ArrayList<Mention> cluster = chainMap2.get(zero.toName());
 
-				zero.extent = pronoun;
-				ArrayList<String> units = new ArrayList<String>();
-				ArrayList<String> svmRanks = new ArrayList<String>();
-				for (int i = 0; i < cands.size(); i++) {
-					Mention cand = cands.get(i);
-					if (cand.extent.isEmpty()) {
-						continue;
-					}
-					// if(!cand.isFS)
-					// continue;
-					String antSpeaker = part.getWord(cand.start).speaker;
-					cand.sentenceID = part.getWord(cand.start).sentence
-							.getSentenceIdx();
-					boolean coref = chainMap.containsKey(zero.toName())
-							&& chainMap.containsKey(cand.toName())
-							&& chainMap.get(zero.toName()).intValue() == chainMap
-									.get(cand.toName()).intValue();
+			Person proPer = EMUtil.inferPerson(cluster, zero, part);
+			Number proNum = EMUtil.inferNumber(cluster);
+			Gender proGen = EMUtil.inferGender(cluster);
+			Animacy proAni = EMUtil.inferAnimacy(cluster);
 
-					//
-					Context context = Context.buildContext(cand, zero, part,
-							cand.isFS);
-					cand.msg = Context.message;
-					cand.MI = Context.MI;
+			//
+			antecedent = go(cands, zero, part, proPer, proNum, proGen, proAni);
 
-					if (m == 0) {
-						if (coref) {
-							goods.add(Double.toString(cand.MI));
-						} else {
-							bads.add(Double.toString(cand.MI));
-						}
-					}
-					boolean sameSpeaker = proSpeaker.equals(antSpeaker);
-					Entry entry = new Entry(cand, context, sameSpeaker,
-							cand.isFS);
-
-					int conflict = 0;
-					if (sameSpeaker) {
-						if (!entry.person.name().equals(
-								EMUtil.getPerson(pronoun).name())) {
-							conflict++;
-						}
-					} else {
-						if (entry.person.name().equals(
-								EMUtil.getPerson(pronoun).name())
-								&& entry.person != EMUtil.Person.third) {
-							conflict++;
-						}
-					}
-					if (!entry.number.name().equals(
-							EMUtil.getNumber(pronoun).name())) {
-						conflict++;
-					}
-					if (!entry.gender.name().equals(
-							EMUtil.getGender(pronoun).name())) {
-						conflict++;
-					}
-					if (!entry.animacy.name().equals(
-							EMUtil.getAnimacy(pronoun).name())
-							&& entry.animacy != Animacy.unknown) {
-						conflict++;
-					}
-
-					if (conflict > 0) {
-						if (chainMap.containsKey(zero.toName())
-								&& chainMap.containsKey(cand.toName())
-								&& chainMap.get(zero.toName()).intValue() == chainMap
-										.get(cand.toName()).intValue()) {
-						}
-						filters.add(antCount);
-					}
-
-					String unit = MaxEntLearn.getYamset(false, cand, zero,
-							context, sameSpeaker, entry, superFea, 1, part);
-
-					ysb.append(unit);
-					units.add(unit);
-					if (cand.isFS) {
-						// System.out.println(antCount + "###");
-						// System.out.println(unit);
-					}
-					idMap.put(antCount, i);
-					antCount++;
-					String svmRank = MaxEntLearn.getSVMRank(0, cand, zero,
-							context, sameSpeaker, entry, superFea, part);
-					svmRanks.add(svmRank);
-				}
-				if (antCount == 0) {
-					continue;
-				}
-
-				Common.outputLines(svmRanks, "svmRank.test");
-				// Common.pause("");
-				// break;
-			}
-			if (antCount > maximam) {
-				maximam = antCount;
-			}
-			double probAnt[] = runYasmet(ysb.toString(), antCount);
-			pronounID++;
-			// System.err.println(cands.size());
-			if (antCount != 0 && (mode == classify || mode == load)) {
-				// run yasmet here
-
-				int numberOfAnt = probAnt.length / EMUtil.pronounList.size();
-				if (probAnt.length % EMUtil.pronounList.size() != 0) {
-					Common.bangErrorPOS("!!");
-				}
-
-				// re-normalize?
-				for (Integer f : filters) {
-					// probAnt[f] = -1000000;
-				}
-
-				// do re-normalize
-				double sumover = 0;
-				for (int i = 0; i < antCount; i++) {
-					if (!filters.contains(i)) {
-						// sumover += probAnt[i];
-					}
-				}
-				for (int i = 0; i < antCount; i++) {
-					// probAnt[i] = probAnt[i] / sumover;
-				}
-
-				// HashSet<Integer> reranks = new HashSet<Integer>();
-				// for (int i = 0; i < EMUtil.pronounList.size(); i++) {
-				// double rankMax = 0;
-				// int rerank = -1;
-				// for (int j = 0; j < numberOfAnt; j++) {
-				// double prob = probAnt[numberOfAnt * i + j];
-				// if (prob > rankMax) {
-				// rankMax = prob;
-				// rerank = numberOfAnt * i + j;
-				// }
-				// }
-				// reranks.add(rerank);
-				// }
-				// for (int i = 0; i < antCount; i++) {
-				// if (reranks.contains(i)) {
-				// sumover += probAnt[i];
-				// }
-				// }
-				// for (int i = 0; i < antCount; i++) {
-				// if (reranks.contains(i)) {
-				// probAnt[i] = probAnt[i] / sumover;
-				// } else {
-				// probAnt[i] = -10000;
-				// }
-				// }
-
-				System.out.println(filters.size() + "###############"
-						+ antCount);
-				int rankID = -1;
-				double rankMax = 0;
-				for (int i = 0; i < probAnt.length; i++) {
-					double prob = probAnt[i];
-					if (prob > rankMax) {
-						rankMax = prob;
-						rankID = i;
-					}
-				}
-				int antIdx = -1;
-
-				setParas(part);
-
-				ILP ilp = new ILP(numberOfAnt, probAnt, probNum, probGen,
-						probPer, probAni);
-				try {
-					antIdx = ilp.execute();
-				} catch (LpSolveException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				// }
-				antecedent = cands.get(antIdx);
-
-			}
 			if (antecedent != null) {
 				if (antecedent.end != -1) {
 					zero.antecedent = antecedent;
@@ -560,53 +472,96 @@ public class ApplyMaxEnt10 {
 		}
 	}
 
-	private void setParas(CoNLLPart part) {
-		if (part.folder.equalsIgnoreCase("BN")) {
-			// 0.008 0.008 0.02 0.01 R:0.45897435897435895 P:
-			// 0.45897435897435895 F: 0.45897435897435895
-			ILP.a_num = 0.008;
-			ILP.b_gen = 0.008;
-			ILP.c_per = 0.02;
-			ILP.d_ani = 0.01;
-		} else if (part.folder.equalsIgnoreCase("TC")) {
-			// 0.02 0.008 0.02 0.04 R:0.5371024734982333 P: 0.5608856088560885
-			// F: 0.5487364620938627
-			ILP.a_num = 0.02;
-			ILP.b_gen = 0.008;
-			ILP.c_per = 0.02;
-			ILP.d_ani = 0.04;
-		} else if (part.folder.equalsIgnoreCase("NW")) {
-			// 0.02 0.02 0.008 0.06 R:0.38095238095238093 P: 0.38095238095238093
-			// F: 0.38095238095238093
-			// 0.02 0.02 0.08 0.008 R:0.39285714285714285 P: 0.39285714285714285
-			// F: 0.39285714285714285
-			ILP.a_num = 0.02;
-			ILP.b_gen = 0.02;
-			ILP.c_per = 0.008;
-			ILP.d_ani = 0.06;
-		} else if (part.folder.equalsIgnoreCase("BC")) {
-			// 0.008 0.01 0.06 0.01
-			ILP.a_num = 0.008;
-			ILP.b_gen = 0.01;
-			ILP.c_per = 0.06;
-			ILP.d_ani = 0.01;
-		} else if (part.folder.equalsIgnoreCase("WB")) {
-			// 0.04 0.01 0.04 0.02 R:0.5 P: 0.5 F: 0.5
-			// 0.04 0.01 0.06 0.02 R:0.5035211267605634 P: 0.5035211267605634 F:
-			// 0.5035211267605634
-			ILP.a_num = 0.04;
-			ILP.b_gen = 0.01;
-			ILP.c_per = 0.06;
-			ILP.d_ani = 0.02;
-		} else if (part.folder.equalsIgnoreCase("MZ")) {
-			// 0.02 0.008 0.06 0.008
-			ILP.a_num = 0.02;
-			ILP.b_gen = 0.008;
-			ILP.c_per = 0.06;
-			ILP.d_ani = 0.008;
-		} else {
-			Common.bangErrorPOS("Wrong Folder!!!" + part.folder);
+	private Mention go(ArrayList<Mention> cands, Mention zero,
+			CoNLLPart part, Person proPer, Number proNum, Gender proGen, Animacy proAni) {
+		int antCount = 0;
+		String proSpeaker = part.getWord(zero.start).speaker;
+		HashMap<Integer, Integer> idMap = new HashMap<Integer, Integer>();
+		StringBuilder ysb = new StringBuilder();
+		ysb.append("0 @ ");
+		Mention antecedent = null;
+		for (int i = 0; i < cands.size(); i++) {
+			Mention cand = cands.get(i);
+			if (cand.extent.isEmpty()) {
+				continue;
+			}
+			// if(!cand.isFS)
+			// continue;
+			String antSpeaker = part.getWord(cand.start).speaker;
+			cand.sentenceID = part.getWord(cand.start).sentence
+					.getSentenceIdx();
+
+			Context context = Context.buildContext(cand, zero, part, cand.isFS);
+			cand.msg = Context.message;
+			cand.MI = Context.MI;
+
+			boolean sameSpeaker = proSpeaker.equals(antSpeaker);
+			Entry entry = new Entry(cand, context, sameSpeaker, cand.isFS);
+
+			String unit = getYamset(false, cand, zero, context, sameSpeaker,
+					entry, superFea, 1, part, proPer, proNum, proGen, proAni);
+
+			ysb.append(unit);
+
+			idMap.put(antCount, i);
+			antCount++;
 		}
+
+		double probAnt[] = runYasmet(ysb.toString(), antCount);
+		pronounID++;
+		// System.err.println(cands.size());
+		if (antCount != 0 && (mode == classify || mode == load)) {
+			int antIdx = -1;
+			double maxProb = -1;
+
+			for (int i = 0; i < probAnt.length; i++) {
+				if (probAnt[i] > maxProb) {
+					maxProb = probAnt[i];
+					antIdx = i;
+				}
+			}
+			if (antIdx != -1) {
+				antecedent = cands.get(idMap.get(antIdx));
+			}
+		}
+		return antecedent;
+	}
+
+	public static String getYamset(boolean coref, Mention ant, Mention pro,
+			Context context, boolean sameSpeaker, Entry entry,
+			SuperviseFea superFea, double corefCount, CoNLLPart part,
+			Person proPerson, Number proNumber, Gender proGender, Animacy proAni) {
+		// String pronoun = pro.extent;
+		String pStr = "";
+		if (sameSpeaker) {
+			pStr = entry.person.name() + "=" + proPerson.name();
+		} else {
+			pStr = entry.person.name() + "!=" + proPerson.name();
+		}
+		String nStr = entry.number.name() + "=" + proNumber.name();
+		String gStr = entry.gender.name() + "=" + proGender.name();
+		String aStr = entry.animacy.name() + "=" + proAni.name();
+
+		superFea.configure(pStr, nStr, gStr, aStr, context, ant, pro, part);
+
+		String fea = superFea.getSVMFormatString();
+		String tks[] = fea.split("\\s+");
+		StringBuilder ysb = new StringBuilder();
+		ysb.append("@ ");
+		if (coref) {
+			ysb.append(1.0 / corefCount + " ");
+		} else {
+			ysb.append("0 ");
+		}
+		for (String tk : tks) {
+			int k = tk.indexOf(":");
+			String f = tk.substring(0, k);
+			String v = tk.substring(k + 1);
+			ysb.append(f).append(" ").append(v).append(" ");
+			// System.out.println(part.folder);
+		}
+		ysb.append("# ");
+		return ysb.toString();
 	}
 
 	private static String transform(String[] tks, int all, int y,
@@ -640,226 +595,98 @@ public class ApplyMaxEnt10 {
 		return ysb.toString();
 	}
 
-	// private void findSVMLight(String file, CoNLLPart part,
-	// HashMap<String, Integer> chainMap, ArrayList<Mention> corefResult,
-	// ArrayList<Mention> anaphorZeros, ArrayList<Mention> allCandidates) {
-	// for (Mention zero : anaphorZeros) {
-	// zero.sentenceID = part.getWord(zero.start).sentence
-	// .getSentenceIdx();
-	// zero.s = part.getWord(zero.start).sentence;
-	// EMUtil.assignVNode(zero, part);
-	// if (zero.notInChainZero) {
-	// continue;
-	// }
-	// if (zero.V == null) {
-	// continue;
-	// }
-	// Mention antecedent = null;
-	// double maxP = -1;
-	// Collections.sort(allCandidates);
-	// String proSpeaker = part.getWord(zero.start).speaker;
-	// String overtPro = "";
-	//
-	// ArrayList<Mention> cands = new ArrayList<Mention>();
-	// boolean findFS = false;
-	// for (int h = allCandidates.size() - 1; h >= 0; h--) {
-	// Mention cand = allCandidates.get(h);
-	// cand.sentenceID = part.getWord(cand.start).sentence
-	// .getSentenceIdx();
-	// cand.s = part.getWord(cand.start).sentence;
-	// cand.isFS = false;
-	// cand.isBest = false;
-	// cand.MI = Context.calMI(cand, zero);
-	// if (cand.start < zero.start
-	// && zero.sentenceID - cand.sentenceID <= 2) {
-	// if (!findFS && cand.gram == EMUtil.Grammatic.subject
-	// // && !cand.s.getWord(cand.headInS).posTag.equals("NT")
-	// // && MI>0
-	// ) {
-	// cand.isFS = true;
-	// findFS = true;
-	// }
-	// // if(cand.s==zero.s && cand.gram==Grammatic.object &&
-	// // cand.end+2==zero.start &&
-	// // part.getWord(cand.end+1).word.equals("，") && cand.MI>0){
-	// // cand.isFS = true;
-	// // findFS = true;
-	// // }
-	// cands.add(cand);
-	// }
-	// }
-	// findBest(zero, cands);
-	//
-	// for (int m = 0; m < EMUtil.pronounList.size(); m++) {
-	// String pronoun = EMUtil.pronounList.get(m);
-	// zero.extent = pronoun;
-	// StringBuilder ysb = new StringBuilder();
-	// ysb.append("0 @ ");
-	// int antCount = 0;
-	// ArrayList<String> units = new ArrayList<String>();
-	//
-	// ArrayList<String> svmRanks = new ArrayList<String>();
-	// for (int i = 0; i < cands.size(); i++) {
-	// Mention cand = cands.get(i);
-	// if (cand.extent.isEmpty()) {
-	// continue;
-	// }
-	// // if(!cand.isFS)
-	// // continue;
-	// String antSpeaker = part.getWord(cand.start).speaker;
-	// cand.sentenceID = part.getWord(cand.start).sentence
-	// .getSentenceIdx();
-	// boolean coref = chainMap.containsKey(zero.toName())
-	// && chainMap.containsKey(cand.toName())
-	// && chainMap.get(zero.toName()).intValue() == chainMap
-	// .get(cand.toName()).intValue();
-	//
-	// Context context = Context.buildContext(cand, zero, part,
-	// cand.isFS);
-	// cand.msg = Context.message;
-	// cand.MI = Context.MI;
-	//
-	// if (m == 0) {
-	// if (coref) {
-	// goods.add(Double.toString(cand.MI));
-	// } else {
-	// bads.add(Double.toString(cand.MI));
-	// }
-	// }
-	// boolean sameSpeaker = proSpeaker.equals(antSpeaker);
-	// Entry entry = new Entry(cand, context, sameSpeaker,
-	// cand.isFS);
-	// String unit = MaxEntLearn.getYamset(false, cand, zero,
-	// context, sameSpeaker, entry, superFea, 1, part);
-	//
-	// ysb.append(unit);
-	// units.add(unit);
-	// if (cand.isFS) {
-	// System.out.println(antCount + "###");
-	// System.out.println(unit);
-	// }
-	// antCount++;
-	// String svmRank = MaxEntLearn.getSVMRank(0, cand, zero,
-	// context, sameSpeaker, entry, superFea, part);
-	//
-	// int a1 = svmRank.indexOf(" ");
-	// int a2 = svmRank.indexOf(" ", a1 + 1);
-	// ArrayList<String> lines = new ArrayList<String>();
-	// lines.add("0 " + svmRank.substring(a2 + 1));
-	// Common.outputLines(lines, "svmlight.test");
-	// double p = runSVMLight();
-	//
-	// if (p > maxP) {
-	// antecedent = cand;
-	// maxP = p;
-	// overtPro = pronoun;
-	// }
-	//
-	// svmRanks.add(svmRank);
-	// }
-	// if (antCount == 0) {
-	// continue;
-	// }
-	//
-	// break;
-	// }
-	//
-	// if (antecedent != null) {
-	// if (antecedent.end != -1) {
-	// zero.antecedent = antecedent;
-	// } else {
-	// zero.antecedent = antecedent.antecedent;
-	// }
-	// zero.extent = antecedent.extent;
-	// zero.head = antecedent.head;
-	// zero.gram = Grammatic.subject;
-	// zero.mType = antecedent.mType;
-	// zero.NE = antecedent.NE;
-	// this.addEmptyCategoryNode(zero);
-	// // System.out.println(zero.start);
-	// // System.out.println(antecedent.extent);
-	// }
-	// if (zero.antecedent != null
-	// && zero.antecedent.end != -1
-	// && chainMap.containsKey(zero.toName())
-	// && chainMap.containsKey(zero.antecedent.toName())
-	// && chainMap.get(zero.toName()).intValue() == chainMap.get(
-	// zero.antecedent.toName()).intValue()) {
-	// good++;
-	// // if(antecedent.mType==MentionType.tmporal) {
-	// // System.out.println(antecedent.extent + "GOOD!");
-	// // }
-	// // System.out.println(overtPro + "  " + zero.antecedent.extent);
-	// // System.out.println("+++");
-	// // printResult(zero, zero.antecedent, part);
-	// // System.out.println("Predicate: " +
-	// // this.getPredicate(zero.V));
-	// // System.out.println("Object NP: " +
-	// // this.getObjectNP(zero));
-	// // System.out.println("===");
-	// // if (zero.antecedent.MI < 0) {
-	// // System.out.println("Right!!! " + good + "/" + bad);
-	// // System.out.println(zero.antecedent.msg);
-	// // }
-	// } else {
-	// // if(antecedent!=null && antecedent.mType==MentionType.tmporal)
-	// // {
-	// // System.out.println(antecedent.extent + "BAD !");
-	// // }
-	// bad++;
-	// System.out.println("Error??? " + good + "/" + bad);
-	// if (zero.antecedent != null) {
-	// System.out.println(zero.antecedent.msg);
-	// }
-	// }
-	// String conllPath = file;
-	// int aa = conllPath.indexOf(anno);
-	// int bb = conllPath.indexOf(".");
-	// String middle = conllPath.substring(aa + anno.length(), bb);
-	// String path = prefix + middle + suffix;
-	// System.out.println(path);
-	// // System.out.println("=== " + file);
-	// EMUtil.addEmptyCategoryNode(zero);
-	//
-	// // if (antecedent != null) {
-	// // CoNLLWord candWord = part.getWord(antecedent.start);
-	// // CoNLLWord zeroWord = part.getWord(zero.start);
-	// //
-	// // String zeroSpeaker = part.getWord(zero.start).speaker;
-	// // String candSpeaker = part.getWord(antecedent.start).speaker;
-	// // // if (!zeroSpeaker.equals(candSpeaker)) {
-	// // // if (antecedent.source.equals("我") &&
-	// // // zeroWord.toSpeaker.contains(candSpeaker)) {
-	// // // zero.head = "你";
-	// // // zero.source = "你";
-	// // // } else if (antecedent.source.equals("你") &&
-	// // // candWord.toSpeaker.contains(zeroSpeaker)) {
-	// // // zero.head = "我";
-	// // // zero.source = "我";
-	// // // }
-	// // // } else {
-	// // zero.extent = antecedent.extent;
-	// // zero.head = antecedent.head;
-	// // // }
-	// //
-	// // }
-	// }
-	// for (Mention zero : anaphorZeros) {
-	// if (zero.antecedent != null) {
-	// corefResult.add(zero);
-	// }
-	// }
-	// }
-
-	private double[] runAttri(String attri, int all, String v) {
+	private double[] runAttri(String attri, String str, int all, String v) {
 		switch (mode) {
 		case prepare: {
+			ArrayList<String> lines = null;
+			if (attri.equals("number")) {
+				lines = numberTest;
+			} else if (attri.equals("gender")) {
+				lines = genderTest;
+			} else if (attri.equals("person")) {
+				lines = personTest;
+			} else if (attri.equals("animacy")) {
+				lines = animacyTest;
+			}
+			String tks[] = str.split("\n");
+			if (lines.isEmpty()) {
+				lines.add(tks[0]);
+				lines.add(tks[1]);
+			} else {
+				lines.add(tks[1]);
+			}
 			return new double[0];
 		}
 		case classify: {
-			return selectRestriction(attri, all, v);
+			if (true) {
+				double ret[] = new double[all];
+				return ret;
+				// return selectRestriction(attri, all, v);
+			}
+			String lineStr = "";
+			String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/" + attri
+					+ ".model";
+			Runtime run = Runtime.getRuntime();
+			try {
+				Process p = run.exec(cmd);
+
+				BufferedOutputStream out = new BufferedOutputStream(
+						p.getOutputStream());
+				out.write(str.getBytes());
+				out.flush();
+				out.close();
+
+				BufferedInputStream in = new BufferedInputStream(
+						p.getInputStream());
+				BufferedReader inBr = new BufferedReader(new InputStreamReader(
+						in));
+				lineStr = inBr.readLine();
+				if (p.waitFor() != 0) {
+					if (p.exitValue() == 1) {
+						System.err.println("ERROR YASMET");
+						Common.bangErrorPOS("");
+					}
+				}
+				System.out.println(lineStr);
+				inBr.close();
+				in.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+
+			String tks[] = lineStr.split("\\s+");
+			double ret[] = new double[tks.length - 1];
+			for (int i = 1; i < tks.length; i++) {
+				ret[i - 1] = Double.parseDouble(tks[i]);
+			}
+			return ret;
 		}
 		case load: {
+			// String lineStr = "";
+			// if (attri.equals("number")) {
+			// lineStr = numberRS.get(pronounID);
+			// } else if (attri.equals("gender")) {
+			// lineStr = genderRS.get(pronounID);
+			// } else if (attri.equals("person")) {
+			// lineStr = personRS.get(pronounID);
+			// } else if (attri.equals("animacy")) {
+			// lineStr = animacyRS.get(pronounID);
+			// } else {
+			// Common.bangErrorPOS("No Such Attri");
+			// }
+			// String tks[] = lineStr.split("\\s+");
+			// double ret[] = new double[tks.length - 1];
+			// for (int i = 1; i < tks.length; i++) {
+			// ret[i - 1] = Double.parseDouble(tks[i]);
+			// }
+			// return ret;
+			if (true) {
+				// double ret[] = new double[all];
+				// return ret;
+				return selectRestriction(attri, all, v);
+			}
 			return selectRestriction(attri, all, v);
 		}
 		default: {
@@ -870,6 +697,9 @@ public class ApplyMaxEnt10 {
 	}
 
 	public static double[] selectRestriction(String attri, int all, String v) {
+		if (Context.svoStat == null) {
+			return new double[all];
+		}
 		HashMap<Integer, Integer> map = null;
 		if (attri.equals("number")) {
 			map = Context.svoStat.numberStat.get(v);
@@ -1217,95 +1047,6 @@ public class ApplyMaxEnt10 {
 		pronounID = 0;
 	}
 
-	static int maximam = 0;
-
-	static String[] tuneBN = { "0.008 0.008 0.04 0.008",
-			"0.008 0.008 0.04 0.01", "0.008 0.008 0.06 0.01",
-			"0.008 0.008 0.08 0.008", "0.008 0.008 0.08 0.01",
-			"0.008 0.01 0.04 0.008", "0.008 0.01 0.04 0.01",
-			"0.008 0.01 0.08 0.008", "0.008 0.01 0.08 0.01",
-			"0.008 0.008 0.008 0.008", "0.008 0.008 0.008 0.01",
-			"0.008 0.008 0.01 0.008", "0.008 0.008 0.01 0.01",
-			"0.008 0.008 0.02 0.008", "0.008 0.008 0.02 0.01",
-			"0.008 0.008 0.06 0.008", "0.008 0.01 0.008 0.008",
-			"0.008 0.01 0.008 0.01", "0.008 0.01 0.01 0.008",
-			"0.008 0.01 0.01 0.01", "0.008 0.01 0.02 0.008",
-			"0.008 0.01 0.02 0.01", "0.008 0.01 0.06 0.008",
-			"0.008 0.01 0.06 0.01", "0.01 0.008 0.008 0.008",
-			"0.01 0.008 0.008 0.01", "0.01 0.008 0.01 0.008",
-			"0.01 0.008 0.01 0.01", "0.01 0.008 0.02 0.008",
-			"0.01 0.008 0.02 0.01", "0.01 0.008 0.04 0.008",
-			"0.01 0.008 0.04 0.01", "0.01 0.008 0.06 0.008",
-			"0.01 0.008 0.06 0.01", "0.01 0.008 0.08 0.008",
-			"0.01 0.008 0.08 0.01", "0.01 0.01 0.008 0.008",
-			"0.01 0.01 0.008 0.01", "0.01 0.01 0.01 0.008",
-			"0.01 0.01 0.02 0.008", "0.01 0.01 0.02 0.01",
-			"0.01 0.01 0.04 0.008", "0.01 0.01 0.04 0.01",
-			"0.01 0.01 0.06 0.008", "0.01 0.01 0.06 0.01",
-			"0.01 0.01 0.08 0.008", "0.01 0.01 0.08 0.01" };
-
-	static String[] tuneMZ = { "0.008 0.02 0.04 0.008", "0.008 0.02 0.04 0.01",
-			"0.02 0.008 0.01 0.008", "0.02 0.008 0.02 0.008",
-			"0.02 0.008 0.04 0.008", "0.02 0.008 0.06 0.008",
-			"0.02 0.008 0.06 0.01", "0.02 0.008 0.08 0.008",
-			"0.02 0.01 0.01 0.008", "0.02 0.01 0.02 0.008",
-			"0.02 0.01 0.04 0.008", "0.02 0.01 0.06 0.008",
-			"0.02 0.01 0.06 0.01", "0.02 0.01 0.08 0.008",
-			"0.02 0.02 0.02 0.008", "0.02 0.02 0.02 0.01",
-			"0.02 0.02 0.04 0.008", "0.02 0.02 0.04 0.01",
-			"0.008 0.02 0.02 0.01", "0.008 0.02 0.06 0.008",
-			"0.008 0.02 0.06 0.01", "0.008 0.02 0.08 0.008",
-			"0.008 0.02 0.08 0.01", "0.01 0.01 0.02 0.01",
-			"0.01 0.01 0.04 0.01", "0.01 0.01 0.06 0.01",
-			"0.01 0.02 0.02 0.008", "0.01 0.02 0.02 0.01",
-			"0.01 0.02 0.04 0.008", "0.01 0.02 0.04 0.01",
-			"0.02 0.008 0.008 0.008", "0.02 0.008 0.008 0.01",
-			"0.02 0.008 0.01 0.01", "0.02 0.008 0.02 0.01",
-			"0.02 0.008 0.04 0.01", "0.02 0.008 0.08 0.01",
-			"0.02 0.01 0.008 0.008", "0.02 0.01 0.008 0.01",
-			"0.02 0.01 0.01 0.01", "0.02 0.01 0.02 0.01",
-			"0.02 0.01 0.04 0.01", "0.02 0.01 0.08 0.01",
-			"0.02 0.02 0.008 0.01", "0.02 0.02 0.01 0.008",
-			"0.02 0.02 0.06 0.008", "0.02 0.02 0.06 0.01",
-			"0.02 0.02 0.08 0.008", "0.02 0.02 0.08 0.01",
-			"0.04 0.008 0.06 0.008", "0.04 0.01 0.06 0.008" };
-
-	static String[] tuneTC = { "0.008 0.008 0.02 0.04",
-			"0.008 0.008 0.02 0.06", "0.008 0.008 0.04 0.04",
-			"0.008 0.008 0.06 0.02", "0.008 0.01 0.02 0.04",
-			"0.008 0.01 0.02 0.06", "0.008 0.01 0.04 0.04",
-			"0.008 0.01 0.06 0.02", "0.008 0.02 0.04 0.008",
-			"0.008 0.02 0.04 0.01", "0.008 0.02 0.04 0.02",
-			"0.008 0.02 0.04 0.04", "0.008 0.02 0.04 0.06",
-			"0.008 0.02 0.06 0.02", "0.008 0.04 0.04 0.04",
-			"0.008 0.04 0.06 0.02", "0.01 0.008 0.02 0.04",
-			"0.01 0.008 0.02 0.06", "0.01 0.008 0.04 0.04",
-			"0.01 0.008 0.06 0.02", "0.01 0.01 0.02 0.04",
-			"0.01 0.01 0.02 0.06", "0.01 0.01 0.04 0.04",
-			"0.01 0.01 0.06 0.02", "0.01 0.02 0.04 0.008",
-			"0.01 0.02 0.04 0.01", "0.01 0.02 0.04 0.02",
-			"0.01 0.02 0.04 0.04", "0.01 0.02 0.04 0.06",
-			"0.01 0.02 0.06 0.02", "0.01 0.04 0.04 0.04",
-			"0.01 0.04 0.06 0.02", "0.02 0.008 0.02 0.04",
-			"0.02 0.008 0.02 0.06", "0.02 0.008 0.04 0.04",
-			"0.02 0.01 0.02 0.04", "0.02 0.01 0.02 0.06",
-			"0.02 0.01 0.04 0.04", "0.02 0.02 0.04 0.008",
-			"0.02 0.02 0.04 0.01", "0.02 0.02 0.04 0.04",
-			"0.02 0.02 0.04 0.02", "0.02 0.02 0.04 0.06",
-			"0.02 0.02 0.06 0.02", "0.02 0.04 0.04 0.04",
-			"0.02 0.04 0.06 0.02", "0.02 0.06 0.008 0.06",
-			"0.02 0.06 0.01 0.06", "0.02 0.06 0.04 0.04",
-			"0.02 0.08 0.06 0.02", "0.04 0.008 0.02 0.04",
-			"0.04 0.008 0.02 0.06", "0.04 0.01 0.02 0.04",
-			"0.04 0.01 0.02 0.06", "0.04 0.02 0.04 0.008",
-			"0.04 0.02 0.04 0.01", "0.04 0.02 0.04 0.02",
-			"0.04 0.02 0.04 0.04", "0.04 0.04 0.008 0.08",
-			"0.04 0.04 0.01 0.08", "0.04 0.04 0.06 0.02",
-			"0.04 0.06 0.008 0.06", "0.04 0.06 0.01 0.06",
-			"0.04 0.06 0.02 0.06", "0.04 0.08 0.008 0.06",
-			"0.04 0.08 0.02 0.04", "0.06 0.06 0.008 0.06",
-			"0.06 0.06 0.01 0.06" };
-
 	public static void main(String args[]) {
 		if (args.length < 1) {
 			System.err.println("java ~ folder [mode]");
@@ -1362,52 +1103,6 @@ public class ApplyMaxEnt10 {
 		// ILP.d_ani = para[d];
 		// // while(true) {
 
-		if (args[0].equalsIgnoreCase("bn")) {
-			paras = tuneBN;
-		} else if (args[0].equalsIgnoreCase("tc")) {
-			paras = tuneTC;
-		} else if (args[0].equalsIgnoreCase("mz")) {
-			paras = tuneMZ;
-		}
-
-		for (int i = 0; i < paras.length; i++) {
-			String par = paras[i];
-			String tks[] = par.trim().split("\\s+");
-			ILP.a_num = Double.parseDouble(tks[0]);
-			ILP.b_gen = Double.parseDouble(tks[1]);
-			ILP.c_per = Double.parseDouble(tks[2]);
-			ILP.d_ani = Double.parseDouble(tks[3]);
-			System.err.println(i + "/" + paras.length);
-			run(args[0]);
-			// // if(ILP.c_per>ILP.d_ani && ILP.c_per>ILP.b_gen)
-			//
-			// if (para[a] <= 0.04 && para[a] > 0 && para[b] <= 0.01
-			// && para[c] >= 0.04 && para[d] >= 0.02) {
-			// if (ILP.a_num + ILP.b_gen + ILP.c_per + ILP.d_ani == 0
-			// || ILP.a_num * ILP.b_gen * ILP.c_per * ILP.d_ani != 0)
-
-			// }
-			// // Common.input("");
-			// // System.exit(1);
-			// // run("nw");
-			// // run("mz");
-			// // run("wb");
-			// // run("bn");
-			// // run("bc");
-			// // run("tc");
-			// // }
-			// // System.exit(1);
-		}
-		// }
-		// }
-		// }
-
-		// run("nw");
-		// run("mz");
-		// run("wb");
-		// run("bn");
-		// run("bc");
-		// run("tc");
 	}
 
 	public static void run(String folder) {
@@ -1432,10 +1127,8 @@ public class ApplyMaxEnt10 {
 			Common.outputLines(personTest, "person.test" + folder);
 			Common.outputLines(animacyTest, "animacy.test" + folder);
 			Common.outputLines(anteTest, "ante.test" + folder);
-			System.out.println("MAX: " + maximam);
 			System.exit(1);
 		}
-		System.out.println("MAX: " + maximam);
 		// Common.input("!!");
 	}
 }
