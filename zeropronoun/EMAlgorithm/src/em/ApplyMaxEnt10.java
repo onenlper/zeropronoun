@@ -319,26 +319,15 @@ public class ApplyMaxEnt10 {
 				cand.MI = Context.calMI(cand, zero);
 				if (cand.start < zero.start
 						&& zero.sentenceID - cand.sentenceID <= 2) {
-					if (!findFS && cand.gram == EMUtil.Grammatic.subject
-					// && !cand.s.getWord(cand.headInS).posTag.equals("NT")
-					// && MI>0
-					) {
+					if (!findFS && cand.gram == EMUtil.Grammatic.subject) {
 						cand.isFS = true;
 						findFS = true;
 					}
-					// if(cand.s==zero.s && cand.gram==Grammatic.object &&
-					// cand.end+2==zero.start &&
-					// part.getWord(cand.end+1).word.equals("，") && cand.MI>0){
-					// cand.isFS = true;
-					// findFS = true;
-					// }
 					cands.add(cand);
 				}
 			}
 			findBest(zero, cands);
 
-			// call yasmet to get Prob(gender|context) Prob(number|context)
-			// Prob(person|context) Prob(animacy|context)
 			guessFea.configure(zero.start - 1, zero.start,
 					part.getWord(zero.start).sentence, part);
 
@@ -472,8 +461,8 @@ public class ApplyMaxEnt10 {
 		}
 	}
 
-	private Mention go(ArrayList<Mention> cands, Mention zero,
-			CoNLLPart part, Person proPer, Number proNum, Gender proGen, Animacy proAni) {
+	private Mention go(ArrayList<Mention> cands, Mention zero, CoNLLPart part,
+			Person proPer, Number proNum, Gender proGen, Animacy proAni) {
 		int antCount = 0;
 		String proSpeaker = part.getWord(zero.start).speaker;
 		HashMap<Integer, Integer> idMap = new HashMap<Integer, Integer>();
