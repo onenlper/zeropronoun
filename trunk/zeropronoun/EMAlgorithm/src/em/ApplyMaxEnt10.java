@@ -69,6 +69,8 @@ public class ApplyMaxEnt10 {
 
 	SuperviseFea superFea;
 
+	SuperviseFea superFeaZ;
+
 	static int pronounID;
 
 	static ArrayList<String> numberTest = new ArrayList<String>();
@@ -76,13 +78,13 @@ public class ApplyMaxEnt10 {
 	static ArrayList<String> personTest = new ArrayList<String>();
 	static ArrayList<String> animacyTest = new ArrayList<String>();
 
-	static ArrayList<String> anteTest = new ArrayList<String>();
+	static HashMap<String, ArrayList<String>> anteTest = new HashMap<String, ArrayList<String>>();
 
 	static ArrayList<String> numberRS;
 	static ArrayList<String> genderRS;
 	static ArrayList<String> personRS;
 	static ArrayList<String> animacyRS;
-	static ArrayList<String> anteRS;
+	static HashMap<String, ArrayList<String>> anteRS;
 
 	public static ArrayList<String> goods = new ArrayList<String>();
 	public static ArrayList<String> bads = new ArrayList<String>();
@@ -129,6 +131,8 @@ public class ApplyMaxEnt10 {
 			guessFea = new GuessPronounFea(false, "guessPronoun");
 
 			superFea = new SuperviseFea(false, "supervise");
+			superFeaZ = new SuperviseFea(false, "superviseZ");
+			superFeaZ.plusNumberGenderPersonAnimacy = false;
 			EMUtil.loadPredictNE(folder, "dev");
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -266,7 +270,7 @@ public class ApplyMaxEnt10 {
 				// && !file.contains("/bn/")
 				// && !file.contains("/mz/")&& !file.contains("/wb/")
 				) {
-					candidates.addAll(anaphorZeros);
+					// candidates.addAll(anaphorZeros);
 				}
 				Collections.sort(candidates);
 
@@ -286,6 +290,29 @@ public class ApplyMaxEnt10 {
 		bad = 0;
 		good = 0;
 		evaluate(corefResults, goldEntities);
+	}
+
+	private void inferGoldAttri(Mention zero, CoNLLPart part,
+			HashMap<String, ArrayList<Mention>> chainMap2) {
+		ArrayList<Mention> cluster = new ArrayList<Mention>(chainMap2.get(zero
+				.toName()));
+		Person proPer = null;
+		Number proNum = null;
+		Gender proGen = null;
+		Animacy proAni = null;
+		proPer = EMUtil.inferPerson(cluster, zero, part);
+		proNum = EMUtil.inferNumber(cluster);
+		proGen = EMUtil.inferGender(cluster);
+		proAni = EMUtil.inferAnimacy(cluster);
+		StringBuilder sb = new StringBuilder();
+		sb.append("Chains: ");
+		for (Mention m : cluster) {
+			if (m.end == -1) {
+				continue;
+			}
+			sb.append(m.extent).append(" # ");
+		}
+		sb.append("\nInfer: ");
 	}
 
 	private void findAntecedent(String file, CoNLLPart part,
@@ -339,7 +366,14 @@ public class ApplyMaxEnt10 {
 			// Yasmet format
 			// NUMBER, GENDER, PERSON, ANIMACY
 			String tks[] = feaStr.split("\\s+");
-			int all = EMUtil.Number.values().length;
+
+			int all = EMUtil.Person.values().length;
+			double[] personProbs = ApplyMaxEnt10.selectRestriction("person",
+					all, v);
+			String pYSB = transform(tks, all, 0, personProbs);
+			double probPer[] = runAttri("person", pYSB, all, v);
+
+			all = EMUtil.Number.values().length;
 			double[] numberProbs = ApplyMaxEnt10.selectRestriction("number",
 					all, v);
 			String nYSB = transform(tks, all, 0, numberProbs);
@@ -351,12 +385,6 @@ public class ApplyMaxEnt10 {
 			String gYSB = transform(tks, all, 0, genderProbs);
 			double probGen[] = runAttri("gender", gYSB, all, v);
 
-			all = EMUtil.Person.values().length;
-			double[] personProbs = ApplyMaxEnt10.selectRestriction("person",
-					all, v);
-			String pYSB = transform(tks, all, 0, personProbs);
-			double probPer[] = runAttri("person", pYSB, all, v);
-
 			all = EMUtil.Animacy.values().length - 1;
 			double[] animacyProbs = ApplyMaxEnt10.selectRestriction("animacy",
 					all, v);
@@ -364,15 +392,24 @@ public class ApplyMaxEnt10 {
 			double probAni[] = runAttri("animacy", aYSB, all, v);
 			// TODO
 
-			ArrayList<Mention> cluster = chainMap2.get(zero.toName());
+			ArrayList<double[]> opProbs = getProb_C(cands, zero, part,
+					superFeaZ, "WTZ");
 
-			Person proPer = EMUtil.inferPerson(cluster, zero, part);
-			Number proNum = EMUtil.inferNumber(cluster);
-			Gender proGen = EMUtil.inferGender(cluster);
-			Animacy proAni = EMUtil.inferAnimacy(cluster);
+			String pro = EMUtil.getOnePronoun(opProbs.get(0), opProbs.get(1),
+					opProbs.get(2), opProbs.get(3));
 
-			//
-			antecedent = go(cands, zero, part, proPer, proNum, proGen, proAni);
+			antecedent = givenOPFindC(cands, zero, part, pro, superFea, "WT");
+
+			// boolean coref = false;
+			// if (antecedent != null) {
+			// coref = chainMap.containsKey(zero.toName())
+			// && chainMap.containsKey(antecedent.toName())
+			// && chainMap.get(zero.toName()).intValue() == chainMap
+			// .get(antecedent.toName()).intValue();
+			// }
+			// antecedent = null;
+			// antecedent = doWorkFill10Times(cands, zero, part, chainMap,
+			// superFea, "WT", coref, sb.toString().trim());
 
 			if (antecedent != null) {
 				if (antecedent.end != -1) {
@@ -461,14 +498,181 @@ public class ApplyMaxEnt10 {
 		}
 	}
 
-	private Mention go(ArrayList<Mention> cands, Mention zero, CoNLLPart part,
-			Person proPer, Number proNum, Gender proGen, Animacy proAni) {
+	private Mention doWorkFill10Times(ArrayList<Mention> cands, Mention zero,
+			CoNLLPart part, HashMap<String, Integer> chainMap,
+			SuperviseFea superFea, String model, boolean upboundCorrect,
+			String message) {
 		int antCount = 0;
 		String proSpeaker = part.getWord(zero.start).speaker;
 		HashMap<Integer, Integer> idMap = new HashMap<Integer, Integer>();
 		StringBuilder ysb = new StringBuilder();
 		ysb.append("0 @ ");
 		Mention antecedent = null;
+		HashSet<Integer> corefs = new HashSet<Integer>();
+		for (int p = 0; p < EMUtil.pronounList.size(); p++) {
+			zero.extent = EMUtil.pronounList.get(p);
+			for (int i = 0; i < cands.size(); i++) {
+				Mention cand = cands.get(i);
+				if (cand.extent.isEmpty()) {
+					continue;
+				}
+
+				boolean coref = chainMap.containsKey(zero.toName())
+						&& chainMap.containsKey(cand.toName())
+						&& chainMap.get(zero.toName()).intValue() == chainMap
+								.get(cand.toName()).intValue();
+				if (coref) {
+					corefs.add(antCount);
+				}
+				String antSpeaker = part.getWord(cand.start).speaker;
+				cand.sentenceID = part.getWord(cand.start).sentence
+						.getSentenceIdx();
+
+				Context context = Context.buildContext(cand, zero, part,
+						cand.isFS);
+				cand.msg = Context.message;
+				cand.MI = Context.MI;
+
+				boolean sameSpeaker = proSpeaker.equals(antSpeaker);
+				Entry entry = new Entry(cand, context, sameSpeaker, cand.isFS);
+
+				String unit = MaxEntLearn.getYamset(false, cand, zero, context,
+						sameSpeaker, entry, superFea, 1, part);
+
+				ysb.append(unit);
+
+				idMap.put(antCount, i);
+				antCount++;
+			}
+		}
+
+		double probAnt[] = runYasmet(ysb.toString(), antCount, model);
+		pronounID++;
+		// System.err.println(cands.size());
+		if (antCount != 0 && (mode == classify || mode == load)) {
+			int antIdx = -1;
+			double maxProb = -1;
+			int antNumber = probAnt.length / EMUtil.pronounList.size();
+			for (int i = 0; i < probAnt.length; i++) {
+				if (probAnt[i] > maxProb) {
+					maxProb = probAnt[i];
+					antIdx = i;
+				}
+			}
+			boolean find = false;
+			for (int p = 0; p < EMUtil.pronounList.size(); p++) {
+				double localMax = 0;
+				int localBest = -1;
+				for (int g = 0; g < antNumber; g++) {
+					int id = p * antNumber + g;
+					double pr = probAnt[id];
+					if (pr > localMax) {
+						localMax = pr;
+						localBest = id;
+					}
+				}
+				if (corefs.contains(localBest)) {
+					antecedent = cands.get(idMap.get(localBest));
+					String pro = EMUtil.pronounList.get(p);
+
+					if (!upboundCorrect) {
+						System.out.println(message);
+						System.out.println("Good Pronoun: " + pro + "\t"
+								+ EMUtil.getNumber(pro) + "\t"
+								+ EMUtil.getGender(pro) + "\t"
+								+ EMUtil.getPerson(pro) + "\t"
+								+ EMUtil.getAnimacy(pro));
+						Common.pause("");
+					}
+					find = true;
+				}
+			}
+			if (find) {
+				return antecedent;
+			}
+			if (antIdx != -1) {
+				antecedent = cands.get(idMap.get(antIdx));
+			}
+		}
+		return antecedent;
+	}
+
+	private Mention givenOPFindC(ArrayList<Mention> cands, Mention zero,
+			CoNLLPart part, String pro, SuperviseFea superFea, String model) {
+		int antCount = 0;
+		String proSpeaker = part.getWord(zero.start).speaker;
+		HashMap<Integer, Integer> idMap = new HashMap<Integer, Integer>();
+		StringBuilder ysb = new StringBuilder();
+		ysb.append("0 @ ");
+		Mention antecedent = null;
+
+		for (int p = 0; p < EMUtil.pronounList.size(); p++) {
+			String op = EMUtil.pronounList.get(p);
+			zero.extent = op;
+			for (int i = 0; i < cands.size(); i++) {
+				Mention cand = cands.get(i);
+				if (cand.extent.isEmpty()) {
+					continue;
+				}
+				// if(!cand.isFS)
+				// continue;
+				String antSpeaker = part.getWord(cand.start).speaker;
+				cand.sentenceID = part.getWord(cand.start).sentence
+						.getSentenceIdx();
+
+				Context context = Context.buildContext(cand, zero, part,
+						cand.isFS);
+				cand.msg = Context.message;
+				cand.MI = Context.MI;
+
+				boolean sameSpeaker = proSpeaker.equals(antSpeaker);
+				Entry entry = new Entry(cand, context, sameSpeaker, cand.isFS);
+
+				String unit = getYamset(false, cand, zero, context,
+						sameSpeaker, entry, superFea, 1, part,
+						EMUtil.getPerson(op), EMUtil.getNumber(op),
+						EMUtil.getGender(op), EMUtil.getAnimacy(op));
+
+				ysb.append(unit);
+
+				idMap.put(antCount, i);
+				antCount++;
+			}
+		}
+		double probAnt[] = runYasmet(ysb.toString(), antCount, model);
+
+		pronounID++;
+		// System.err.println(cands.size());
+		if (antCount != 0 && (mode == classify || mode == load)) {
+			int antIdx = -1;
+			double maxProb = -1;
+
+			int numOfAnt = probAnt.length / EMUtil.pronounList.size();
+
+			int proIdx = EMUtil.pronounList.indexOf(pro);
+			for (int i = 0; i < probAnt.length; i++) {
+				if (i < numOfAnt * proIdx || i >= numOfAnt * (proIdx + 1)) {
+					continue;
+				}
+				if (probAnt[i] > maxProb) {
+					maxProb = probAnt[i];
+					antIdx = i;
+				}
+			}
+			if (antIdx != -1) {
+				antecedent = cands.get(idMap.get(antIdx));
+			}
+		}
+		return antecedent;
+	}
+
+	private ArrayList<double[]> getProb_C(ArrayList<Mention> cands,
+			Mention zero, CoNLLPart part, SuperviseFea superFea, String model) {
+		int antCount = 0;
+		String proSpeaker = part.getWord(zero.start).speaker;
+		HashMap<Integer, Integer> idMap = new HashMap<Integer, Integer>();
+		StringBuilder ysb = new StringBuilder();
+		ysb.append("0 @ ");
 		for (int i = 0; i < cands.size(); i++) {
 			Mention cand = cands.get(i);
 			if (cand.extent.isEmpty()) {
@@ -488,7 +692,7 @@ public class ApplyMaxEnt10 {
 			Entry entry = new Entry(cand, context, sameSpeaker, cand.isFS);
 
 			String unit = getYamset(false, cand, zero, context, sameSpeaker,
-					entry, superFea, 1, part, proPer, proNum, proGen, proAni);
+					entry, superFea, 1, part, null, null, null, null);
 
 			ysb.append(unit);
 
@@ -496,24 +700,55 @@ public class ApplyMaxEnt10 {
 			antCount++;
 		}
 
-		double probAnt[] = runYasmet(ysb.toString(), antCount);
+		double probAnt[] = runYasmet(ysb.toString(), antCount, model);
 		pronounID++;
 		// System.err.println(cands.size());
-		if (antCount != 0 && (mode == classify || mode == load)) {
-			int antIdx = -1;
-			double maxProb = -1;
+		int id = 0;
+		double[] anis = new double[Animacy.values().length];
+		double[] pers = new double[Person.values().length];
+		double[] gens = new double[Gender.values().length];
+		double[] nums = new double[Number.values().length];
+		for (int c = 0; c < cands.size(); c++) {
+			Mention ant = cands.get(c);
+			if (ant.extent.isEmpty()) {
+				continue;
+			}
 
-			for (int i = 0; i < probAnt.length; i++) {
-				if (probAnt[i] > maxProb) {
-					maxProb = probAnt[i];
-					antIdx = i;
-				}
-			}
-			if (antIdx != -1) {
-				antecedent = cands.get(idMap.get(antIdx));
-			}
+			Animacy animacy = EMUtil.getAntAnimacy(ant);
+			Person person = EMUtil.getAntPerson(ant.head);
+			Gender gender = EMUtil.getAntGender(ant);
+			Number number = EMUtil.getAntNumber(ant);
+			double prob = probAnt[id++];
+
+			anis[animacy.ordinal()] = Math.max(prob, anis[animacy.ordinal()]);
+			pers[person.ordinal()] = Math.max(prob, pers[person.ordinal()]);
+			gens[gender.ordinal()] = Math.max(prob, gens[gender.ordinal()]);
+			nums[number.ordinal()] = Math.max(prob, nums[number.ordinal()]);
 		}
-		return antecedent;
+		if (id != probAnt.length) {
+			Common.bangErrorPOS("!!!");
+		}
+
+		normalize(pers);
+		normalize(nums);
+		normalize(gens);
+		normalize(anis);
+		ArrayList<double[]> ret = new ArrayList<double[]>();
+		ret.add(pers);
+		ret.add(nums);
+		ret.add(gens);
+		ret.add(anis);
+		return ret;
+	}
+
+	private static void normalize(double[] vals) {
+		double all = 0;
+		for (double v : vals) {
+			all += v;
+		}
+		for (int i = 0; i < vals.length; i++) {
+			vals[i] = vals[i] / all;
+		}
 	}
 
 	public static String getYamset(boolean coref, Mention ant, Mention pro,
@@ -522,14 +757,26 @@ public class ApplyMaxEnt10 {
 			Person proPerson, Number proNumber, Gender proGender, Animacy proAni) {
 		// String pronoun = pro.extent;
 		String pStr = "";
-		if (sameSpeaker) {
-			pStr = entry.person.name() + "=" + proPerson.name();
-		} else {
-			pStr = entry.person.name() + "!=" + proPerson.name();
+		String nStr = "";
+		String gStr = "";
+		String aStr = "";
+
+		if (proPerson != null) {
+			if (sameSpeaker) {
+				pStr = entry.person.name() + "=" + proPerson.name();
+			} else {
+				pStr = entry.person.name() + "!=" + proPerson.name();
+			}
 		}
-		String nStr = entry.number.name() + "=" + proNumber.name();
-		String gStr = entry.gender.name() + "=" + proGender.name();
-		String aStr = entry.animacy.name() + "=" + proAni.name();
+		if (proNumber != null) {
+			nStr = entry.number.name() + "=" + proNumber.name();
+		}
+		if (proGender != null) {
+			gStr = entry.gender.name() + "=" + proGender.name();
+		}
+		if (proAni != null) {
+			aStr = entry.animacy.name() + "=" + proAni.name();
+		}
 
 		superFea.configure(pStr, nStr, gStr, aStr, context, ant, pro, part);
 
@@ -724,7 +971,7 @@ public class ApplyMaxEnt10 {
 
 	static int maxAnts = 1200;
 
-	private double[] runYasmet(String str, int antCount) {
+	private double[] runYasmet(String str, int antCount, String model) {
 		String tks[] = str.split("@");
 		int numberOfUnit = tks.length - 2;
 		if (numberOfUnit > maxAnts) {
@@ -736,15 +983,19 @@ public class ApplyMaxEnt10 {
 
 		switch (mode) {
 		case prepare: {
-			if (anteTest.isEmpty()) {
-				anteTest.add(Integer.toString(maxAnts));
+			ArrayList<String> lst = anteTest.get(model);
+			if (lst == null) {
+				lst = new ArrayList<String>();
+				lst.add(Integer.toString(maxAnts));
+				anteTest.put(model, lst);
 			}
-			anteTest.add(str);
+			lst.add(str);
 			return new double[0];
 		}
 		case classify: {
 			String lineStr = "";
-			String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/WT";
+			String cmd = "/users/yzcchen/tool/YASMET/./a.out /users/yzcchen/tool/YASMET/"
+					+ model;
 
 			Runtime run = Runtime.getRuntime();
 			double ret[] = new double[antCount];
@@ -796,7 +1047,8 @@ public class ApplyMaxEnt10 {
 		}
 		case (load): {
 			double ret[] = new double[antCount];
-			String lineStr = anteRS.get(pronounID);
+			ArrayList<String> lst = anteRS.get(model);
+			String lineStr = lst.get(pronounID);
 			tks = lineStr.split("\\s+");
 			double norm = 0;
 			for (int i = 0; i < antCount; i++) {
@@ -1047,18 +1299,18 @@ public class ApplyMaxEnt10 {
 		if (args[1].equals("prepare")) {
 			mode = prepare;
 			run(args[0]);
+
+			Common.outputLines(numberTest, "number.test" + args[0]);
+			Common.outputLines(genderTest, "gender.test" + args[0]);
+			Common.outputLines(personTest, "person.test" + args[0]);
+			Common.outputLines(animacyTest, "animacy.test" + args[0]);
+			for (String key : anteTest.keySet()) {
+				ArrayList<String> lst = anteTest.get(key);
+				Common.outputLines(lst, "ante.test" + args[0] + "." + key);
+			}
 			return;
 		} else if (args[1].equals("load")) {
 			mode = load;
-		} else if (args[1].equals("classify")) {
-			mode = classify;
-			run(args[0]);
-			return;
-		} else {
-			Common.bangErrorPOS("");
-		}
-
-		if (mode == load) {
 			personRS = Common.getLines("/users/yzcchen/tool/YASMET/person.rs"
 					+ args[0]);
 			genderRS = Common.getLines("/users/yzcchen/tool/YASMET/gender.rs"
@@ -1067,9 +1319,27 @@ public class ApplyMaxEnt10 {
 					+ args[0]);
 			animacyRS = Common.getLines("/users/yzcchen/tool/YASMET/animacy.rs"
 					+ args[0]);
-			anteRS = Common.getLines("/users/yzcchen/tool/YASMET/ante.rs"
-					+ args[0]);
+
+			anteRS = new HashMap<String, ArrayList<String>>();
+			ArrayList<String> lines1 = Common
+					.getLines("/users/yzcchen/tool/YASMET/ante.rs" + args[0]
+							+ ".WT");
+			anteRS.put("WT", lines1);
+			ArrayList<String> lines2 = Common
+					.getLines("/users/yzcchen/tool/YASMET/ante.rs" + args[0]
+							+ ".WTZ");
+			anteRS.put("WTZ", lines2);
+
+			run(args[0]);
+			return;
+		} else if (args[1].equals("classify")) {
+			mode = classify;
+			run(args[0]);
+			return;
+		} else {
+			Common.bangErrorPOS("");
 		}
+
 		double para[] = { 0, 0.008, 0.01, 0.02, 0.04, 0.06, 0.08 };
 
 		String paras[] = { "0.008 0.01 0.06 0.01", "0.0075 0.01 0.06 0.01",
@@ -1110,14 +1380,5 @@ public class ApplyMaxEnt10 {
 		Common.outputHashSet(Context.ss, "miniS");
 		Common.outputHashSet(Context.vs, "miniV");
 
-		if (mode == prepare) {
-			Common.outputLines(numberTest, "number.test" + folder);
-			Common.outputLines(genderTest, "gender.test" + folder);
-			Common.outputLines(personTest, "person.test" + folder);
-			Common.outputLines(animacyTest, "animacy.test" + folder);
-			Common.outputLines(anteTest, "ante.test" + folder);
-			System.exit(1);
-		}
-		// Common.input("!!");
 	}
 }
