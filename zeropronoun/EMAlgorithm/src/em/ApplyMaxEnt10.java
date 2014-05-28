@@ -71,7 +71,7 @@ public class ApplyMaxEnt10 {
 
 	SuperviseFea superFeaZ;
 
-	static int pronounID;
+	static int zpID;
 
 	static ArrayList<String> numberTest = new ArrayList<String>();
 	static ArrayList<String> genderTest = new ArrayList<String>();
@@ -270,7 +270,7 @@ public class ApplyMaxEnt10 {
 				// && !file.contains("/bn/")
 				// && !file.contains("/mz/")&& !file.contains("/wb/")
 				) {
-					// candidates.addAll(anaphorZeros);
+//					 candidates.addAll(anaphorZeros);
 				}
 				Collections.sort(candidates);
 
@@ -290,6 +290,42 @@ public class ApplyMaxEnt10 {
 		bad = 0;
 		good = 0;
 		evaluate(corefResults, goldEntities);
+	}
+	
+	private void setParas(CoNLLPart part) {
+		if (part.folder.equalsIgnoreCase("BN")) {
+			alpha = 0.3;
+			beta = 0;
+			theta = 0;
+			delta = 0.1;
+		} else if (part.folder.equalsIgnoreCase("TC")) {
+			alpha = 0.2;
+			beta = 0;
+			theta = 0;
+			delta = 0.3;
+		} else if (part.folder.equalsIgnoreCase("NW")) {
+			alpha = 0;
+			beta = 0.1;
+			theta = 0;
+			delta = 0;
+		} else if (part.folder.equalsIgnoreCase("BC")) {
+			alpha = 0.4;
+			beta = 0;
+			theta = 0;
+			delta = 0;
+		} else if (part.folder.equalsIgnoreCase("WB")) {
+			alpha = 0.45;
+			beta = 0;
+			theta = 0.15;
+			delta = 0;
+		} else if (part.folder.equalsIgnoreCase("MZ")) {
+			alpha = 0.8;
+			beta = 0;
+			theta = 0.4;
+			delta = 0;
+		} else {
+			Common.bangErrorPOS("Wrong Folder!!!" + part.folder);
+		}
 	}
 
 	private void inferGoldAttri(Mention zero, CoNLLPart part,
@@ -395,10 +431,15 @@ public class ApplyMaxEnt10 {
 			ArrayList<double[]> opProbs = getProb_C(cands, zero, part,
 					superFeaZ, "WTZ");
 
-			String pro = EMUtil.getOnePronoun(opProbs.get(0), opProbs.get(1),
+			setParas(part);
+			
+			tuneOpProbs(opProbs, probPer, probNum, probGen, probAni);
+
+			String pro = EMUtil.decideOP(opProbs.get(0), opProbs.get(1),
 					opProbs.get(2), opProbs.get(3));
 
 			antecedent = givenOPFindC(cands, zero, part, pro, superFea, "WT");
+			zpID++;
 
 			// boolean coref = false;
 			// if (antecedent != null) {
@@ -498,6 +539,31 @@ public class ApplyMaxEnt10 {
 		}
 	}
 
+	static double alpha = 0;
+	static double beta = 0;
+	static double theta = 0;
+	static double delta = 0;
+
+	private void tuneOpProbs(ArrayList<double[]> opProbs, double[] probPer,
+			double[] probNum, double[] probGen, double[] probAni) {
+		double[] arr1 = opProbs.get(0);
+		for (int i = 0; i < arr1.length && i < probPer.length; i++) {
+			arr1[i] += probPer[i] * alpha;
+		}
+		double[] arr2 = opProbs.get(1);
+		for (int i = 0; i < arr2.length && i < probNum.length; i++) {
+			arr2[i] += probNum[i] * beta;
+		}
+		double[] arr3 = opProbs.get(2);
+		for (int i = 0; i < arr3.length && i < probGen.length; i++) {
+			arr3[i] += probGen[i] * theta;
+		}
+		double[] arr4 = opProbs.get(3);
+		for (int i = 0; i < arr4.length && i < probAni.length; i++) {
+			arr4[i] += probAni[i] * delta;
+		}
+	}
+
 	private Mention doWorkFill10Times(ArrayList<Mention> cands, Mention zero,
 			CoNLLPart part, HashMap<String, Integer> chainMap,
 			SuperviseFea superFea, String model, boolean upboundCorrect,
@@ -547,7 +613,6 @@ public class ApplyMaxEnt10 {
 		}
 
 		double probAnt[] = runYasmet(ysb.toString(), antCount, model);
-		pronounID++;
 		// System.err.println(cands.size());
 		if (antCount != 0 && (mode == classify || mode == load)) {
 			int antIdx = -1;
@@ -640,8 +705,6 @@ public class ApplyMaxEnt10 {
 			}
 		}
 		double probAnt[] = runYasmet(ysb.toString(), antCount, model);
-
-		pronounID++;
 		// System.err.println(cands.size());
 		if (antCount != 0 && (mode == classify || mode == load)) {
 			int antIdx = -1;
@@ -701,7 +764,7 @@ public class ApplyMaxEnt10 {
 		}
 
 		double probAnt[] = runYasmet(ysb.toString(), antCount, model);
-		pronounID++;
+		
 		// System.err.println(cands.size());
 		int id = 0;
 		double[] anis = new double[Animacy.values().length];
@@ -715,7 +778,14 @@ public class ApplyMaxEnt10 {
 			}
 
 			Animacy animacy = EMUtil.getAntAnimacy(ant);
+			
+			String antSpeaker = part.getWord(ant.start).speaker;
+			boolean sameSpeaker = proSpeaker.equals(antSpeaker);
+			
 			Person person = EMUtil.getAntPerson(ant.head);
+			
+			person = EMUtil.flipPerson(person, sameSpeaker, ant.extent);
+			
 			Gender gender = EMUtil.getAntGender(ant);
 			Number number = EMUtil.getAntNumber(ant);
 			double prob = probAnt[id++];
@@ -855,9 +925,9 @@ public class ApplyMaxEnt10 {
 		}
 		case classify: {
 			if (true) {
-				double ret[] = new double[all];
-				return ret;
-				// return selectRestriction(attri, all, v);
+//				double ret[] = new double[all];
+//				return ret;
+				return selectRestriction(attri, all, v);
 			}
 			String lineStr = "";
 			String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/" + attri
@@ -990,7 +1060,7 @@ public class ApplyMaxEnt10 {
 				anteTest.put(model, lst);
 			}
 			lst.add(str);
-			return new double[0];
+			return new double[antCount];
 		}
 		case classify: {
 			String lineStr = "";
@@ -1048,7 +1118,7 @@ public class ApplyMaxEnt10 {
 		case (load): {
 			double ret[] = new double[antCount];
 			ArrayList<String> lst = anteRS.get(model);
-			String lineStr = lst.get(pronounID);
+			String lineStr = lst.get(zpID);
 			tks = lineStr.split("\\s+");
 			double norm = 0;
 			for (int i = 0; i < antCount; i++) {
@@ -1265,12 +1335,16 @@ public class ApplyMaxEnt10 {
 
 		double r = hit / gold;
 		double p = hit / system;
-		double f = 2 * r * p / (r + p);
+		f = 2 * r * p / (r + p);
 
-		String para = ILP.a_num + " " + ILP.b_gen + " " + ILP.c_per + " "
-				+ ILP.d_ani;
+		String para = alpha + " " + beta + " " + theta + " " + delta;
 		String result = "R:" + r + " P: " + p + " F: " + f;
+		if (f > best) {
+			best = f;
+			bestParas = para;
+		}
 		System.err.println(para + "\t" + result);
+		System.err.println(bestParas + "\t" + best);
 		System.out.println(para);
 		System.out.println("============");
 		System.out.println("Hit: " + hit);
@@ -1285,8 +1359,12 @@ public class ApplyMaxEnt10 {
 		entitieses.clear();
 		bads.clear();
 		goods.clear();
-		pronounID = 0;
+		zpID = 0;
 	}
+
+	static double f;
+	static double best = 0;
+	static String bestParas = "";
 
 	public static void main(String args[]) {
 		if (args.length < 1) {
@@ -1306,7 +1384,7 @@ public class ApplyMaxEnt10 {
 			Common.outputLines(animacyTest, "animacy.test" + args[0]);
 			for (String key : anteTest.keySet()) {
 				ArrayList<String> lst = anteTest.get(key);
-				Common.outputLines(lst, "ante.test" + args[0] + "." + key);
+				Common.outputLines(lst, "antetest" + args[0] + key);
 			}
 			return;
 		} else if (args[1].equals("load")) {
@@ -1322,16 +1400,19 @@ public class ApplyMaxEnt10 {
 
 			anteRS = new HashMap<String, ArrayList<String>>();
 			ArrayList<String> lines1 = Common
-					.getLines("/users/yzcchen/tool/YASMET/ante.rs" + args[0]
-							+ ".WT");
+					.getLines("/users/yzcchen/tool/YASMET/anters" + args[0]
+							+ "WT");
+			System.out.println(lines1.size());
 			anteRS.put("WT", lines1);
 			ArrayList<String> lines2 = Common
-					.getLines("/users/yzcchen/tool/YASMET/ante.rs" + args[0]
-							+ ".WTZ");
+					.getLines("/users/yzcchen/tool/YASMET/anters" + args[0]
+							+ "WTZ");
+			System.out.println(lines2.size());
 			anteRS.put("WTZ", lines2);
 
 			run(args[0]);
-			return;
+//			tuneWay1(args);
+//			tuneWay2(args);
 		} else if (args[1].equals("classify")) {
 			mode = classify;
 			run(args[0]);
@@ -1339,29 +1420,76 @@ public class ApplyMaxEnt10 {
 		} else {
 			Common.bangErrorPOS("");
 		}
+	}
 
-		double para[] = { 0, 0.008, 0.01, 0.02, 0.04, 0.06, 0.08 };
+	private static void tuneWay2(String[] args) {
+//		double para[] = { 0, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 1.2, 1.4, 1.6, 1.8, 2};
+//		double para[] = { 0, 0.2, 0.4, 0.6, 0.8, 1, 1.1, 1.3, 1.5, 1.7, 1.9};
+//		double para[] = { 0, 0.08, 0.18, 0.28, 0.38, 0.48, 0.58, 0.68, 0.78, 0.88, 1.0};
+//		double para[] = { 0, 0.1, 0.2, 0.3, 0.4, 0.5, .6, .7, .8, .9, 1};
+		double para[] = { 0, 0.05, 0.15, 0.25, 0.35, 0.45, 0.55, .65, .75, .85, .95, 1};
+		while(true) {
+			double bestAlpha = alpha;
+			double localBest = 0;
+			for(double p : para) {
+				alpha = p;
+				if(f>localBest) {
+					localBest = f;
+					bestAlpha = p;
+				}
+			}
+			alpha = bestAlpha;
+			
+			double bestBeta = beta;
+			for(double p : para) {
+				beta = p;
+				run(args[0]);
+				if(f>localBest) {
+					localBest = f;
+					bestBeta = p;
+				}
+			}
+			beta = bestBeta;
+			
+			double bestTheta = theta;
+			for(double p : para) {
+				theta = p;
+				run(args[0]);
+				if(f>localBest) {
+					localBest = f;
+					bestTheta = p;
+				}
+			}
+			theta = bestTheta;
+			
+			double bestDelta = delta;
+			for(double p : para) {
+				delta = p;
+				run(args[0]);
+				if(f>localBest) {
+					localBest = f;
+					bestDelta = p;
+				}
+			}
+			delta = bestDelta;
+		}
+	}
 
-		String paras[] = { "0.008 0.01 0.06 0.01", "0.0075 0.01 0.06 0.01",
-				"0.0085 0.01 0.06 0.01", "0.008 0.005 0.06 0.01",
-				"0.008 0.015 0.06 0.01", "0.008 0.01 0.065 0.01",
-				"0.008 0.01 0.055 0.01", "0.008 0.01 0.06 0.015",
-				"0.008 0.01 0.06 0.0095", "0.008 0.009 0.055 0.01",
-				"0.008 0.01 0.06 0.01", "0.008 0.009 0.06 0.01",
-				"0.008 0.01 0.06 0.009", "0.008 0.01 0.06 0.012",
-				"0.009 0.01 0.06 0.01", "0.009 0.012 0.06 0.01",
-				"0.008 0.015 0.06 0.012" };
-
-		// for (int a = 0; a < para.length; a++) {
-		// for (int b = 0; b < para.length; b++) {
-		// for (int c = 0; c < para.length; c++) {
-		// for (int d = 0; d < para.length; d++) {
-		// ILP.a_num = para[a];
-		// ILP.b_gen = para[b];
-		// ILP.c_per = para[c];
-		// ILP.d_ani = para[d];
-		// // while(true) {
-
+	private static void tuneWay1(String[] args) {
+		double para[] = { 0, 0.1, 0.5, 1, 2 };
+		for (int b = 0; b < para.length; b++) {
+			for (int c = 0; c < para.length; c++) {
+				for (int d = 0; d < para.length; d++) {
+					for (int a = 0; a < para.length; a++) {
+						alpha = para[a];
+						beta = para[b];
+						theta = para[c];
+						delta = para[d];
+						run(args[0]);
+					}
+				}
+			}
+		}
 	}
 
 	public static void run(String folder) {
