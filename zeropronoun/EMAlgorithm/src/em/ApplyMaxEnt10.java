@@ -270,7 +270,7 @@ public class ApplyMaxEnt10 {
 				// && !file.contains("/bn/")
 				// && !file.contains("/mz/")&& !file.contains("/wb/")
 				) {
-//					 candidates.addAll(anaphorZeros);
+					 candidates.addAll(anaphorZeros);
 				}
 				Collections.sort(candidates);
 
