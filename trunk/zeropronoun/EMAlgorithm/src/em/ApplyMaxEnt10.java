@@ -13,8 +13,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 
-import lpsolve.LpSolveException;
 import mentionDetect.ParseTreeMention;
 import model.Entity;
 import model.Mention;
@@ -212,6 +212,9 @@ public class ApplyMaxEnt10 {
 		ArrayList<ArrayList<Mention>> corefResults = new ArrayList<ArrayList<Mention>>();
 		ArrayList<ArrayList<Entity>> goldEntities = new ArrayList<ArrayList<Entity>>();
 		int pID = 0;
+		
+		HashMap<String, int[]> positionsMap = new HashMap<String, int[]>();
+		
 		for (String file : files) {
 			System.out.println(file);
 			CoNLLDocument document = new CoNLLDocument(file.replace(
@@ -225,6 +228,15 @@ public class ApplyMaxEnt10 {
 				// }
 				CoNLLPart part = document.getParts().get(k);
 
+				String folder = part.folder;
+				int[] positions = positionsMap.get(folder);
+				if(positions==null) {
+					positions = new int[2];
+					positionsMap.put(folder, positions);
+					positions[0] =corefResults.size();
+				}
+				positions[1] = corefResults.size() + 1;
+				
 				ArrayList<Entity> goldChains = part.getChains();
 
 				for (Entity e : goldChains) {
@@ -290,6 +302,15 @@ public class ApplyMaxEnt10 {
 		bad = 0;
 		good = 0;
 		evaluate(corefResults, goldEntities);
+		
+		if(this.folder.equals("all")) {
+			for(String key : positionsMap.keySet()) {
+				int ps[] = positionsMap.get(key);
+				int s = ps[0];
+				int e = ps[1];
+				evaluate(corefResults.subList(s, e), goldEntities.subList(s, e));
+			}
+		}
 	}
 	
 	private void setParas(CoNLLPart part) {
@@ -328,6 +349,44 @@ public class ApplyMaxEnt10 {
 		}
 	}
 
+	
+	private void setParas2(CoNLLPart part) {
+		if (part.folder.equalsIgnoreCase("BN")) {
+			p1 = 0;
+			p2 = 0;
+			p3 = 0;
+			p4 = 0;
+		} else if (part.folder.equalsIgnoreCase("TC")) {
+			p1 = 0;
+			p2 = 0.8;
+			p3 = 0;
+			p4 = 0;
+		} else if (part.folder.equalsIgnoreCase("NW")) {
+			p1 = 0;
+			p2 = 0;
+			p3 = 0;
+			p4 = 0;
+		} else if (part.folder.equalsIgnoreCase("BC")) {
+			p1 = 1.2;
+			p2 = 0;
+			p3 = 0.1;
+			p4 = 0.1;
+		} else if (part.folder.equalsIgnoreCase("WB")) {
+			p1 = 1.9;
+			p2 = 0.4;
+			p3 = 0;
+			p4 = 0;
+		} else if (part.folder.equalsIgnoreCase("MZ")) {
+			p1 = 0;
+			p2 = 0;
+			p3 = 0.6;
+			p4 = 0;
+		} else {
+			Common.bangErrorPOS("Wrong Folder!!!" + part.folder);
+		}
+	}
+
+	
 	private void inferGoldAttri(Mention zero, CoNLLPart part,
 			HashMap<String, ArrayList<Mention>> chainMap2) {
 		ArrayList<Mention> cluster = new ArrayList<Mention>(chainMap2.get(zero
@@ -404,36 +463,40 @@ public class ApplyMaxEnt10 {
 			String tks[] = feaStr.split("\\s+");
 
 			int all = EMUtil.Person.values().length;
-			double[] personProbs = ApplyMaxEnt10.selectRestriction("person",
+			double[] probPer1 = ApplyMaxEnt10.selectRestriction("person",
 					all, v);
-			String pYSB = transform(tks, all, 0, personProbs);
-			double probPer[] = runAttri("person", pYSB, all, v);
+			
+			String pYSB = transform(tks, all, 0, probPer1);
+			double probPer2[] = runAttri("person", pYSB, all, v);
 
 			all = EMUtil.Number.values().length;
-			double[] numberProbs = ApplyMaxEnt10.selectRestriction("number",
+			double[] probNum1 = ApplyMaxEnt10.selectRestriction("number",
 					all, v);
-			String nYSB = transform(tks, all, 0, numberProbs);
-			double probNum[] = runAttri("number", nYSB, all, v);
+			String nYSB = transform(tks, all, 0, probNum1);
+			double probNum2[] = runAttri("number", nYSB, all, v);
 
 			all = EMUtil.Gender.values().length - 1;
-			double[] genderProbs = ApplyMaxEnt10.selectRestriction("gender",
+			double[] probGen1 = ApplyMaxEnt10.selectRestriction("gender",
 					all, v);
-			String gYSB = transform(tks, all, 0, genderProbs);
-			double probGen[] = runAttri("gender", gYSB, all, v);
+			String gYSB = transform(tks, all, 0, probGen1);
+			double probGen2[] = runAttri("gender", gYSB, all, v);
 
 			all = EMUtil.Animacy.values().length - 1;
-			double[] animacyProbs = ApplyMaxEnt10.selectRestriction("animacy",
+			double[] probAni1 = ApplyMaxEnt10.selectRestriction("animacy",
 					all, v);
-			String aYSB = transform(tks, all, 0, animacyProbs);
-			double probAni[] = runAttri("animacy", aYSB, all, v);
+			String aYSB = transform(tks, all, 0, probAni1);
+			double probAni2[] = runAttri("animacy", aYSB, all, v);
 			// TODO
 
 			ArrayList<double[]> opProbs = getProb_C(cands, zero, part,
 					superFeaZ, "WTZ");
 
 			setParas(part);
+			setParas2(part);
 			
-			tuneOpProbs(opProbs, probPer, probNum, probGen, probAni);
+			tuneOpProbs(opProbs, probPer1, probNum1, probGen1, probAni1);
+			
+			tuneOpProbs2(opProbs, probPer2, probNum2, probGen2, probAni2);
 
 			String pro = EMUtil.decideOP(opProbs.get(0), opProbs.get(1),
 					opProbs.get(2), opProbs.get(3));
@@ -544,6 +607,38 @@ public class ApplyMaxEnt10 {
 	static double theta = 0;
 	static double delta = 0;
 
+	
+	static double p1 = 0;
+	static double p2 = 0;
+	static double p3 = 0;
+	static double p4 = 0;
+	
+	private void tuneOpProbs2(ArrayList<double[]> opProbs, double[] probPer,
+			double[] probNum, double[] probGen, double[] probAni) {
+		double[] arr1 = opProbs.get(0);
+		for (int i = 0; i < arr1.length && i < probPer.length; i++) {
+			arr1[i] += probPer[i] * p1;
+		}
+		double[] arr2 = opProbs.get(1);
+		for (int i = 0; i < arr2.length && i < probNum.length; i++) {
+			arr2[i] += probNum[i] * p2;
+		}
+		double[] arr3 = opProbs.get(2);
+		for (int i = 0; i < arr3.length && i < probGen.length; i++) {
+			arr3[i] += probGen[i] * p3;
+		}
+		double[] arr4 = opProbs.get(3);
+		for (int i = 0; i < arr4.length && i < probAni.length; i++) {
+			arr4[i] += probAni[i] * p4;
+		}
+		
+//		normalize(opProbs.get(0));
+//		normalize(opProbs.get(1));
+//		normalize(opProbs.get(2));
+//		normalize(opProbs.get(3));
+	}
+	
+	
 	private void tuneOpProbs(ArrayList<double[]> opProbs, double[] probPer,
 			double[] probNum, double[] probGen, double[] probAni) {
 		double[] arr1 = opProbs.get(0);
@@ -562,6 +657,11 @@ public class ApplyMaxEnt10 {
 		for (int i = 0; i < arr4.length && i < probAni.length; i++) {
 			arr4[i] += probAni[i] * delta;
 		}
+		
+//		normalize(opProbs.get(0));
+//		normalize(opProbs.get(1));
+//		normalize(opProbs.get(2));
+//		normalize(opProbs.get(3));
 	}
 
 	private Mention doWorkFill10Times(ArrayList<Mention> cands, Mention zero,
@@ -921,79 +1021,92 @@ public class ApplyMaxEnt10 {
 			} else {
 				lines.add(tks[1]);
 			}
-			return new double[0];
+			return new double[all];
 		}
 		case classify: {
-			if (true) {
-//				double ret[] = new double[all];
-//				return ret;
-				return selectRestriction(attri, all, v);
-			}
+//			String lineStr = "";
+//			String cmd = "/users/yzcchen/tool/YASMET/./a.out " + attri
+//					+ ".model";
+//			Runtime run = Runtime.getRuntime();
+//			try {
+//				Process p = run.exec(cmd);
+//
+//				BufferedOutputStream out = new BufferedOutputStream(
+//						p.getOutputStream());
+//				out.write(str.getBytes());
+//				out.flush();
+//				out.close();
+//
+//				BufferedInputStream in = new BufferedInputStream(
+//						p.getInputStream());
+//				BufferedReader inBr = new BufferedReader(new InputStreamReader(
+//						in));
+//				lineStr = inBr.readLine();
+//				if (p.waitFor() != 0) {
+//					if (p.exitValue() == 1) {
+//						System.err.println("ERROR YASMET");
+//						Common.bangErrorPOS("");
+//					}
+//				}
+//				System.out.println(lineStr);
+//				inBr.close();
+//				in.close();
+//			} catch (IOException e) {
+//				e.printStackTrace();
+//			} catch (InterruptedException e) {
+//				e.printStackTrace();
+//			}
+//
+//			String tks[] = lineStr.split("\\s+");
+//			double ret[] = new double[tks.length - 1];
+//			for (int i = 1; i < tks.length; i++) {
+//				ret[i - 1] = Double.parseDouble(tks[i]);
+//			}
+//			return ret;
 			String lineStr = "";
-			String cmd = "/users/yzcchen/tool/YASMET/./a.out /dev/shm/" + attri
-					+ ".model";
-			Runtime run = Runtime.getRuntime();
-			try {
-				Process p = run.exec(cmd);
-
-				BufferedOutputStream out = new BufferedOutputStream(
-						p.getOutputStream());
-				out.write(str.getBytes());
-				out.flush();
-				out.close();
-
-				BufferedInputStream in = new BufferedInputStream(
-						p.getInputStream());
-				BufferedReader inBr = new BufferedReader(new InputStreamReader(
-						in));
-				lineStr = inBr.readLine();
-				if (p.waitFor() != 0) {
-					if (p.exitValue() == 1) {
-						System.err.println("ERROR YASMET");
-						Common.bangErrorPOS("");
-					}
-				}
-				System.out.println(lineStr);
-				inBr.close();
-				in.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-
-			String tks[] = lineStr.split("\\s+");
-			double ret[] = new double[tks.length - 1];
-			for (int i = 1; i < tks.length; i++) {
-				ret[i - 1] = Double.parseDouble(tks[i]);
-			}
-			return ret;
+			 if (attri.equals("number")) {
+			 lineStr = numberRS.get(zpID);
+			 } else if (attri.equals("gender")) {
+			 lineStr = genderRS.get(zpID);
+			 } else if (attri.equals("person")) {
+			 lineStr = personRS.get(zpID);
+			 } else if (attri.equals("animacy")) {
+			 lineStr = animacyRS.get(zpID);
+			 } else {
+			 Common.bangErrorPOS("No Such Attri");
+			 }
+			 String tks[] = lineStr.split("\\s+");
+			 double ret[] = new double[tks.length - 1];
+			 for (int i = 1; i < tks.length; i++) {
+				 ret[i - 1] = Double.parseDouble(tks[i]);
+			 }
+			 return ret;
 		}
 		case load: {
-			// String lineStr = "";
-			// if (attri.equals("number")) {
-			// lineStr = numberRS.get(pronounID);
-			// } else if (attri.equals("gender")) {
-			// lineStr = genderRS.get(pronounID);
-			// } else if (attri.equals("person")) {
-			// lineStr = personRS.get(pronounID);
-			// } else if (attri.equals("animacy")) {
-			// lineStr = animacyRS.get(pronounID);
-			// } else {
-			// Common.bangErrorPOS("No Such Attri");
-			// }
-			// String tks[] = lineStr.split("\\s+");
-			// double ret[] = new double[tks.length - 1];
-			// for (int i = 1; i < tks.length; i++) {
-			// ret[i - 1] = Double.parseDouble(tks[i]);
-			// }
-			// return ret;
-			if (true) {
-				// double ret[] = new double[all];
-				// return ret;
-				return selectRestriction(attri, all, v);
-			}
-			return selectRestriction(attri, all, v);
+			 String lineStr = "";
+			 if (attri.equals("number")) {
+			 lineStr = numberRS.get(zpID);
+			 } else if (attri.equals("gender")) {
+			 lineStr = genderRS.get(zpID);
+			 } else if (attri.equals("person")) {
+			 lineStr = personRS.get(zpID);
+			 } else if (attri.equals("animacy")) {
+			 lineStr = animacyRS.get(zpID);
+			 } else {
+			 Common.bangErrorPOS("No Such Attri");
+			 }
+			 String tks[] = lineStr.split("\\s+");
+			 double ret[] = new double[tks.length - 1];
+			 for (int i = 1; i < tks.length; i++) {
+				 ret[i - 1] = Double.parseDouble(tks[i]);
+			 }
+			 return ret;
+//			if (true) {
+//				// double ret[] = new double[all];
+//				// return ret;
+//				return selectRestriction(attri, all, v);
+//			}
+//			return selectRestriction(attri, all, v);
 		}
 		default: {
 			Common.bangErrorPOS("WRONG MODE");
@@ -1308,8 +1421,8 @@ public class ApplyMaxEnt10 {
 	static String anno = "annotations/";
 	static String suffix = ".coref";
 
-	public static void evaluate(ArrayList<ArrayList<Mention>> zeroses,
-			ArrayList<ArrayList<Entity>> entitieses) {
+	public static void evaluate(List<ArrayList<Mention>> zeroses,
+			List<ArrayList<Entity>> entitieses) {
 		double gold = 0;
 		double system = 0;
 		double hit = 0;
@@ -1337,7 +1450,7 @@ public class ApplyMaxEnt10 {
 		double p = hit / system;
 		f = 2 * r * p / (r + p);
 
-		String para = alpha + " " + beta + " " + theta + " " + delta;
+		String para = p1 + " " + p2 + " " + p3 + " " + p4;
 		String result = "R:" + r + " P: " + p + " F: " + f;
 		if (f > best) {
 			best = f;
@@ -1410,10 +1523,19 @@ public class ApplyMaxEnt10 {
 			System.out.println(lines2.size());
 			anteRS.put("WTZ", lines2);
 
-			run(args[0]);
+//			run(args[0]);
 //			tuneWay1(args);
-//			tuneWay2(args);
+			tuneWay2(args);
 		} else if (args[1].equals("classify")) {
+			personRS = Common.getLines("/users/yzcchen/tool/YASMET/person.rs"
+					+ args[0]);
+			genderRS = Common.getLines("/users/yzcchen/tool/YASMET/gender.rs"
+					+ args[0]);
+			numberRS = Common.getLines("/users/yzcchen/tool/YASMET/number.rs"
+					+ args[0]);
+			animacyRS = Common.getLines("/users/yzcchen/tool/YASMET/animacy.rs"
+					+ args[0]);
+			
 			mode = classify;
 			run(args[0]);
 			return;
@@ -1426,52 +1548,59 @@ public class ApplyMaxEnt10 {
 //		double para[] = { 0, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 1.2, 1.4, 1.6, 1.8, 2};
 //		double para[] = { 0, 0.2, 0.4, 0.6, 0.8, 1, 1.1, 1.3, 1.5, 1.7, 1.9};
 //		double para[] = { 0, 0.08, 0.18, 0.28, 0.38, 0.48, 0.58, 0.68, 0.78, 0.88, 1.0};
-//		double para[] = { 0, 0.1, 0.2, 0.3, 0.4, 0.5, .6, .7, .8, .9, 1};
-		double para[] = { 0, 0.05, 0.15, 0.25, 0.35, 0.45, 0.55, .65, .75, .85, .95, 1};
+		double para[] = { 0, 0.1, 0.2, 0.3, 0.4, 0.5, .6, .7, .8, .9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9};
+//		double para[] = { 0, 0.05, 0.15, 0.25, 0.35, 0.45, 0.55, .65, .75, .85, .95, 1};
+		
+		p1 = 1.4;
+		p2 = 0.;
+		p3 = 0;
+		p4 = 0.0;
+		
 		while(true) {
-			double bestAlpha = alpha;
+			double bestAlpha = p1;
 			double localBest = 0;
 			for(double p : para) {
-				alpha = p;
+				p1 = p;
+				run(args[0]);
 				if(f>localBest) {
 					localBest = f;
 					bestAlpha = p;
 				}
 			}
-			alpha = bestAlpha;
+			p1 = bestAlpha;
 			
-			double bestBeta = beta;
+			double bestBeta = p2;
 			for(double p : para) {
-				beta = p;
+				p2 = p;
 				run(args[0]);
 				if(f>localBest) {
 					localBest = f;
 					bestBeta = p;
 				}
 			}
-			beta = bestBeta;
+			p2 = bestBeta;
 			
-			double bestTheta = theta;
+			double bestTheta = p3;
 			for(double p : para) {
-				theta = p;
+				p3 = p;
 				run(args[0]);
 				if(f>localBest) {
 					localBest = f;
 					bestTheta = p;
 				}
 			}
-			theta = bestTheta;
+			p3 = bestTheta;
 			
-			double bestDelta = delta;
+			double bestDelta = p4;
 			for(double p : para) {
-				delta = p;
+				p4 = p;
 				run(args[0]);
 				if(f>localBest) {
 					localBest = f;
 					bestDelta = p;
 				}
 			}
-			delta = bestDelta;
+			p4 = bestDelta;
 		}
 	}
 
