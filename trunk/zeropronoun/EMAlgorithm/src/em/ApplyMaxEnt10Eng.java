@@ -61,7 +61,7 @@ public class ApplyMaxEnt10Eng {
 	static final int classify = 0;
 	static final int load = 1;
 	static final int prepare = 2;
-	
+
 	static HashMap<String, ArrayList<SentForAlign[]>> alignMap = new HashMap<String, ArrayList<SentForAlign[]>>();
 	static HashMap<String, ArrayList<CoNLLSentence>> engSMap = new HashMap<String, ArrayList<CoNLLSentence>>();
 
@@ -77,8 +77,9 @@ public class ApplyMaxEnt10Eng {
 	LinearClassifier<String, String> classifier;
 
 	SuperviseFea superFea;
-
 	SuperviseFea superFeaZ;
+	
+	EngSuperFea engSuperFea;
 
 	static int zpID;
 
@@ -142,6 +143,7 @@ public class ApplyMaxEnt10Eng {
 			superFea = new SuperviseFea(false, "supervise");
 			superFeaZ = new SuperviseFea(false, "superviseZ");
 			superFeaZ.plusNumberGenderPersonAnimacy = false;
+			engSuperFea = new EngSuperFea(false, "superEng");
 			EMUtil.loadPredictNE(folder, "dev");
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
@@ -221,9 +223,9 @@ public class ApplyMaxEnt10Eng {
 		ArrayList<ArrayList<Mention>> corefResults = new ArrayList<ArrayList<Mention>>();
 		ArrayList<ArrayList<Entity>> goldEntities = new ArrayList<ArrayList<Entity>>();
 		int pID = 0;
-		
+
 		HashMap<String, int[]> positionsMap = new HashMap<String, int[]>();
-		
+
 		for (String file : files) {
 			System.out.println(file);
 			CoNLLDocument document = new CoNLLDocument(file.replace(
@@ -239,13 +241,13 @@ public class ApplyMaxEnt10Eng {
 
 				String folder = part.folder;
 				int[] positions = positionsMap.get(folder);
-				if(positions==null) {
+				if (positions == null) {
 					positions = new int[2];
 					positionsMap.put(folder, positions);
-					positions[0] =corefResults.size();
+					positions[0] = corefResults.size();
 				}
 				positions[1] = corefResults.size() + 1;
-				
+
 				ArrayList<Entity> goldChains = part.getChains();
 
 				for (Entity e : goldChains) {
@@ -286,16 +288,13 @@ public class ApplyMaxEnt10Eng {
 				ArrayList<Mention> candidates = new ArrayList<Mention>();
 				candidates.addAll(goldBoundaryNPMentions);
 
-				if (!file.contains("/nw/")
-				 && !file.contains("/mz/")
-				 && !file.contains("/bn/")
-				 && !file.contains("/mz/")
-				) {
-					 candidates.addAll(anaphorZeros);
+				if (!file.contains("/nw/") && !file.contains("/mz/")
+						&& !file.contains("/bn/") && !file.contains("/mz/")) {
+					candidates.addAll(anaphorZeros);
 				}
 				Collections.sort(candidates);
 				Collections.sort(anaphorZeros);
-				
+
 				for (int i = 0; i < part.getCoNLLSentences().size(); i++) {
 					CoNLLSentence chiS = part.getCoNLLSentences().get(i);
 					int start = chiS.getWord(0).index;
@@ -324,7 +323,8 @@ public class ApplyMaxEnt10Eng {
 							Mention zero = zeros.get(z);
 							int w = -1;
 							for (; w < segWords.size(); w++) {
-								if (w != -1 && segWords.get(w).index == zero.start) {
+								if (w != -1
+										&& segWords.get(w).index == zero.start) {
 									break;
 								}
 							}
@@ -340,8 +340,9 @@ public class ApplyMaxEnt10Eng {
 									&& zeros.get(z).start == zeros.get(z - 1).start) {
 								zeros.get(z).antecedent = zeros.get(z - 1).antecedent;
 							} else {
-								findAntecedent(file, part, chainMap, corefResult, zeros.get(z),
-										candidates, chainMap2, segWords);
+								findAntecedent(file, part, chainMap,
+										corefResult, zeros.get(z), candidates,
+										chainMap2, segWords);
 							}
 						}
 						alignMentions(chiS, segWords, nps);
@@ -356,13 +357,12 @@ public class ApplyMaxEnt10Eng {
 		bad = 0;
 		good = 0;
 		evaluate(corefResults, goldEntities);
-		
-		
+
 		System.out.println(corefResults.size() + "###");
 		System.out.println(goldEntities.size() + "$$$");
-		
-		if(this.folder.equals("all")) {
-			for(String key : positionsMap.keySet()) {
+
+		if (this.folder.equals("all")) {
+			for (String key : positionsMap.keySet()) {
 				int ps[] = positionsMap.get(key);
 				int s = ps[0];
 				int e = ps[1];
@@ -371,11 +371,12 @@ public class ApplyMaxEnt10Eng {
 			}
 		}
 	}
+
 	ParseTreeMention ptm = new ParseTreeMention();
-	
-	private void alignMentions(CoNLLSentence chiS, ArrayList<CoNLLWord> segWords,
-			ArrayList<Mention> chiNPs) {
-		int chiSegStart = segWords.get(0).index; 
+
+	private void alignMentions(CoNLLSentence chiS,
+			ArrayList<CoNLLWord> segWords, ArrayList<Mention> chiNPs) {
+		int chiSegStart = segWords.get(0).index;
 		HashMap<Integer, Integer> offsetMap = new HashMap<Integer, Integer>();
 		int offset = 0;
 		for (CoNLLWord w : segWords) {
@@ -385,7 +386,7 @@ public class ApplyMaxEnt10Eng {
 				offsetMap.put(w.index, offset);
 			}
 		}
-		
+
 		String chiStr = EMUtil.listToString(segWords);
 		SentForAlign[] align = alignMap.get(chiStr).get(0);
 		String engStr = align[1].getText();
@@ -397,8 +398,7 @@ public class ApplyMaxEnt10Eng {
 			Mention.chiSpanMaps.remove(cm.getReadName());
 		}
 		for (Mention em : chiNPs) {
-			int from = em.start - chiSegStart
-					+ offsetMap.get(em.start);
+			int from = em.start - chiSegStart + offsetMap.get(em.start);
 			int to = from;
 			if (em.end != -1) {
 				to = em.end - chiSegStart + offsetMap.get(em.end);
@@ -414,77 +414,76 @@ public class ApplyMaxEnt10Eng {
 				em.units.add(unit);
 				sb.append(unit.getToken()).append(" ");
 			}
-			if(!sb.toString().trim().equalsIgnoreCase(em.extent)) {
-//								System.out.println("#" + sb.toString().trim()
-//										+ "#" + em.extent.trim() + "#");
-//								System.out.println(em.start + "," + em.end);
-//								Common.pause("");
-			} else if(em.end==-1){
-//								System.out.println("#" + sb.toString().trim()
-//										+ "#" + em.extent.trim() + "#");
-//								System.out.println(em.start + "," + em.end);
-//								Common.pause("");
+			if (!sb.toString().trim().equalsIgnoreCase(em.extent)) {
+				// System.out.println("#" + sb.toString().trim()
+				// + "#" + em.extent.trim() + "#");
+				// System.out.println(em.start + "," + em.end);
+				// Common.pause("");
+			} else if (em.end == -1) {
+				// System.out.println("#" + sb.toString().trim()
+				// + "#" + em.extent.trim() + "#");
+				// System.out.println(em.start + "," + em.end);
+				// Common.pause("");
 			}
 		}
-		ArrayList<Mention> engMentions = ptm
-				.getMentions(engCoNLLS);
+		ArrayList<Mention> engMentions = ptm.getMentions(engCoNLLS);
 		int engStart = engCoNLLS.getWords().get(0).index;
 		for (Mention em : engMentions) {
 			StringBuilder sb = new StringBuilder();
-			for (int g = em.start - engStart; g <= em.end
-					- engStart; g++) {
+			for (int g = em.start - engStart; g <= em.end - engStart; g++) {
 				Unit unit = align[1].units.get(g);
 				unit.sentence = engCoNLLS;
 				unit.addMention(em);
 				em.units.add(unit);
 				sb.append(unit.getToken()).append(" ");
 			}
-			if (!em.extent.trim().equalsIgnoreCase(
-					sb.toString().trim())) {
-				System.out.println("#" + sb.toString().trim()
-						+ "#" + em.extent.trim() + "#");
+			if (!em.extent.trim().equalsIgnoreCase(sb.toString().trim())) {
+				System.out.println("#" + sb.toString().trim() + "#"
+						+ em.extent.trim() + "#");
 				Common.bangErrorPOS("");
 			}
 		}
 
 		for (int g = 1; g <= 4; g++) {
 			Mention.assignMode = g;
-//							for (Mention m : engMentions) {
-//								m.getXSpan();
-//							}
+			// for (Mention m : engMentions) {
+			// m.getXSpan();
+			// }
 			for (Mention m : chiNPs) {
 				m.getXSpan();
 			}
 		}
-		
+
 		for (Mention m : chiNPs) {
 			Mention xm = m.getXSpan();
-//			if (xm != null 
-//					&& xm.extent.isEmpty()
-//					) {
-//				System.out.println(m.extent + "#" + xm.extent);
-//				System.out.println(m.start + "," + m.end + "#" + xm.start + "," + xm.end);
-//				System.out.println(EMUtil.listToString(words));
-//				System.out.println(xm.s.getText());
-//				System.out.println(m.xSpanType);
-//				Common.pause("GOOD!!!");
-//			}
-			if(xm!=null && m.end!=-1) {
-//				System.out.println(m.extent + "#" + xm.extent);
-//				System.out.println(m.start + "," + m.end + "#" + xm.start + "," + xm.end);
-//				Common.pause("");
+			// if (xm != null
+			// && xm.extent.isEmpty()
+			// ) {
+			// System.out.println(m.extent + "#" + xm.extent);
+			// System.out.println(m.start + "," + m.end + "#" + xm.start + "," +
+			// xm.end);
+			// System.out.println(EMUtil.listToString(words));
+			// System.out.println(xm.s.getText());
+			// System.out.println(m.xSpanType);
+			// Common.pause("GOOD!!!");
+			// }
+			if (xm != null && m.end != -1) {
+				// System.out.println(m.extent + "#" + xm.extent);
+				// System.out.println(m.start + "," + m.end + "#" + xm.start +
+				// "," + xm.end);
+				// Common.pause("");
 			}
-			
-			if(xm!=null) {
+
+			if (xm != null) {
 				alignn++;
 			}
 			all++;
 		}
 	}
-	
+
 	static double all = 0;
 	static double alignn = 0;
-	
+
 	private void setParas(CoNLLPart part) {
 		if (part.folder.equalsIgnoreCase("BN")) {
 			alpha = 0.3;
@@ -521,7 +520,6 @@ public class ApplyMaxEnt10Eng {
 		}
 	}
 
-	
 	private void setParas2(CoNLLPart part) {
 		if (part.folder.equalsIgnoreCase("BN")) {
 			p1 = 0;
@@ -558,7 +556,6 @@ public class ApplyMaxEnt10Eng {
 		}
 	}
 
-	
 	private void inferGoldAttri(Mention zero, CoNLLPart part,
 			HashMap<String, ArrayList<Mention>> chainMap2) {
 		ArrayList<Mention> cluster = new ArrayList<Mention>(chainMap2.get(zero
@@ -585,188 +582,185 @@ public class ApplyMaxEnt10Eng {
 	private void findAntecedent(String file, CoNLLPart part,
 			HashMap<String, Integer> chainMap, ArrayList<Mention> corefResult,
 			Mention zero, ArrayList<Mention> allCandidates,
-			HashMap<String, ArrayList<Mention>> chainMap2, ArrayList<CoNLLWord> segChiWords) {
-//		for (Mention zero : anaphorZeros) {
-			zero.sentenceID = part.getWord(zero.start).sentence
+			HashMap<String, ArrayList<Mention>> chainMap2,
+			ArrayList<CoNLLWord> segChiWords) {
+		// for (Mention zero : anaphorZeros) {
+		zero.sentenceID = part.getWord(zero.start).sentence.getSentenceIdx();
+		zero.s = part.getWord(zero.start).sentence;
+		EMUtil.assignVNode(zero, part);
+
+		Mention antecedent = null;
+		Collections.sort(allCandidates);
+
+		ArrayList<Mention> cands = new ArrayList<Mention>();
+		boolean findFS = false;
+
+		for (int h = allCandidates.size() - 1; h >= 0; h--) {
+			Mention cand = allCandidates.get(h);
+			cand.sentenceID = part.getWord(cand.start).sentence
 					.getSentenceIdx();
-			zero.s = part.getWord(zero.start).sentence;
-			EMUtil.assignVNode(zero, part);
-			
-			Mention antecedent = null;
-			Collections.sort(allCandidates);
-
-			ArrayList<Mention> cands = new ArrayList<Mention>();
-			boolean findFS = false;
-
-			for (int h = allCandidates.size() - 1; h >= 0; h--) {
-				Mention cand = allCandidates.get(h);
-				cand.sentenceID = part.getWord(cand.start).sentence
-						.getSentenceIdx();
-				cand.s = part.getWord(cand.start).sentence;
-				cand.isFS = false;
-				cand.isBest = false;
-				cand.MI = Context.calMI(cand, zero);
-				if (cand.start < zero.start
-						&& zero.sentenceID - cand.sentenceID <= 2) {
-					if (!findFS && cand.gram == EMUtil.Grammatic.subject) {
-						cand.isFS = true;
-						findFS = true;
-					}
-					cands.add(cand);
+			cand.s = part.getWord(cand.start).sentence;
+			cand.isFS = false;
+			cand.isBest = false;
+			cand.MI = Context.calMI(cand, zero);
+			if (cand.start < zero.start
+					&& zero.sentenceID - cand.sentenceID <= 2) {
+				if (!findFS && cand.gram == EMUtil.Grammatic.subject) {
+					cand.isFS = true;
+					findFS = true;
 				}
+				cands.add(cand);
 			}
-			findBest(zero, cands);
+		}
+		findBest(zero, cands);
 
-			guessFea.configure(zero.start - 1, zero.start,
-					part.getWord(zero.start).sentence, part);
+		guessFea.configure(zero.start - 1, zero.start,
+				part.getWord(zero.start).sentence, part);
 
-			// label = pronoun.animacy.ordinal() + 1;
+		// label = pronoun.animacy.ordinal() + 1;
+		String pro = EMUtil.pronounList.get(0);
 
-			String feaStr = guessFea.getSVMFormatString();
+		String feaStr = guessFea.getSVMFormatString();
+		String v = EMUtil.getFirstVerb(zero.V);
+		// Yasmet format
+		// NUMBER, GENDER, PERSON, ANIMACY
+		String tks[] = feaStr.split("\\s+");
 
-			String v = EMUtil.getFirstVerb(zero.V);
-			// Yasmet format
-			// NUMBER, GENDER, PERSON, ANIMACY
-			String tks[] = feaStr.split("\\s+");
+		int all = EMUtil.Person.values().length;
+		double[] probPer1 = ApplyMaxEnt10Eng
+				.selectRestriction("person", all, v);
 
-			int all = EMUtil.Person.values().length;
-			double[] probPer1 = ApplyMaxEnt10Eng.selectRestriction("person",
-					all, v);
-			
-			String pYSB = transform(tks, all, 0, probPer1);
-			double probPer2[] = runAttri("person", pYSB, all, v);
+		String pYSB = transform(tks, all, 0, probPer1);
+		double probPer2[] = runAttri("person", pYSB, all, v);
 
-			all = EMUtil.Number.values().length;
-			double[] probNum1 = ApplyMaxEnt10Eng.selectRestriction("number",
-					all, v);
-			String nYSB = transform(tks, all, 0, probNum1);
-			double probNum2[] = runAttri("number", nYSB, all, v);
+		all = EMUtil.Number.values().length;
+		double[] probNum1 = ApplyMaxEnt10Eng
+				.selectRestriction("number", all, v);
+		String nYSB = transform(tks, all, 0, probNum1);
+		double probNum2[] = runAttri("number", nYSB, all, v);
 
-			all = EMUtil.Gender.values().length - 1;
-			double[] probGen1 = ApplyMaxEnt10Eng.selectRestriction("gender",
-					all, v);
-			String gYSB = transform(tks, all, 0, probGen1);
-			double probGen2[] = runAttri("gender", gYSB, all, v);
+		all = EMUtil.Gender.values().length - 1;
+		double[] probGen1 = ApplyMaxEnt10Eng
+				.selectRestriction("gender", all, v);
+		String gYSB = transform(tks, all, 0, probGen1);
+		double probGen2[] = runAttri("gender", gYSB, all, v);
 
-			all = EMUtil.Animacy.values().length - 1;
-			double[] probAni1 = ApplyMaxEnt10Eng.selectRestriction("animacy",
-					all, v);
-			String aYSB = transform(tks, all, 0, probAni1);
-			double probAni2[] = runAttri("animacy", aYSB, all, v);
-			// TODO
+		all = EMUtil.Animacy.values().length - 1;
+		double[] probAni1 = ApplyMaxEnt10Eng.selectRestriction("animacy", all,
+				v);
+		String aYSB = transform(tks, all, 0, probAni1);
+		double probAni2[] = runAttri("animacy", aYSB, all, v);
+		// TODO
+		ArrayList<double[]> opProbs = getProb_C(cands, zero, part, superFeaZ,
+				"WTZ");
+		setParas(part);
+		// setParas2(part);
+		
+		tuneOpProbs(opProbs, probPer1, probNum1, probGen1, probAni1);
+		// tuneOpProbs2(opProbs, probPer2, probNum2, probGen2, probAni2);
+		pro = EMUtil.decideOP(opProbs.get(0), opProbs.get(1), opProbs.get(2),
+				opProbs.get(3));
 
-			ArrayList<double[]> opProbs = getProb_C(cands, zero, part,
-					superFeaZ, "WTZ");
+		// TODO Warning
+		antecedent = givenOPFindC(cands, zero, part, pro, superFea, "WT");
+		zpID++;
 
-			setParas(part);
-			setParas2(part);
-			
-			tuneOpProbs(opProbs, probPer1, probNum1, probGen1, probAni1);
-			
-			tuneOpProbs2(opProbs, probPer2, probNum2, probGen2, probAni2);
+		// boolean coref = false;
+		// if (antecedent != null) {
+		// coref = chainMap.containsKey(zero.toName())
+		// && chainMap.containsKey(antecedent.toName())
+		// && chainMap.get(zero.toName()).intValue() == chainMap
+		// .get(antecedent.toName()).intValue();
+		// }
+		// antecedent = null;
+		// antecedent = doWorkFill10Times(cands, zero, part, chainMap,
+		// superFea, "WT", coref, sb.toString().trim());
 
-			String pro = EMUtil.decideOP(opProbs.get(0), opProbs.get(1),
-					opProbs.get(2), opProbs.get(3));
-
-			antecedent = givenOPFindC(cands, zero, part, pro, superFea, "WT");
-			zpID++;
-
-			// boolean coref = false;
-			// if (antecedent != null) {
-			// coref = chainMap.containsKey(zero.toName())
-			// && chainMap.containsKey(antecedent.toName())
-			// && chainMap.get(zero.toName()).intValue() == chainMap
-			// .get(antecedent.toName()).intValue();
-			// }
-			// antecedent = null;
-			// antecedent = doWorkFill10Times(cands, zero, part, chainMap,
-			// superFea, "WT", coref, sb.toString().trim());
-
-			if (antecedent != null) {
-				if (antecedent.end != -1) {
-					zero.antecedent = antecedent;
-				} else {
-					zero.antecedent = antecedent.antecedent;
-				}
-				zero.extent = antecedent.extent;
-				zero.head = antecedent.head;
-				zero.gram = Grammatic.subject;
-				zero.mType = antecedent.mType;
-				zero.NE = antecedent.NE;
-				this.addEmptyCategoryNode(zero);
-				// System.out.println(zero.start);
-				// System.out.println(antecedent.extent);
-			}
-			if (zero.antecedent != null
-					&& zero.antecedent.end != -1
-					&& chainMap.containsKey(zero.toName())
-					&& chainMap.containsKey(zero.antecedent.toName())
-					&& chainMap.get(zero.toName()).intValue() == chainMap.get(
-							zero.antecedent.toName()).intValue()) {
-				good++;
-				// if(antecedent.mType==MentionType.tmporal) {
-				// System.out.println(antecedent.extent + "GOOD!");
-				// }
-				// System.out.println(overtPro + "  " + zero.antecedent.extent);
-				// System.out.println("+++");
-				// printResult(zero, zero.antecedent, part);
-				// System.out.println("Predicate: " +
-				// this.getPredicate(zero.V));
-				// System.out.println("Object NP: " +
-				// this.getObjectNP(zero));
-				// System.out.println("===");
-				// if (zero.antecedent.MI < 0) {
-				// System.out.println("Right!!! " + good + "/" + bad);
-				// System.out.println(zero.antecedent.msg);
-				// }
+		if (antecedent != null) {
+			if (antecedent.end != -1) {
+				zero.antecedent = antecedent;
 			} else {
-				// if(antecedent!=null && antecedent.mType==MentionType.tmporal)
-				// {
-				// System.out.println(antecedent.extent + "BAD !");
-				// }
-				bad++;
-				System.out.println("Error??? " + good + "/" + bad);
-				if (zero.antecedent != null) {
-					System.out.println(zero.antecedent.msg);
-				}
+				zero.antecedent = antecedent.antecedent;
 			}
-			String conllPath = file;
-			int aa = conllPath.indexOf(anno);
-			int bb = conllPath.indexOf(".");
-			String middle = conllPath.substring(aa + anno.length(), bb);
-			String path = prefix + middle + suffix;
-			System.out.println(path);
-			// System.out.println("=== " + file);
-			EMUtil.addEmptyCategoryNode(zero);
-
-			// if (antecedent != null) {
-			// CoNLLWord candWord = part.getWord(antecedent.start);
-			// CoNLLWord zeroWord = part.getWord(zero.start);
-			//
-			// String zeroSpeaker = part.getWord(zero.start).speaker;
-			// String candSpeaker = part.getWord(antecedent.start).speaker;
-			// // if (!zeroSpeaker.equals(candSpeaker)) {
-			// // if (antecedent.source.equals("我") &&
-			// // zeroWord.toSpeaker.contains(candSpeaker)) {
-			// // zero.head = "你";
-			// // zero.source = "你";
-			// // } else if (antecedent.source.equals("你") &&
-			// // candWord.toSpeaker.contains(zeroSpeaker)) {
-			// // zero.head = "我";
-			// // zero.source = "我";
-			// // }
-			// // } else {
-			// zero.extent = antecedent.extent;
-			// zero.head = antecedent.head;
-			// // }
-			//
+			zero.extent = antecedent.extent;
+			zero.head = antecedent.head;
+			zero.gram = Grammatic.subject;
+			zero.mType = antecedent.mType;
+			zero.NE = antecedent.NE;
+			this.addEmptyCategoryNode(zero);
+			// System.out.println(zero.start);
+			// System.out.println(antecedent.extent);
+		}
+		if (zero.antecedent != null
+				&& zero.antecedent.end != -1
+				&& chainMap.containsKey(zero.toName())
+				&& chainMap.containsKey(zero.antecedent.toName())
+				&& chainMap.get(zero.toName()).intValue() == chainMap.get(
+						zero.antecedent.toName()).intValue()) {
+			good++;
+			// if(antecedent.mType==MentionType.tmporal) {
+			// System.out.println(antecedent.extent + "GOOD!");
 			// }
-//		}
-//		for (Mention zero : anaphorZeros) {
+			// System.out.println(overtPro + "  " + zero.antecedent.extent);
+			// System.out.println("+++");
+			// printResult(zero, zero.antecedent, part);
+			// System.out.println("Predicate: " +
+			// this.getPredicate(zero.V));
+			// System.out.println("Object NP: " +
+			// this.getObjectNP(zero));
+			// System.out.println("===");
+			// if (zero.antecedent.MI < 0) {
+			// System.out.println("Right!!! " + good + "/" + bad);
+			// System.out.println(zero.antecedent.msg);
+			// }
+		} else {
+			// if(antecedent!=null && antecedent.mType==MentionType.tmporal)
+			// {
+			// System.out.println(antecedent.extent + "BAD !");
+			// }
+			bad++;
+			System.out.println("Error??? " + good + "/" + bad);
 			if (zero.antecedent != null) {
-				corefResult.add(zero);
+				System.out.println(zero.antecedent.msg);
 			}
-//		}
+		}
+		String conllPath = file;
+		int aa = conllPath.indexOf(anno);
+		int bb = conllPath.indexOf(".");
+		String middle = conllPath.substring(aa + anno.length(), bb);
+		String path = prefix + middle + suffix;
+		System.out.println(path);
+		// System.out.println("=== " + file);
+		EMUtil.addEmptyCategoryNode(zero);
+
+		// if (antecedent != null) {
+		// CoNLLWord candWord = part.getWord(antecedent.start);
+		// CoNLLWord zeroWord = part.getWord(zero.start);
+		//
+		// String zeroSpeaker = part.getWord(zero.start).speaker;
+		// String candSpeaker = part.getWord(antecedent.start).speaker;
+		// // if (!zeroSpeaker.equals(candSpeaker)) {
+		// // if (antecedent.source.equals("我") &&
+		// // zeroWord.toSpeaker.contains(candSpeaker)) {
+		// // zero.head = "你";
+		// // zero.source = "你";
+		// // } else if (antecedent.source.equals("你") &&
+		// // candWord.toSpeaker.contains(zeroSpeaker)) {
+		// // zero.head = "我";
+		// // zero.source = "我";
+		// // }
+		// // } else {
+		// zero.extent = antecedent.extent;
+		// zero.head = antecedent.head;
+		// // }
+		//
+		// }
+		// }
+		// for (Mention zero : anaphorZeros) {
+		if (zero.antecedent != null) {
+			corefResult.add(zero);
+		}
+		// }
 	}
 
 	static double alpha = 0;
@@ -774,12 +768,11 @@ public class ApplyMaxEnt10Eng {
 	static double theta = 0;
 	static double delta = 0;
 
-	
 	static double p1 = 0;
 	static double p2 = 0;
 	static double p3 = 0;
 	static double p4 = 0;
-	
+
 	private void tuneOpProbs2(ArrayList<double[]> opProbs, double[] probPer,
 			double[] probNum, double[] probGen, double[] probAni) {
 		double[] arr1 = opProbs.get(0);
@@ -798,14 +791,13 @@ public class ApplyMaxEnt10Eng {
 		for (int i = 0; i < arr4.length && i < probAni.length; i++) {
 			arr4[i] += probAni[i] * p4;
 		}
-		
-//		normalize(opProbs.get(0));
-//		normalize(opProbs.get(1));
-//		normalize(opProbs.get(2));
-//		normalize(opProbs.get(3));
+
+		// normalize(opProbs.get(0));
+		// normalize(opProbs.get(1));
+		// normalize(opProbs.get(2));
+		// normalize(opProbs.get(3));
 	}
-	
-	
+
 	private void tuneOpProbs(ArrayList<double[]> opProbs, double[] probPer,
 			double[] probNum, double[] probGen, double[] probAni) {
 		double[] arr1 = opProbs.get(0);
@@ -824,11 +816,11 @@ public class ApplyMaxEnt10Eng {
 		for (int i = 0; i < arr4.length && i < probAni.length; i++) {
 			arr4[i] += probAni[i] * delta;
 		}
-		
-//		normalize(opProbs.get(0));
-//		normalize(opProbs.get(1));
-//		normalize(opProbs.get(2));
-//		normalize(opProbs.get(3));
+
+		// normalize(opProbs.get(0));
+		// normalize(opProbs.get(1));
+		// normalize(opProbs.get(2));
+		// normalize(opProbs.get(3));
 	}
 
 	private Mention doWorkFill10Times(ArrayList<Mention> cands, Mention zero,
@@ -1031,7 +1023,7 @@ public class ApplyMaxEnt10Eng {
 		}
 
 		double probAnt[] = runYasmet(ysb.toString(), antCount, model);
-		
+
 		// System.err.println(cands.size());
 		int id = 0;
 		double[] anis = new double[Animacy.values().length];
@@ -1045,14 +1037,14 @@ public class ApplyMaxEnt10Eng {
 			}
 
 			Animacy animacy = EMUtil.getAntAnimacy(ant);
-			
+
 			String antSpeaker = part.getWord(ant.start).speaker;
 			boolean sameSpeaker = proSpeaker.equals(antSpeaker);
-			
+
 			Person person = EMUtil.getAntPerson(ant.head);
-			
+
 			person = EMUtil.flipPerson(person, sameSpeaker, ant.extent);
-			
+
 			Gender gender = EMUtil.getAntGender(ant);
 			Number number = EMUtil.getAntNumber(ant);
 			double prob = probAnt[id++];
@@ -1191,89 +1183,91 @@ public class ApplyMaxEnt10Eng {
 			return new double[all];
 		}
 		case classify: {
-//			String lineStr = "";
-//			String cmd = "/users/yzcchen/tool/YASMET/./a.out /users/yzcchen/tool/YASMET/" + attri
-//					+ ".model";
-//			Runtime run = Runtime.getRuntime();
-//			try {
-//				Process p = run.exec(cmd);
-//
-//				BufferedOutputStream out = new BufferedOutputStream(
-//						p.getOutputStream());
-//				out.write(str.getBytes());
-//				out.flush();
-//				out.close();
-//
-//				BufferedInputStream in = new BufferedInputStream(
-//						p.getInputStream());
-//				BufferedReader inBr = new BufferedReader(new InputStreamReader(
-//						in));
-//				lineStr = inBr.readLine();
-//				if (p.waitFor() != 0) {
-//					if (p.exitValue() == 1) {
-//						System.err.println("ERROR YASMET");
-//						Common.bangErrorPOS("");
-//					}
-//				}
-//				System.out.println(lineStr);
-//				inBr.close();
-//				in.close();
-//			} catch (IOException e) {
-//				e.printStackTrace();
-//			} catch (InterruptedException e) {
-//				e.printStackTrace();
-//			}
-//
-//			String tks[] = lineStr.split("\\s+");
-//			double ret[] = new double[tks.length - 1];
-//			for (int i = 1; i < tks.length; i++) {
-//				ret[i - 1] = Double.parseDouble(tks[i]);
-//			}
-//			return ret;
+			// String lineStr = "";
+			// String cmd =
+			// "/users/yzcchen/tool/YASMET/./a.out /users/yzcchen/tool/YASMET/"
+			// + attri
+			// + ".model";
+			// Runtime run = Runtime.getRuntime();
+			// try {
+			// Process p = run.exec(cmd);
+			//
+			// BufferedOutputStream out = new BufferedOutputStream(
+			// p.getOutputStream());
+			// out.write(str.getBytes());
+			// out.flush();
+			// out.close();
+			//
+			// BufferedInputStream in = new BufferedInputStream(
+			// p.getInputStream());
+			// BufferedReader inBr = new BufferedReader(new InputStreamReader(
+			// in));
+			// lineStr = inBr.readLine();
+			// if (p.waitFor() != 0) {
+			// if (p.exitValue() == 1) {
+			// System.err.println("ERROR YASMET");
+			// Common.bangErrorPOS("");
+			// }
+			// }
+			// System.out.println(lineStr);
+			// inBr.close();
+			// in.close();
+			// } catch (IOException e) {
+			// e.printStackTrace();
+			// } catch (InterruptedException e) {
+			// e.printStackTrace();
+			// }
+			//
+			// String tks[] = lineStr.split("\\s+");
+			// double ret[] = new double[tks.length - 1];
+			// for (int i = 1; i < tks.length; i++) {
+			// ret[i - 1] = Double.parseDouble(tks[i]);
+			// }
+			// return ret;
 			String lineStr = "";
-			 if (attri.equals("number")) {
-			 lineStr = numberRS.get(zpID);
-			 } else if (attri.equals("gender")) {
-			 lineStr = genderRS.get(zpID);
-			 } else if (attri.equals("person")) {
-			 lineStr = personRS.get(zpID);
-			 } else if (attri.equals("animacy")) {
-			 lineStr = animacyRS.get(zpID);
-			 } else {
-			 Common.bangErrorPOS("No Such Attri");
-			 }
-			 String tks[] = lineStr.split("\\s+");
-			 double ret[] = new double[tks.length - 1];
-			 for (int i = 1; i < tks.length; i++) {
-				 ret[i - 1] = Double.parseDouble(tks[i]);
-			 }
-			 return ret;
+			if (attri.equals("number")) {
+				lineStr = numberRS.get(zpID);
+			} else if (attri.equals("gender")) {
+				lineStr = genderRS.get(zpID);
+			} else if (attri.equals("person")) {
+				lineStr = personRS.get(zpID);
+			} else if (attri.equals("animacy")) {
+				lineStr = animacyRS.get(zpID);
+			} else {
+				Common.bangErrorPOS("No Such Attri");
+			}
+			String tks[] = lineStr.split("\\s+");
+			double ret[] = new double[tks.length - 1];
+			for (int i = 1; i < tks.length; i++) {
+				ret[i - 1] = Double.parseDouble(tks[i]);
+			}
+			return ret;
 		}
 		case load: {
-			 String lineStr = "";
-			 if (attri.equals("number")) {
-			 lineStr = numberRS.get(zpID);
-			 } else if (attri.equals("gender")) {
-			 lineStr = genderRS.get(zpID);
-			 } else if (attri.equals("person")) {
-			 lineStr = personRS.get(zpID);
-			 } else if (attri.equals("animacy")) {
-			 lineStr = animacyRS.get(zpID);
-			 } else {
-			 Common.bangErrorPOS("No Such Attri");
-			 }
-			 String tks[] = lineStr.split("\\s+");
-			 double ret[] = new double[tks.length - 1];
-			 for (int i = 1; i < tks.length; i++) {
-				 ret[i - 1] = Double.parseDouble(tks[i]);
-			 }
-			 return ret;
-//			if (true) {
-//				// double ret[] = new double[all];
-//				// return ret;
-//				return selectRestriction(attri, all, v);
-//			}
-//			return selectRestriction(attri, all, v);
+			String lineStr = "";
+			if (attri.equals("number")) {
+				lineStr = numberRS.get(zpID);
+			} else if (attri.equals("gender")) {
+				lineStr = genderRS.get(zpID);
+			} else if (attri.equals("person")) {
+				lineStr = personRS.get(zpID);
+			} else if (attri.equals("animacy")) {
+				lineStr = animacyRS.get(zpID);
+			} else {
+				Common.bangErrorPOS("No Such Attri");
+			}
+			String tks[] = lineStr.split("\\s+");
+			double ret[] = new double[tks.length - 1];
+			for (int i = 1; i < tks.length; i++) {
+				ret[i - 1] = Double.parseDouble(tks[i]);
+			}
+			return ret;
+			// if (true) {
+			// // double ret[] = new double[all];
+			// // return ret;
+			// return selectRestriction(attri, all, v);
+			// }
+			// return selectRestriction(attri, all, v);
 		}
 		default: {
 			Common.bangErrorPOS("WRONG MODE");
@@ -1635,7 +1629,7 @@ public class ApplyMaxEnt10Eng {
 		System.out.println("Precision: " + p * 100);
 		System.out.println("F-score: " + f * 100);
 
-		if(!this.folder.equals("all")) {
+		if (!this.folder.equals("all")) {
 			zeroses.clear();
 			entitieses.clear();
 		}
@@ -1649,7 +1643,7 @@ public class ApplyMaxEnt10Eng {
 	static String bestParas = "";
 
 	static String setting = "setting1";
-	
+
 	static void loadAlign() {
 		ArrayList<SentForAlign[]> alignCachelist = DocumentMap
 				.loadRealBAAlignResult("/users/yzcchen/chen3/zeroEM/EMAlgorithm/src/setting1/ba/");
@@ -1678,7 +1672,7 @@ public class ApplyMaxEnt10Eng {
 		}
 		System.out.println("Done2.");
 	}
-	
+
 	public static void main(String args[]) {
 		loadAlign();
 		if (args.length < 1) {
@@ -1724,8 +1718,8 @@ public class ApplyMaxEnt10Eng {
 			System.out.println(lines2.size());
 			anteRS.put("WTZ", lines2);
 
-//			run(args[0]);
-//			tuneWay1(args);
+			// run(args[0]);
+			// tuneWay1(args);
 			tuneWay2(args);
 		} else if (args[1].equals("classify")) {
 			personRS = Common.getLines("/users/yzcchen/tool/YASMET/person.rs"
@@ -1736,7 +1730,7 @@ public class ApplyMaxEnt10Eng {
 					+ args[0]);
 			animacyRS = Common.getLines("/users/yzcchen/tool/YASMET/animacy.rs"
 					+ args[0]);
-			
+
 			mode = classify;
 			run(args[0]);
 			return;
@@ -1746,57 +1740,61 @@ public class ApplyMaxEnt10Eng {
 	}
 
 	private static void tuneWay2(String[] args) {
-//		double para[] = { 0, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 1.2, 1.4, 1.6, 1.8, 2};
-//		double para[] = { 0, 0.2, 0.4, 0.6, 0.8, 1, 1.1, 1.3, 1.5, 1.7, 1.9};
-//		double para[] = { 0, 0.08, 0.18, 0.28, 0.38, 0.48, 0.58, 0.68, 0.78, 0.88, 1.0};
-		double para[] = { 0, 0.1, 0.2, 0.3, 0.4, 0.5, .6, .7, .8, .9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9};
-//		double para[] = { 0, 0.05, 0.15, 0.25, 0.35, 0.45, 0.55, .65, .75, .85, .95, 1};
-		
+		// double para[] = { 0, 0.1, 0.3, 0.5, 0.7, 0.9, 1, 1.2, 1.4, 1.6, 1.8,
+		// 2};
+		// double para[] = { 0, 0.2, 0.4, 0.6, 0.8, 1, 1.1, 1.3, 1.5, 1.7, 1.9};
+		// double para[] = { 0, 0.08, 0.18, 0.28, 0.38, 0.48, 0.58, 0.68, 0.78,
+		// 0.88, 1.0};
+		double para[] = { 0, 0.1, 0.2, 0.3, 0.4, 0.5, .6, .7, .8, .9, 1, 1.1,
+				1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9 };
+		// double para[] = { 0, 0.05, 0.15, 0.25, 0.35, 0.45, 0.55, .65, .75,
+		// .85, .95, 1};
+
 		p1 = 1.4;
 		p2 = 0.;
 		p3 = 0;
 		p4 = 0.0;
-		
-		while(true) {
+
+		while (true) {
 			double bestAlpha = p1;
 			double localBest = 0;
-			for(double p : para) {
+			for (double p : para) {
 				p1 = p;
 				run(args[0]);
-				if(f>localBest) {
+				if (f > localBest) {
 					localBest = f;
 					bestAlpha = p;
 				}
 			}
 			p1 = bestAlpha;
-			
+
 			double bestBeta = p2;
-			for(double p : para) {
+			for (double p : para) {
 				p2 = p;
 				run(args[0]);
-				if(f>localBest) {
+				if (f > localBest) {
 					localBest = f;
 					bestBeta = p;
 				}
 			}
 			p2 = bestBeta;
-			
+
 			double bestTheta = p3;
-			for(double p : para) {
+			for (double p : para) {
 				p3 = p;
 				run(args[0]);
-				if(f>localBest) {
+				if (f > localBest) {
 					localBest = f;
 					bestTheta = p;
 				}
 			}
 			p3 = bestTheta;
-			
+
 			double bestDelta = p4;
-			for(double p : para) {
+			for (double p : para) {
 				p4 = p;
 				run(args[0]);
-				if(f>localBest) {
+				if (f > localBest) {
 					localBest = f;
 					bestDelta = p;
 				}
