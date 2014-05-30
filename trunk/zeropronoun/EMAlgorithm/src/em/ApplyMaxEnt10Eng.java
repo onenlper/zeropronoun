@@ -287,9 +287,9 @@ public class ApplyMaxEnt10Eng {
 				candidates.addAll(goldBoundaryNPMentions);
 
 				if (!file.contains("/nw/")
-				// && !file.contains("/mz/")
-				// && !file.contains("/bn/")
-				// && !file.contains("/mz/")&& !file.contains("/wb/")
+				 && !file.contains("/mz/")
+				 && !file.contains("/bn/")
+				 && !file.contains("/mz/")
 				) {
 					 candidates.addAll(anaphorZeros);
 				}
