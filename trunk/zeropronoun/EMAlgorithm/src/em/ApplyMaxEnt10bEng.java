@@ -219,13 +219,16 @@ public class ApplyMaxEnt10bEng {
 									&& zeros.get(z).start == zeros.get(z - 1).start) {
 								zeros.get(z).antecedent = zeros.get(z - 1).antecedent;
 							} else {
+								
 								findAntecedent(file, part, chainMap,
 										corefResult, zeros.get(z), candidates,
 										segWords);
+								
+								
 							}
 						}
 
-//						alignMentions(chiS, segWords, nps);
+						alignMentions(chiS, segWords, nps);
 						
 					}
 				}

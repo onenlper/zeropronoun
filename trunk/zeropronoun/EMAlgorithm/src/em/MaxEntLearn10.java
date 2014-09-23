@@ -1,5 +1,7 @@
 package em;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,6 +11,7 @@ import model.Element;
 import model.Mention;
 import model.CoNLL.CoNLLDocument;
 import model.CoNLL.CoNLLPart;
+import model.CoNLL.CoNLLSentence;
 import util.Common;
 import edu.stanford.nlp.ling.Datum;
 import em.ResolveGroup.Entry;
@@ -40,11 +43,15 @@ public class MaxEntLearn10 {
 	static HashMap<String, Double> fracContextCount = new HashMap<String, Double>();
 
 	static SuperviseFea superFea;
+	static SuperviseFea superFeaZ;
 
 	static List<Datum<String, String>> trainingData = new ArrayList<Datum<String, String>>();
 
-	static ArrayList<ArrayList<String>> yasmet10 = new ArrayList<ArrayList<String>>();
+	static ArrayList<String> yasmet = new ArrayList<String>();
+	static ArrayList<String> yasmetZ = new ArrayList<String>();
 	static int maxAnts = 0;
+
+	static int qid = 0;
 
 	private static ArrayList<Element> getChGoldNE(CoNLLPart part) {
 		String documentID = "/users/yzcchen/chen3/CoNLL/conll-2012/v4/data/train/data/chinese/annotations/"
@@ -93,12 +100,18 @@ public class MaxEntLearn10 {
 					&& EMUtil.pronouns.contains(m.extent)
 			// && chainMap.containsKey(m.toName())
 			) {
+				// String goldPro = m.extent;
+				qid++;
+
+				// for (String pronoun : EMUtil.pronounList) {
+				// m.extent = pronoun;
 				ArrayList<Mention> ants = new ArrayList<Mention>();
 				int corefCount = 0;
 				for (int j = i - 1; j >= 0; j--) {
 					Mention ant = allMentions.get(j);
 					ants.add(ant);
 					ant.MI = Context.calMI(ant, m);
+					ant.isBest = false;
 					boolean coref = isCoref(chainMap, m, ant);
 					if (coref) {
 						corefCount++;
@@ -107,85 +120,186 @@ public class MaxEntLearn10 {
 						break;
 					}
 				}
+
+				EMUtil.setPronounAttri(m, part);
+				String proSpeaker = part.getWord(m.start).speaker;
+
 				Collections.sort(ants);
 				Collections.reverse(ants);
-
-				if(corefCount==0) {
-					continue;
-				}
-				
-				for (Mention ant : ants) {
-					ant.isBest = false;
-				}
-
 				ApplyEM.findBest(m, ants);
 
-				Mention fake = new Mention();
-				fake.fake = true;
-				ants.add(fake);
-				
+				StringBuilder ysb = new StringBuilder();
+				StringBuilder ysbZ = new StringBuilder();
 				if (ants.size() > maxAnts) {
 					maxAnts = ants.size();
 				}
-				String origPro = m.extent;
 
-				for (int h = 0; h < EMUtil.pronounList.size(); h++) {
-					m.extent = EMUtil.pronounList.get(h);
-					String str = generateInstance(part, chainMap, m, ants,
-							corefCount, origPro);
-					yasmet10.get(h).add(str);
+				boolean findFirstSubj = false;
+				boolean findCoref = false;
+				for (int k = 0; k < ants.size(); k++) {
+					Mention ant = ants.get(k);
+
+					boolean fs = false;
+					if (!findFirstSubj && ant.gram == EMUtil.Grammatic.subject) {
+						findFirstSubj = true;
+						fs = true;
+					}
+					String antSpeaker = part.getWord(ant.start).speaker;
+
+					Context context = Context.buildContext(ant, m, part, fs);
+
+					boolean sameSpeaker = proSpeaker.equals(antSpeaker);
+
+					Entry entry = new Entry(ant, context, sameSpeaker, fs);
+					boolean coref = isCoref(chainMap, m, ant);
+					if (coref) {
+						if (!findCoref) {
+							ysb.insert(0, k + " @ ");
+							ysbZ.insert(0, k + " @ ");
+							findCoref = true;
+						}
+					}
+					int rank = 0;
+					if (coref) {
+						// if(m.extent.equals(goldPro)) {
+						// rank = 3;
+						// } else {
+						// rank = 2;
+						// }
+						rank = 1;
+					} else {
+						rank = -1;
+					}
+					// coref = coref && m.extent.equals(goldPro);
+
+					// //
+					// if (sameSpeaker) {
+					// pStr = entry.person.name() + "=" +
+					// EMUtil.getPerson(pronoun).name();
+					// } else {
+					// pStr = entry.person.name() + "!="
+					// + EMUtil.getPerson(pronoun).name();
+					// }
+					// String nStr = entry.number.name() + "="
+					// + EMUtil.getNumber(pronoun).name();
+					// String gStr = entry.gender.name() + "="
+					// + EMUtil.getGender(pronoun).name();
+					// String aStr = entry.animacy.name() + "="
+					// + EMUtil.getAnimacy(pronoun).name();
+
+					ysb.append(getYamset(coref, ant, m, context, sameSpeaker,
+							entry, superFea, corefCount, part));
+					ysbZ.append(getYamset(coref, ant, m, context, sameSpeaker,
+							entry, superFeaZ, corefCount, part));
 				}
-				m.extent = origPro;
+				for (int k = ants.size(); k < 84; k++) {
+					ysb.append("@ 0 NOCLASS 1 # ");
+					ysbZ.append("@ 0 NOCLASS 1 # ");
+				}
+				if (corefCount > 0) {
+					yasmet.add(ysb.toString().trim());
+					yasmetZ.add(ysbZ.toString().trim());
+				}
+				// }
+				// m.extent = goldPro;
+				CoNLLSentence s = part.getWord(m.start).sentence;
+				// try {
+				extractGuessPronounFea(m, s, part);
+				// } catch (Exception e) {
+				// System.out.println(s.getText());
+				// System.out.println(m.extent);
+				// Common.bangErrorPOS("");
+				// }
 			}
 		}
 	}
 
-	private static String generateInstance(CoNLLPart part,
-			HashMap<String, Integer> chainMap, Mention m,
-			ArrayList<Mention> ants, int corefCount, String origPro) {
-		EMUtil.setPronounAttri(m, part);
+	static FileWriter genderWriter;
+	static FileWriter numberWriter;
+	static FileWriter personWriter;
+	static FileWriter animacyWriter;
+	// static FileWriter nbFeaWriter;
+	static GuessPronounFea guessFea;
+
+	public static void extractGuessPronounFea(Mention pronoun, CoNLLSentence s,
+			CoNLLPart part) {
+		try {
+			guessFea.configure(pronoun.start - 1, pronoun.start + 1, s, part);
+			int label = EMUtil.pronounList.indexOf(pronoun.extent) + 1;
+
+			// label = pronoun.animacy.ordinal() + 1;
+
+			String feaStr = guessFea.getSVMFormatString();
+			String v = EMUtil.getFirstVerb(pronoun.V);
+
+			// TODO Yasmet format
+			// NUMBER, GENDER, PERSON, ANIMACY
+			String tks[] = feaStr.split("\\s+");
+			int all = EMUtil.Number.values().length;
+			int y = pronoun.number.ordinal();
+			double[] numberProbs = ApplyMaxEnt.selectRestriction("number", all,
+					v);
+			String nYSB = transform(tks, all, y, numberProbs);
+
+			all = EMUtil.Gender.values().length - 1;
+			y = pronoun.gender.ordinal();
+			double[] genderProbs = ApplyMaxEnt.selectRestriction("gender", all,
+					v);
+			String gYSB = transform(tks, all, y, genderProbs);
+
+			all = EMUtil.Person.values().length;
+			y = pronoun.person.ordinal();
+			double[] personProbs = ApplyMaxEnt.selectRestriction("person", all,
+					v);
+			String pYSB = transform(tks, all, y, personProbs);
+
+			all = EMUtil.Animacy.values().length - 1;
+			y = pronoun.animacy.ordinal();
+			double[] animacyProbs = ApplyMaxEnt.selectRestriction("animacy",
+					all, v);
+			String aYSB = transform(tks, all, y, animacyProbs);
+
+			numberWriter.write(nYSB + "\n");
+			genderWriter.write(gYSB + "\n");
+			personWriter.write(pYSB + "\n");
+			animacyWriter.write(aYSB + "\n");
+
+			// String nbFeaStr = guessFea.getMyBNFormatString();
+			// nbFeaWriter.write((label - 1) + " " + nbFeaStr + "\n");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static String transform(String[] tks, int all, int y,
+			double probs[]) {
 		StringBuilder ysb = new StringBuilder();
-		String proSpeaker = part.getWord(m.start).speaker;
-		boolean findFirstSubj = false;
-		boolean findCoref = false;
-		for (int k = 0; k < ants.size(); k++) {
-			Mention ant = ants.get(k);
-
-			if (ant.fake) {
-				if(!origPro.equals(m.extent)) {
-					ysb.insert(0, k + " @ ");
-				}
-				ysb.append(getYamset(!origPro.equals(m.extent), ant, m, null,
-						false, null, superFea, 1, part));
-
+		ysb.append(y);
+		ysb.append(" @ ");
+		for (int i = 0; i < all; i++) {
+			ysb.append("@ ");
+			if (i == y) {
+				ysb.append("1 ");
 			} else {
-				boolean fs = false;
-				if (!findFirstSubj && ant.gram == EMUtil.Grammatic.subject) {
-					findFirstSubj = true;
-					fs = true;
-				}
-				String antSpeaker = part.getWord(ant.start).speaker;
-
-				Context context = Context.buildContext(ant, m, part, fs);
-
-				boolean sameSpeaker = proSpeaker.equals(antSpeaker);
-
-				Entry entry = new Entry(ant, context, sameSpeaker, fs);
-				boolean coref = isCoref(chainMap, m, ant);
-				if (coref) {
-					if (!findCoref && origPro.equals(m.extent)) {
-						ysb.insert(0, k + " @ ");
-						findCoref = true;
-					}
-				}
-				ysb.append(getYamset(coref && origPro.equals(m.extent), ant, m,
-						context, sameSpeaker, entry, superFea, corefCount, part));
+				ysb.append("0 ");
 			}
+			for (String tk : tks) {
+				if (tk.isEmpty()) {
+					continue;
+				}
+				int k = tk.indexOf(":");
+				String f = tk.substring(0, k);
+				String v = tk.substring(k + 1);
+				ysb.append(f + "_" + i).append(" ").append(v).append(" ");
+			}
+
+			for (int j = 0; j < probs.length; j++) {
+				ysb.append(j + "_" + i).append(" ").append(probs[j])
+						.append(" ");
+			}
+			ysb.append("# ");
 		}
-		for (int k = ants.size(); k < 85; k++) {
-			ysb.append("@ 0 NOCLASS 1 # ");
-		}
-		return ysb.toString().trim();
+		return ysb.toString();
 	}
 
 	public static double all = 0;
@@ -200,65 +314,23 @@ public class MaxEntLearn10 {
 		return coref;
 	}
 
-	public static String getYamset2(boolean coref, Mention ant, Mention pro,
-			String proPerson, String proNumber, String proGender,
-			String proAnimacy, Context context, boolean sameSpeaker,
-			Entry entry, SuperviseFea superFea, double corefCount,
-			CoNLLPart part) {
-		String pStr = "";
-		if (sameSpeaker) {
-			pStr = entry.person.name() + "=" + proPerson;
-		} else {
-			pStr = entry.person.name() + "!=" + proPerson;
-		}
-		String nStr = entry.number.name() + "=" + proNumber;
-		String gStr = entry.gender.name() + "=" + proGender;
-		String aStr = entry.animacy.name() + "=" + proAnimacy;
-
-		superFea.configure(pStr, nStr, gStr, aStr, context, ant, pro, part);
-
-		String fea = superFea.getSVMFormatString();
-		String tks[] = fea.split("\\s+");
-		StringBuilder ysb = new StringBuilder();
-		ysb.append("@ ");
-		if (coref) {
-			ysb.append(1.0 / corefCount + " ");
-		} else {
-			ysb.append("0 ");
-		}
-		for (String tk : tks) {
-			int k = tk.indexOf(":");
-			String f = tk.substring(0, k);
-			String v = tk.substring(k + 1);
-			ysb.append(f).append(" ").append(v).append(" ");
-			// System.out.println(part.folder);
-		}
-		ysb.append("# ");
-		return ysb.toString();
-	}
-
 	public static String getYamset(boolean coref, Mention ant, Mention pro,
 			Context context, boolean sameSpeaker, Entry entry,
 			SuperviseFea superFea, double corefCount, CoNLLPart part) {
 		String pronoun = pro.extent;
 		String pStr = "";
-		String nStr = "";
-		String gStr = "";
-		String aStr = "";
-
-		if (entry != null) {
-			if (sameSpeaker) {
-				pStr = entry.person.name() + "="
-						+ EMUtil.getPerson(pronoun).name();
-			} else {
-				pStr = entry.person.name() + "!="
-						+ EMUtil.getPerson(pronoun).name();
-			}
-			nStr = entry.number.name() + "=" + EMUtil.getNumber(pronoun).name();
-			gStr = entry.gender.name() + "=" + EMUtil.getGender(pronoun).name();
-			aStr = entry.animacy.name() + "="
-					+ EMUtil.getAnimacy(pronoun).name();
+		if (sameSpeaker) {
+			pStr = entry.person.name() + "=" + EMUtil.getPerson(pronoun).name();
+		} else {
+			pStr = entry.person.name() + "!="
+					+ EMUtil.getPerson(pronoun).name();
 		}
+		String nStr = entry.number.name() + "="
+				+ EMUtil.getNumber(pronoun).name();
+		String gStr = entry.gender.name() + "="
+				+ EMUtil.getGender(pronoun).name();
+		String aStr = entry.animacy.name() + "="
+				+ EMUtil.getAnimacy(pronoun).name();
 
 		superFea.configure(pStr, nStr, gStr, aStr, context, ant, pro, part);
 
@@ -289,31 +361,49 @@ public class MaxEntLearn10 {
 		int i = d.getParts().size();
 		for (CoNLLPart part : parts) {
 			extractGroups(part);
-			System.out.println(i--);
+			// System.out.println(i--);
 		}
 	}
 
 	public static void main(String args[]) throws Exception {
 		EMUtil.train = true;
+
+		genderWriter = new FileWriter("gender.train");
+		genderWriter.write(EMUtil.Gender.values().length-1 + "\n");
+		numberWriter = new FileWriter("number.train");
+		numberWriter.write(EMUtil.Number.values().length + "\n");
+		personWriter = new FileWriter("person.train");
+		personWriter.write(EMUtil.Person.values().length + "\n");
+		animacyWriter = new FileWriter("animacy.train");
+		animacyWriter.write(EMUtil.Animacy.values().length - 1 + "\n");
 		// nbFeaWriter = new FileWriter("guessPronoun.train.nb");
-		for (int i = 0; i < EMUtil.pronounList.size(); i++) {
-			yasmet10.add(new ArrayList<String>());
-		}
+		guessFea = new GuessPronounFea(true, "guessPronoun");
 
 		superFea = new SuperviseFea(true, "supervise");
-
+		superFeaZ = new SuperviseFea(true, "superviseZ");
+		superFeaZ.plusNumberGenderPersonAnimacy = false;
 		ArrayList<ResolveGroup> groups = new ArrayList<ResolveGroup>();
 
 		extractCoNLL(groups);
 
 		superFea.freeze();
+		superFeaZ.freeze();
+		yasmet.add(0, Integer.toString(maxAnts));
+		yasmetZ.add(0, Integer.toString(maxAnts));
+		Common.outputLines(yasmet, "yasmet.train");
+		Common.outputLines(yasmetZ, "yasmetZ.train");
 
-		for (int i = 0; i < EMUtil.pronounList.size(); i++) {
-			ArrayList<String> yasmet = yasmet10.get(i);
-			yasmet.add(0, Integer.toString(maxAnts));
-			Common.outputLines(yasmet, "yasmet10.train" + i);
-		}
 		System.out.println(":" + match / all);
+
+		System.out.println("Qid: " + qid);
+
+		guessFea.freeze();
+		guessFea.clear();
+		// nbFeaWriter.close();
+		genderWriter.close();
+		numberWriter.close();
+		personWriter.close();
+		animacyWriter.close();
 
 		for (String k : map.keySet()) {
 			System.out.println(k + ":" + map.get(k));

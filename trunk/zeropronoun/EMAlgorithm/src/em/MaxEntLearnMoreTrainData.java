@@ -547,7 +547,6 @@ public class MaxEntLearnMoreTrainData {
 	}
 
 	public static void main(String args[]) throws Exception {
-		SuperviseFea.plusNumberGenderPersonAnimacy = false;
 		EMUtil.train = true;
 
 		genderWriter = new FileWriter("gender.train");
@@ -562,11 +561,12 @@ public class MaxEntLearnMoreTrainData {
 		guessFea = new GuessPronounFea(true, "guessPronoun");
 
 		superFea = new SuperviseFea(true, "supervise");
-
+		superFea.plusNumberGenderPersonAnimacy = false;
 		ArrayList<ResolveGroup> groups = new ArrayList<ResolveGroup>();
 
 		extractCoNLL(groups);
 
+		
 		superFea.freeze();
 		if (maxAnts > 100) {
 			Common.pause("MaxAnts:" + maxAnts);

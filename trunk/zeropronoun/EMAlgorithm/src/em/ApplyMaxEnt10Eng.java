@@ -78,7 +78,7 @@ public class ApplyMaxEnt10Eng {
 
 	SuperviseFea superFea;
 	SuperviseFea superFeaZ;
-	
+
 	EngSuperFea engSuperFea;
 
 	static int zpID;
@@ -407,7 +407,7 @@ public class ApplyMaxEnt10Eng {
 				to = from;
 			}
 			StringBuilder sb = new StringBuilder();
-			for (int g = from; g <= to; g++) {
+			for (int g = from; g <= to || g==from; g++) {
 				Unit unit = align[0].units.get(g);
 				unit.sentence = chiS;
 				unit.addMention(em);
@@ -654,15 +654,15 @@ public class ApplyMaxEnt10Eng {
 		ArrayList<double[]> opProbs = getProb_C(cands, zero, part, superFeaZ,
 				"WTZ");
 		setParas(part);
-		// setParas2(part);
-		
+		setParas2(part);
 		tuneOpProbs(opProbs, probPer1, probNum1, probGen1, probAni1);
-		// tuneOpProbs2(opProbs, probPer2, probNum2, probGen2, probAni2);
+		tuneOpProbs2(opProbs, probPer2, probNum2, probGen2, probAni2);
 		pro = EMUtil.decideOP(opProbs.get(0), opProbs.get(1), opProbs.get(2),
 				opProbs.get(3));
 
 		// TODO Warning
-		antecedent = givenOPFindC(cands, zero, part, pro, superFea, "WT");
+		antecedent = givenOPFindC(cands, zero, part, pro, superFea, "WT",
+				segChiWords, chainMap);
 		zpID++;
 
 		// boolean coref = false;
@@ -922,7 +922,8 @@ public class ApplyMaxEnt10Eng {
 	}
 
 	private Mention givenOPFindC(ArrayList<Mention> cands, Mention zero,
-			CoNLLPart part, String pro, SuperviseFea superFea, String model) {
+			CoNLLPart part, String givenOP, SuperviseFea superFea,
+			String model, ArrayList<CoNLLWord> segChiWords, HashMap<String, Integer> chainMap) {
 		int antCount = 0;
 		String proSpeaker = part.getWord(zero.start).speaker;
 		HashMap<Integer, Integer> idMap = new HashMap<Integer, Integer>();
@@ -933,6 +934,8 @@ public class ApplyMaxEnt10Eng {
 		for (int p = 0; p < EMUtil.pronounList.size(); p++) {
 			String op = EMUtil.pronounList.get(p);
 			zero.extent = op;
+			zero.head = op;
+
 			for (int i = 0; i < cands.size(); i++) {
 				Mention cand = cands.get(i);
 				if (cand.extent.isEmpty()) {
@@ -964,6 +967,10 @@ public class ApplyMaxEnt10Eng {
 			}
 		}
 		double probAnt[] = runYasmet(ysb.toString(), antCount, model);
+		// run english
+		double prob2[] = runEnglish(cands, zero, givenOP, segChiWords);
+		
+		double prob1[] = new double[cands.size()];
 		// System.err.println(cands.size());
 		if (antCount != 0 && (mode == classify || mode == load)) {
 			int antIdx = -1;
@@ -971,7 +978,7 @@ public class ApplyMaxEnt10Eng {
 
 			int numOfAnt = probAnt.length / EMUtil.pronounList.size();
 
-			int proIdx = EMUtil.pronounList.indexOf(pro);
+			int proIdx = EMUtil.pronounList.indexOf(givenOP);
 			for (int i = 0; i < probAnt.length; i++) {
 				if (i < numOfAnt * proIdx || i >= numOfAnt * (proIdx + 1)) {
 					continue;
@@ -980,12 +987,112 @@ public class ApplyMaxEnt10Eng {
 					maxProb = probAnt[i];
 					antIdx = i;
 				}
+				prob1[idMap.get(i)] = probAnt[i];
 			}
-			if (antIdx != -1) {
-				antecedent = cands.get(idMap.get(antIdx));
+			
+			if(prob2[idMap.get(antIdx)]!=0) {
+				for(int i=0;i<cands.size();i++) {
+					if(prob1[i]==0) {
+						prob2[i] = 0;
+					}
+					if(prob2[i]==0) {
+						prob1[i] = 0;
+					}
+				}
+				normalize(prob1);
+				normalize(prob2);
+				maxProb = 0;
+				int candID = 0;
+				for(int i=0;i<cands.size();i++) {
+					double p = prob1[i] + pp * prob2[i];
+					if(p>maxProb) {
+						maxProb = p;
+						candID = i;
+					}
+				}
+				antecedent = cands.get(candID);
+			} else {
+				if (antIdx != -1) {
+					antecedent = cands.get(idMap.get(antIdx));
+				}
 			}
 		}
 		return antecedent;
+	}
+	static int buhao = 0;
+	static int great = 0;
+	
+	static double pp = 0.1;
+
+	private double[] runEnglish(ArrayList<Mention> cands, Mention zero,
+			String givenOP, ArrayList<CoNLLWord> segChiWords) {
+		
+		double prob2[] = new double[cands.size()];
+		
+		HashMap<Integer, Integer> idMap;
+		Mention antecedent;
+		int chiSegStart = segChiWords.get(0).index;
+		int chiSegEnd = segChiWords.get(segChiWords.size() - 1).index;
+		ArrayList<Mention> nps = EMUtil.getInBetweenMention(cands, chiSegStart,
+				chiSegEnd);
+		nps.add(zero);
+		int w = -1;
+		for (; w < segChiWords.size(); w++) {
+			if (w != -1 && segChiWords.get(w).index == zero.start) {
+				break;
+			}
+		}
+		segChiWords.get(w).word = givenOP;
+		alignMentions(zero.s, segChiWords, nps);
+		
+		Mention xZero = zero.getXSpan();
+		if (xZero != null) {
+			System.out.println(givenOP + "#####" + zero.getXSpan().extent);
+			StringBuilder xYSB = new StringBuilder();
+			xYSB.append("0 @ ");
+			int xAntCount = 0;
+			idMap = new HashMap<Integer, Integer>();
+			for (int k = 0; k < cands.size(); k++) {
+				Mention ant = cands.get(k);
+				Mention xAnt = ant.getXSpan();
+				if (xAnt == null) {
+					continue;
+				}
+				xYSB.append(TrainEngPronoun.getYamset(false, xAnt, xZero,
+						engSuperFea, 1, engPart, zero.s.getSentenceIdx()
+								- ant.s.getSentenceIdx(), zero.start - ant.end));
+				idMap.put(xAntCount, k);
+				xAntCount++;
+			}
+			double probAntEng[] = runYasmet(xYSB.toString(), xAntCount, "WTEng");
+			int antIdx = -1;
+			double maxProb = 0;
+			for (int i = 0; i < probAntEng.length; i++) {
+				if (probAntEng[i] > maxProb) {
+					maxProb = probAntEng[i];
+					antIdx = i;
+				}
+				prob2[idMap.get(i)] = probAntEng[i];
+			}
+			if (antIdx != -1) {
+				antecedent = cands.get(idMap.get(antIdx));
+				if(antecedent.getXSpan()==null) {
+					Common.pause("");
+				}
+			} else {
+				antecedent = null;
+			}
+			System.out.println("Percent: " + xAntCount*1.0/(cands.size()*1.0));
+		} else {
+			antecedent = null;
+		}
+		String msg = "null";
+		if(antecedent!=null) {
+			msg = antecedent.extent + " " + antecedent.start + "," + antecedent.end +"###" + antecedent.getXSpan().extent;
+		}
+		System.out.println("Pick::::: " + msg);
+		System.out.println("--------------------");
+		return prob2;
 	}
 
 	private ArrayList<double[]> getProb_C(ArrayList<Mention> cands,
@@ -1074,6 +1181,9 @@ public class ApplyMaxEnt10Eng {
 		double all = 0;
 		for (double v : vals) {
 			all += v;
+		}
+		if(all==0) {
+			return;
 		}
 		for (int i = 0; i < vals.length; i++) {
 			vals[i] = vals[i] / all;
@@ -1643,6 +1753,7 @@ public class ApplyMaxEnt10Eng {
 	static String bestParas = "";
 
 	static String setting = "setting1";
+	static CoNLLPart engPart;
 
 	static void loadAlign() {
 		ArrayList<SentForAlign[]> alignCachelist = DocumentMap
@@ -1661,6 +1772,7 @@ public class ApplyMaxEnt10Eng {
 		CoNLLPart.processDiscourse = false;
 		CoNLLDocument engDoc = new CoNLLDocument(setting + "/conll/eng.conll");
 		CoNLLPart.processDiscourse = true;
+		engPart = engDoc.getParts().get(0);
 		for (CoNLLSentence s : engDoc.getParts().get(0).getCoNLLSentences()) {
 			String engS = s.getText();
 			ArrayList<CoNLLSentence> lst = engSMap.get(engS);
@@ -1680,7 +1792,8 @@ public class ApplyMaxEnt10Eng {
 			System.exit(1);
 		}
 		if (args.length == 3) {
-			sigID = Integer.parseInt(args[2]);
+//			sigID = Integer.parseInt(args[2]);
+			pp = Double.parseDouble(args[2]);
 		}
 		if (args[1].equals("prepare")) {
 			mode = prepare;

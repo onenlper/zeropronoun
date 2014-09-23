@@ -139,8 +139,10 @@ public class ApplyTK {
 		int pID = 0;
 		for (String file : files) {
 			System.out.println(file);
-			CoNLLDocument document = new CoNLLDocument(file.replace(
-					"auto_conll", "gold_conll"));
+			CoNLLDocument document = new CoNLLDocument(file
+//					.replace(
+//					"auto_conll", "gold_conll")
+					);
 			OntoCorefXMLReader.addGoldZeroPronouns(document, false);
 
 			for (int k = 0; k < document.getParts().size(); k++) {
@@ -175,8 +177,10 @@ public class ApplyTK {
 
 				Collections.sort(goldBoundaryNPMentions);
 
-				ArrayList<Mention> anaphorZeros = EMUtil.getAnaphorZeros(part
-						.getChains());
+//				ArrayList<Mention> anaphorZeros = EMUtil.getAnaphorZeros(part
+//						.getChains());
+              ArrayList<Mention> anaphorZeros = ZeroDetect.getHeuristicZeros(part);
+
 				// anaphorZeros = zeroDetectTest.detectZeros(part, null);
 
 				ArrayList<Mention> candidates = new ArrayList<Mention>();
