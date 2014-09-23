@@ -25,15 +25,11 @@ public class Test2 {
 		ArrayList<SentForAlign[]> alignCache = DocumentMap
 				.loadRealBAAlignResult("/users/yzcchen/chen3/zeroEM/EMAlgorithm/src/allSetting/" + "/ba/");
 		EMUtil.loadPredictNE("all", "dev");
-		System.out.println("Done.");
-		CoNLLDocument engDoc = new CoNLLDocument(setting + "/conll/eng.conll");
-		System.out.println("Done2.");
-		System.out.println(alignCache.size() + "@#"
-				+ engDoc.getParts().get(0).getCoNLLSentences().size());
 
+		CoNLLDocument engDoc = new CoNLLDocument(setting + "/conll/eng.conll");
+		
 		ParseTreeMention ptm = new ParseTreeMention();
 
-		System.out.println("Done3.");
 		int segID = 0;
 		ArrayList<String> lines = Common
 				.getLines("chinese_list_all_development");
