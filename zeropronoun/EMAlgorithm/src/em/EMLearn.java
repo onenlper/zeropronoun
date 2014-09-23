@@ -472,10 +472,11 @@ public class EMLearn {
 				if (fracContextCount.containsKey(context.toString())) {
 					p_context = (EMUtil.alpha + fracContextCount.get(context
 							.toString()))
-							/ (2592 * EMUtil.alpha + contextPrior.get(context
+							/ (2 * EMUtil.alpha + contextPrior.get(context
 									.toString()));
 				} else {
-					p_context = 1.0 / 2592.0;
+//					p_context = 1.0 / 2592.0;
+					p_context = 1.0 / 2;
 				}
 
 				// System.out.println(p_context);

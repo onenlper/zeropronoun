@@ -130,6 +130,7 @@ public class ApplyMaxEntMoreTrainingData {
 
 			// modelInput2.close();
 			// loadGuessProb();
+			superFea.plusNumberGenderPersonAnimacy = false;
 			superFea = new SuperviseFea(false, "zeroFea");
 			EMUtil.loadPredictNE(folder, "dev");
 		} catch (FileNotFoundException e) {
@@ -1568,7 +1569,6 @@ public class ApplyMaxEntMoreTrainingData {
 	public static boolean bothTrain = false;
 
 	public static void main(String args[]) {
-		SuperviseFea.plusNumberGenderPersonAnimacy = false;
 		if (args.length < 3) {
 			System.err.println("java ~ folder [mode] [overt|zero|both]");
 			System.exit(1);

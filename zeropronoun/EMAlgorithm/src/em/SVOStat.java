@@ -31,6 +31,13 @@ public class SVOStat implements Serializable{
 	public HashMap<String, HashMap<Integer, Integer>> personStat;
 	public HashMap<String, HashMap<Integer, Integer>> animacyStat;
 	
+	
+	public HashMap<String, HashMap<Integer, Integer>> numberStat2;
+	public HashMap<String, HashMap<Integer, Integer>> genderStat2;
+	public HashMap<String, HashMap<Integer, Integer>> personStat2;
+	public HashMap<String, HashMap<Integer, Integer>> animacyStat2;
+	static HashSet<String> allV = Common.readFile2Set("allV");
+	static HashSet<String> allO = Common.readFile2Set("allO");
 	public void loadMIInfo() {
 		try {
 			unigrams = new HashMap<String, Integer>();
@@ -56,6 +63,11 @@ public class SVOStat implements Serializable{
 			personStat = new HashMap<String, HashMap<Integer, Integer>>();
 			animacyStat = new HashMap<String, HashMap<Integer, Integer>>();
 			
+			numberStat2 = new HashMap<String, HashMap<Integer, Integer>>();
+			genderStat2 = new HashMap<String, HashMap<Integer, Integer>>();
+			personStat2 = new HashMap<String, HashMap<Integer, Integer>>();
+			animacyStat2 = new HashMap<String, HashMap<Integer, Integer>>();
+			
 			while ((line = br.readLine()) != null) {
 				int k = line.lastIndexOf(' ');
 				int count = Integer.parseInt(line.substring(k + 1));
@@ -63,7 +75,11 @@ public class SVOStat implements Serializable{
 				String tks[] = key.split("\\s+");
 				String s = tks[0];
 				String v = tks[1];
-
+				
+				if(!allV.contains(v)) {
+					continue;
+				}
+				
 				addMap(svCounts, s + " " + v, count);
 				addMap(vCounts, v, count);
 				
@@ -84,10 +100,24 @@ public class SVOStat implements Serializable{
 
 				if (tks.length == 3) {
 					String o = tks[2];
+					if(!allO.contains(o)) {
+						continue;
+					}
 					addMap(svoCounts, s + " " + v + " " + o, count);
 					addMap(voCounts, v + " " + o, count);
+					
+					key = v + " " + o;
+					addAttri(key, numberStat2, num.ordinal(), count);
+					
+					if(gen!=EMUtil.Gender.unknown) {
+						addAttri(key, genderStat2, gen.ordinal(), count);
+					}
+					addAttri(key, personStat2, per.ordinal(), count);
+					
+					if(ani!=EMUtil.Animacy.unknown) {
+						addAttri(key, animacyStat2, ani.ordinal(), count);
+					}
 				}
-
 			}
 			br.close();
 		} catch (FileNotFoundException e) {

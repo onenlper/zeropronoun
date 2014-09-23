@@ -308,6 +308,7 @@ public class ApplyMaxEnt10 {
 				int ps[] = positionsMap.get(key);
 				int s = ps[0];
 				int e = ps[1];
+				System.out.println(key + "::::::");
 				evaluate(corefResults.subList(s, e), goldEntities.subList(s, e));
 			}
 		}
@@ -1025,7 +1026,7 @@ public class ApplyMaxEnt10 {
 		}
 		case classify: {
 //			String lineStr = "";
-//			String cmd = "/users/yzcchen/tool/YASMET/./a.out " + attri
+//			String cmd = "/users/yzcchen/tool/YASMET/./a.out /users/yzcchen/tool/YASMET/" + attri
 //					+ ".model";
 //			Runtime run = Runtime.getRuntime();
 //			try {
@@ -1421,7 +1422,7 @@ public class ApplyMaxEnt10 {
 	static String anno = "annotations/";
 	static String suffix = ".coref";
 
-	public static void evaluate(List<ArrayList<Mention>> zeroses,
+	public void evaluate(List<ArrayList<Mention>> zeroses,
 			List<ArrayList<Entity>> entitieses) {
 		double gold = 0;
 		double system = 0;
@@ -1468,8 +1469,10 @@ public class ApplyMaxEnt10 {
 		System.out.println("Precision: " + p * 100);
 		System.out.println("F-score: " + f * 100);
 
-		zeroses.clear();
-		entitieses.clear();
+		if(!this.folder.equals("all")) {
+			zeroses.clear();
+			entitieses.clear();
+		}
 		bads.clear();
 		goods.clear();
 		zpID = 0;
@@ -1483,7 +1486,7 @@ public class ApplyMaxEnt10 {
 		if (args.length < 1) {
 			System.err.println("java ~ folder [mode]");
 			System.exit(1);
-		}
+		} 
 		if (args.length == 3) {
 			sigID = Integer.parseInt(args[2]);
 		}

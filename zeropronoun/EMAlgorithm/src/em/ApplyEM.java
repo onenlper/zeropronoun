@@ -464,10 +464,10 @@ public class ApplyEM {
 					if (fracContextCount.containsKey(context.toString())) {
 						p_context = (1.0 * EMUtil.alpha + fracContextCount
 								.get(context.toString()))
-								/ (2592.0 * EMUtil.alpha + contextPrior
+								/ (2.0 * EMUtil.alpha + contextPrior
 										.get(context.toString()));
 					} else {
-						p_context = 1.0 / 2592.0;
+						p_context = 1.0 / 2.0;
 					}
 
 					// double p_context = 1;

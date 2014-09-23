@@ -125,13 +125,10 @@ public class TrainEngPronoun {
 			HashMap<String, Integer> chainMap, Mention m,
 			ArrayList<Mention> ants, int corefCount, StringBuilder ysb) {
 
-		String proSpeaker = part.getWord(m.start).speaker;
 		boolean findCoref = false;
 
 		for (int k = 0; k < ants.size(); k++) {
 			Mention ant = ants.get(k);
-
-			String antSpeaker = part.getWord(ant.start).speaker;
 
 			boolean coref = isCoref(chainMap, m, ant);
 			if (coref) {
@@ -140,8 +137,9 @@ public class TrainEngPronoun {
 					findCoref = true;
 				}
 			}
-			ysb.append(getYamset(coref, ant, m, engSuperFea,
-					corefCount, part));
+			ysb.append(getYamset(coref, ant, m, engSuperFea, corefCount, part,
+					m.s.getSentenceIdx() - ant.s.getSentenceIdx(), m.start
+							- ant.end));
 		}
 	}
 
@@ -195,14 +193,12 @@ public class TrainEngPronoun {
 	}
 
 	public static String getYamset(boolean coref, Mention ant, Mention pro,
-			EngSuperFea superFea, double corefCount,
-			CoNLLPart part) {
-		superFea.configure(ant, pro, part,
-				pro.s.getSentenceIdx() - ant.s.getSentenceIdx(), pro.start
-						- ant.end);
+			EngSuperFea superFea, double corefCount, CoNLLPart part,
+			int disSent, int disWord) {
+		superFea.configure(ant, pro, part, disSent, disWord);
 
 		String fea = superFea.getSVMFormatString().trim();
-//		System.out.println(fea);
+		// System.out.println(fea);
 		String tks[] = fea.split("\\s+");
 		StringBuilder ysb = new StringBuilder();
 		ysb.append("@ ");
@@ -243,8 +239,7 @@ public class TrainEngPronoun {
 		extractCoNLL(groups);
 
 		engSuperFea.freeze();
-		yasmet10.add(0,
-				Integer.toString(maxAnts));
+		yasmet10.add(0, Integer.toString(maxAnts));
 		Common.outputLines(yasmet10, "yasmetEng.train");
 		System.out.println(":" + match / all);
 	}

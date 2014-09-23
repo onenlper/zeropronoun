@@ -208,7 +208,7 @@ public class ZeroDetect {
 			if(tn.parent.value.startsWith("V")) {
 				if((tn.value.equals("没有") || tn.value.equals("有") || tn.value.equals("无")) && 
 						tn.parent.value.equals("VE")) {
-					return false;					
+//					return false;					 temporary comment out
 				}
 				break;
 			}
@@ -233,7 +233,7 @@ public class ZeroDetect {
 			}
 		}
 		if(verb==null) {
-			return false;
+//			return false; temporary comment out
 		}
 		
 		if(set.size()==1) {
@@ -253,7 +253,7 @@ public class ZeroDetect {
 //					System.out.println(goldInts.contains(zero.start) ? "zero" : "nonzero");
 //					System.out.println("-----");
 					}
-				return false;
+//				return false; temporary comment out
 			}
 		}
 		
