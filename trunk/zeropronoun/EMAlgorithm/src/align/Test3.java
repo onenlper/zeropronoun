@@ -1,14 +1,13 @@
 package align;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 
-import em.EMUtil;
-
+import model.Mention;
 import model.CoNLL.CoNLLDocument;
 import model.CoNLL.CoNLLPart;
 import model.CoNLL.CoNLLSentence;
 import util.Common;
+import em.EMUtil;
 
 public class Test3 {
 
@@ -24,10 +23,10 @@ public class Test3 {
 //			}
 //		}
 //		
-//		ArrayList<String> chiStr = new ArrayList<String>();
-//		chiStr.addAll(Common.getLines("chinese_list_all_train"));
-//		chiStr.addAll(Common.getLines("chinese_list_all_development"));
-//		chiStr.addAll(Common.getLines("chinese_list_all_test"));
+		ArrayList<String> chiStr = new ArrayList<String>();
+		chiStr.addAll(Common.getLines("chinese_list_all_train"));
+		chiStr.addAll(Common.getLines("chinese_list_all_development"));
+		chiStr.addAll(Common.getLines("chinese_list_all_test"));
 //		
 //		System.out.println(doc.getParts().size());
 //		
@@ -44,5 +43,43 @@ public class Test3 {
 //			}
 //		}
 		EMUtil.loadAlign();
+		double all =0;
+		double align = 0;
+		for(int i=0;i<chiStr.size();i++) {
+			if(i!=chiStr.size()-1) {
+//				continue;
+			}
+			String line = chiStr.get(i);
+			CoNLLDocument doc = new CoNLLDocument(line);
+			doc.language = "chinese";
+			int a = line.indexOf("annotations");
+			a += "annotations/".length();
+			int b = line.lastIndexOf(".");
+			
+			String docName = line.substring(a, b);
+			for(CoNLLPart part : doc.getParts()) {
+				for(CoNLLSentence s : part.getCoNLLSentences()) {
+					String text = s.getText();
+					
+					ArrayList<Mention> chiNPs = EMUtil.extractMention(s);
+					EMUtil.alignMentions(s, chiNPs, docName);
+					
+					
+					all += chiNPs.size();
+					for(Mention m : chiNPs) {
+						System.out.println(docName + " # " + DocumentMap.idMap.get(docName));
+						System.out.println(s.idInDoc);
+						System.out.println(m.extent);
+						Mention xm = m.getXSpan();
+						System.out.println(xm==null?"null":xm.extent);
+						System.out.println("------");
+						if(xm!=null) {
+							align++;
+						}
+					}
+				}
+			}
+		}
+		System.out.println(align + "/" + all + ":" + align/all);
 	}
 }

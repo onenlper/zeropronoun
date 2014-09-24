@@ -226,100 +226,22 @@ public class DocumentMap {
 	private static final Pattern baPattern = Pattern
 			.compile("([^-]*)-([^-]*)-(.*)");
 
-	public static void loadRealBAAlignResult(String alignFolder, String lang) {
+	public static HashMap<String, Integer> idMap = new HashMap<String, Integer>();
+	
+	public static HashMap<String, ArrayList<SentForAlign[]>> loadRealBAAlignResult(String alignFolder) {
 		if (initialized) {
 			Common.bangErrorPOS("Already inited!!!");
 		}
 		initialized = true;
-		ArrayList<String> lines = null;
-		if (lang.equalsIgnoreCase("eng")) {
-			lines = Common.getLines("english_list_all");
-		} else if (lang.equalsIgnoreCase("chi")) {
-			lines = Common.getLines("chinese_list_all");
-		}
-		for (int i = 0; i < lines.size(); i++) {
-			String docName = Util.getID(lines.get(i));
-			String parallel = docName + " # " + docName;
-			DocumentMap documentMap = new DocumentMap(parallel, i);
-
-			// ArrayList<String> alignContent = Common.getLines(alignFolder
-			// + File.separator + i + ".align");
-			ArrayList<String> alignIDs = Common.getLines(alignFolder
-					+ File.separator + i + ".id");
-			ArrayList<String> alignsoftContent = Common.getLines(alignFolder
-					+ File.separator + i + ".alignsoft");
-
-			ArrayList<String> engStrs = Common.getLines(alignFolder
-					+ File.separator + i + ".eng");
-			ArrayList<String> chiStrs = Common.getLines(alignFolder
-					+ File.separator + i + ".chi");
-
-			// assign the most confidence map, other than map with confidence
-			// greater than 0.5
-			for (int j = 0; j < alignsoftContent.size(); j++) {
-				SentForAlign engSent = new SentForAlign(j);
-				SentForAlign chiSent = new SentForAlign(j);
-				engSent.mapSentence = chiSent;
-				chiSent.mapSentence = engSent;
-
-				documentMap.engDoc.addSent(engSent);
-				documentMap.chiDoc.addSent(chiSent);
-
-				String chiIDStr = alignIDs.get(j * 3 + 1).trim();
-				String chiIDs[] = chiIDStr.split("\\s+");
-
-				String engIDStr = alignIDs.get(j * 3 + 2).trim();
-				String engIDs[] = engIDStr.split("\\s+");
-
-				String alignsoftStr = alignsoftContent.get(j);
-				String alignsofts[] = alignsoftStr.split("\\s+");
-
-				String chiTks[] = chiStrs.get(j).split("\\s+");
-				String engTks[] = engStrs.get(j).split("\\s+");
-
-				// create units
-				for (int m = 0; m < chiTks.length; m++) {
-					int id = Integer.parseInt(chiIDs[m]);
-					String tk = chiTks[m];
-					Unit unit = new Unit(id, tk);
-					chiSent.addUnit(unit);
-				}
-
-				for (int m = 0; m < engTks.length; m++) {
-					int id = Integer.parseInt(engIDs[m]);
-					String tk = engTks[m];
-					Unit unit = new Unit(id, tk);
-					engSent.addUnit(unit);
-				}
-
-				// create map
-				for (int m = 0; m < alignsofts.length; m++) {
-					// chi-eng-prob
-					Matcher matcher = baPattern.matcher(alignsofts[m]);
-					if (matcher.find()) {
-						Unit chiUnit = chiSent.units.get(Integer
-								.parseInt(matcher.group(1)));
-						Unit engUnit = engSent.units.get(Integer
-								.parseInt(matcher.group(2)));
-
-						chiUnit.addMapUnit(engUnit,
-								Double.valueOf(matcher.group(3)));
-					}
-				}
-			}
-		}
-	}
-
-	public static void loadRealBAAlignResult(String alignFolder) {
-		if (initialized) {
-			Common.bangErrorPOS("Already inited!!!");
-		}
-		initialized = true;
+		HashMap<String, ArrayList<SentForAlign[]>> documentMaps = new HashMap<String, ArrayList<SentForAlign[]>>();
 		ArrayList<String> lines = Common.getLines(alignFolder + "/parallelMap");
 		for (int i = 0; i < lines.size(); i++) {
 			String parallel = lines.get(i);
 			DocumentMap documentMap = new DocumentMap(parallel, i);
-
+			
+			ArrayList<SentForAlign[]> aligns = new ArrayList<SentForAlign[]>();
+			documentMaps.put(parallel.split("#")[0].trim(), aligns);
+			idMap.put(parallel.split("#")[0].trim(), i);
 			// ArrayList<String> alignContent = Common.getLines(alignFolder
 			// + File.separator + i + ".align");
 			ArrayList<String> alignIDs = Common.getLines(alignFolder
@@ -355,12 +277,19 @@ public class DocumentMap {
 				String chiTks[] = chiStrs.get(j).split("\\s+");
 				String engTks[] = engStrs.get(j).split("\\s+");
 
+				SentForAlign pair[] = new SentForAlign[2];
+				pair[0] = chiSent;
+				pair[1] = engSent;
+				
+				aligns.add(pair);
+				
 				// create units
 				try {
 					for (int m = 0; m < chiTks.length; m++) {
 						int id = Integer.parseInt(chiIDs[m]);
 						String tk = chiTks[m];
 						Unit unit = new Unit(id, tk);
+						unit.indexInSentence = m;
 						chiSent.addUnit(unit);
 					}
 				} catch (Exception e) {
@@ -371,6 +300,7 @@ public class DocumentMap {
 					int id = Integer.parseInt(engIDs[m]);
 					String tk = engTks[m];
 					Unit unit = new Unit(id, tk);
+					unit.indexInSentence = m;
 					engSent.addUnit(unit);
 				}
 
@@ -388,8 +318,14 @@ public class DocumentMap {
 								Double.valueOf(matcher.group(3)));
 					}
 				}
+//				System.out.println(engSent.getText() + "@@@@");
+//				if(engSent.getText().contains("39 users have expressed his views")) {
+//					System.out.println(i);
+//					Common.pause("!");
+//				}
 			}
 		}
+		return documentMaps;
 	}
 
 	public static void loadRealGizaAlignResult(String alignFolder) {
