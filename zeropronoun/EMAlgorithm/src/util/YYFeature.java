@@ -8,131 +8,131 @@ import java.util.HashSet;
 import util.Common.Feature;
 
 public abstract class YYFeature {
-	public boolean train;
+        public boolean train;
 
-	public HashMap<String, Integer> strFeaMap;
+        public HashMap<String, Integer> strFeaMap;
 
-	public static int strFeaFrom = 1000;
-	String name;
+        public static int strFeaFrom = 1000;
+        String name;
 
-	public YYFeature(boolean train, String name) {
-		this.train = train;
-		this.name = name;
-		if (train) {
-			this.strFeaMap = new HashMap<String, Integer>();
-		} else {
-			this.strFeaMap = Common.readFile2Map(name);
-		}
-	}
+        public YYFeature(boolean train, String name) {
+                this.train = train;
+                this.name = name;
+                if (train) {
+                        this.strFeaMap = new HashMap<String, Integer>();
+                } else {
+                        this.strFeaMap = Common.readFile2Map(name);
+                }
+        }
 
-	public void freeze() {
-		if (!train) {
-			System.err.println("Should not be called when testing");
-		}
-		Common.outputHashMap(this.strFeaMap, name);
-	}
+        public void freeze() {
+                if (!train) {
+                        System.err.println("Should not be called when testing");
+                }
+                Common.outputHashMap(this.strFeaMap, name);
+        }
 
-	public void clear() {
-		this.strFeaMap.clear();
-	}
+        public void clear() {
+                this.strFeaMap.clear();
+        }
 
-	public void setStrFeaFrom(int k) {
-		this.strFeaFrom = k;
-	}
+        public void setStrFeaFrom(int k) {
+                this.strFeaFrom = k;
+        }
 
-	private int getStrIdx(String str) {
-		if (strFeaMap.containsKey(str)) {
-			return this.strFeaMap.get(str);
-		} else {
-			if (train) {
-				int v = strFeaMap.size();
-				strFeaMap.put(str, v);
-				return v;
-			} else {
-				return -1;
-			}
-		}
-	}
+        private int getStrIdx(String str) {
+                if (strFeaMap.containsKey(str)) {
+                        return this.strFeaMap.get(str);
+                } else {
+                        if (train) {
+                                int v = strFeaMap.size();
+                                strFeaMap.put(str, v);
+                                return v;
+                        } else {
+                                return -1;
+                        }
+                }
+        }
 
-	public abstract ArrayList<Feature> getCategoryFeatures();
+        public abstract ArrayList<Feature> getCategoryFeatures();
 
-	public abstract ArrayList<HashSet<String>> getStrFeatures();
+        public abstract ArrayList<HashSet<String>> getStrFeatures();
 
-	public String getMyBNFormatString() {
-		StringBuilder sb = new StringBuilder();
-		ArrayList<HashSet<String>> strFeas = this.getStrFeatures();
-		for (int i=0;i<strFeas.size();i++) {
-			HashSet<String> strs = strFeas.get(i);
-			for (String str : strs) {
-				int idx = this.getStrIdx(str + "#" + i);
-				if (idx != -1) {
-					sb.append(idx).append(" ");
-				}
-			}
-			sb.append("# ");
-		}
-		return sb.toString().trim();
-	}
+        public String getMyBNFormatString() {
+                StringBuilder sb = new StringBuilder();
+                ArrayList<HashSet<String>> strFeas = this.getStrFeatures();
+                for (int i=0;i<strFeas.size();i++) {
+                        HashSet<String> strs = strFeas.get(i);
+                        for (String str : strs) {
+                                int idx = this.getStrIdx(str + "#" + i);
+                                if (idx != -1) {
+                                        sb.append(idx).append(" ");
+                                }
+                        }
+                        sb.append("# ");
+                }
+                return sb.toString().trim();
+        }
 
-	public String getSVMFormatString() {
-		StringBuilder sb = new StringBuilder();
-		ArrayList<Feature> features = this.getCategoryFeatures();
+        public String getSVMFormatString() {
+                StringBuilder sb = new StringBuilder();
+                ArrayList<Feature> features = this.getCategoryFeatures();
 
-		if (features != null) {
-//			if (categoryFeaSize != -1 && categoryFeaSize != features.size()) {
-//				System.err.println("Category fea size not equal!");
-//				System.exit(1);
-//			}
-			categoryFeaSize = features.size();
+                if (features != null) {
+//                      if (categoryFeaSize != -1 && categoryFeaSize != features.size()) {
+//                              System.err.println("Category fea size not equal!");
+//                              System.exit(1);
+//                      }
+                        categoryFeaSize = features.size();
 
-			String feasToString = Common.feasToSVMString(features);
+                        String feasToString = Common.feasToSVMString(features);
 
-			sb.append(Common.feasToSVMString(features));
+                        sb.append(Common.feasToSVMString(features));
 
-			// System.out.println(features.size() + ":" + feasToString);
+                        // System.out.println(features.size() + ":" + feasToString);
 
-			if (!feasToString.trim().isEmpty()) {
-				int lastIndex = Integer.parseInt(feasToString.substring(
-						feasToString.lastIndexOf(" ") + 1).split(":")[0]);
-				if (lastIndex > this.strFeaFrom) {
-					Common.bangErrorPOS("Increase string feature start index!");
-				}
-			}
-		}
-		ArrayList<HashSet<String>> strFeas = this.getStrFeatures();
-		if (strFeas != null) {
-			if (this.strFeaSize != -1 && this.strFeaSize != strFeas.size()) {
-				System.err.println("String fea size not equal!");
-				System.exit(1);
-			}
-			strFeaSize = strFeas.size();
+                        if (!feasToString.trim().isEmpty()) {
+                                int lastIndex = Integer.parseInt(feasToString.substring(
+                                                feasToString.lastIndexOf(" ") + 1).split(":")[0]);
+                                if (lastIndex > this.strFeaFrom) {
+                                        Common.bangErrorPOS("Increase string feature start index!");
+                                }
+                        }
+                }
+                ArrayList<HashSet<String>> strFeas = this.getStrFeatures();
+                if (strFeas != null) {
+                        if (this.strFeaSize != -1 && this.strFeaSize != strFeas.size()) {
+                                System.err.println("String fea size not equal!");
+                                System.exit(1);
+                        }
+                        strFeaSize = strFeas.size();
 
-			HashSet<Integer> strIndexSet = new HashSet<Integer>();
-			for (int i = 0; i < strFeas.size(); i++) {
-				HashSet<String> strs = strFeas.get(i);
-				for (String str : strs) {
-					int idx = this.getStrIdx(str + "#" + i);
-					if (idx != -1) {
-						strIndexSet.add(idx);
-					}
-				}
-			}
-			ArrayList<Integer> sortedIndexes = new ArrayList<Integer>(
-					strIndexSet);
-			Collections.sort(sortedIndexes);
+                        HashSet<Integer> strIndexSet = new HashSet<Integer>();
+                        for (int i = 0; i < strFeas.size(); i++) {
+                                HashSet<String> strs = strFeas.get(i);
+                                for (String str : strs) {
+                                        int idx = this.getStrIdx(str + "#" + i);
+                                        if (idx != -1) {
+                                                strIndexSet.add(idx);
+                                        }
+                                }
+                        }
+                        ArrayList<Integer> sortedIndexes = new ArrayList<Integer>(
+                                        strIndexSet);
+                        Collections.sort(sortedIndexes);
 
-			for (Integer idx : sortedIndexes) {
-				if (idx + this.strFeaFrom == 15006) {
-					// Common.bangErrorPOS("Get");
-				}
+                        for (Integer idx : sortedIndexes) {
+                                if (idx + this.strFeaFrom == 15006) {
+                                        // Common.bangErrorPOS("Get");
+                                }
 
-				sb.append(" ").append(idx + this.strFeaFrom).append(":1");
-			}
-		}
+                                sb.append(" ").append(idx + this.strFeaFrom).append(":1");
+                        }
+                }
 
-		return sb.toString();
-	}
+                return sb.toString();
+        }
 
-	int categoryFeaSize = -1;
-	int strFeaSize = -1;
+        int categoryFeaSize = -1;
+        int strFeaSize = -1;
 }
