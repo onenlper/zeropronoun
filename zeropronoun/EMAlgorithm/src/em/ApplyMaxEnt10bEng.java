@@ -266,6 +266,12 @@ public class ApplyMaxEnt10bEng {
 			cm.units.clear();
 			Mention.chiSpanMaps.remove(cm.getReadName());
 		}
+		for(int i=0;i<align[0].units.size();i++) {
+			align[0].units.get(i).sentence = chiS;
+		}
+		for(int i=0;i<align[1].units.size();i++) {
+			align[1].units.get(i).sentence = engCoNLLS;
+		}
 		for (Mention em : chiNPs) {
 			int from = em.start - chiSegStart
 					+ offsetMap.get(em.start);
