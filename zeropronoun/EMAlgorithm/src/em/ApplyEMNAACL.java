@@ -74,9 +74,9 @@ public class ApplyEMNAACL {
 					.readObject();
 			contextPrior = (HashMap<String, Double>) modelInput.readObject();
 
-			Context.ss = (HashSet<String>) modelInput.readObject();
-			Context.vs = (HashSet<String>) modelInput.readObject();
-			// Context.svoStat = (SVOStat)modelInput.readObject();
+			ContextNAACL.ss = (HashSet<String>) modelInput.readObject();
+			ContextNAACL.vs = (HashSet<String>) modelInput.readObject();
+			// ContextNAACL.svoStat = (SVOStat)modelInput.readObject();
 			contextSuper = (HashMap<String, double[]>) modelInput.readObject();
 			modelInput.close();
 
@@ -341,7 +341,7 @@ public class ApplyEMNAACL {
 				cand.s = part.getWord(cand.start).sentence;
 				cand.isFS = false;
 				cand.isBest = false;
-				cand.MI = Context.calMI(cand, zero);
+				cand.MI = ContextNAACL.calMI(cand, zero);
 				if (cand.start < zero.start
 						&& zero.sentenceID - cand.sentenceID <= 2) {
 					if (!findFS && cand.gram == EMUtil.Grammatic.subject
@@ -408,10 +408,10 @@ public class ApplyEMNAACL {
 					String ant = cand.head;
 
 					// TODO
-					Context context = Context.buildContext(cand, zero, part,
+					ContextNAACL context = ContextNAACL.buildContext(cand, zero, part,
 							cand.isFS);
-					cand.msg = Context.message;
-					cand.MI = Context.MI;
+					cand.msg = ContextNAACL.message;
+					cand.MI = ContextNAACL.MI;
 					if (cand.MI < -1) {
 						if (m == 0) {
 							if (coref) {
@@ -675,36 +675,36 @@ public class ApplyEMNAACL {
 		// System.out.println("========");
 	}
 
-	public double getMaxEntProb(Mention cand, Mention pro, boolean sameSpeaker,
-			Context context, CoNLLPart part) {
-		String pronoun = pro.extent;
-		String pStr = "";
-		if (sameSpeaker) {
-			pStr = EMUtil.getAntPerson(cand.head).name() + "="
-					+ EMUtil.getPerson(pronoun).name();
-		} else {
-			pStr = EMUtil.getAntPerson(cand.head).name() + "!="
-					+ EMUtil.getPerson(pronoun).name();
-		}
-		String nStr = EMUtil.getAntNumber(cand).name() + "="
-				+ EMUtil.getNumber(pronoun).name();
-		String aStr = EMUtil.getAntAnimacy(cand).name() + "="
-				+ EMUtil.getAnimacy(pronoun).name();
-		String gStr = EMUtil.getAntGender(cand).name() + "="
-				+ EMUtil.getGender(pronoun).name();
-		superFea.configure(pStr, nStr, gStr, aStr, context, cand, pro, part);
-
-		String svm = superFea.getSVMFormatString();
-		svm = "-1 " + svm;
-		Datum<String, String> testIns = Dataset.svmLightLineToDatum(svm);
-		// Datum<String, String> testIns =
-		// EMUtil.svmlightToStanford(superFea.getFeas(), "-1");
-		Counter<String> scores = classifier.scoresOf(testIns);
-		Distribution<String> distr = Distribution
-				.distributionFromLogisticCounter(scores);
-		double prob = distr.getCount("+1");
-		return prob;
-	}
+//	public double getMaxEntProb(Mention cand, Mention pro, boolean sameSpeaker,
+//			ContextNAACL context, CoNLLPart part) {
+//		String pronoun = pro.extent;
+//		String pStr = "";
+//		if (sameSpeaker) {
+//			pStr = EMUtil.getAntPerson(cand.head).name() + "="
+//					+ EMUtil.getPerson(pronoun).name();
+//		} else {
+//			pStr = EMUtil.getAntPerson(cand.head).name() + "!="
+//					+ EMUtil.getPerson(pronoun).name();
+//		}
+//		String nStr = EMUtil.getAntNumber(cand).name() + "="
+//				+ EMUtil.getNumber(pronoun).name();
+//		String aStr = EMUtil.getAntAnimacy(cand).name() + "="
+//				+ EMUtil.getAnimacy(pronoun).name();
+//		String gStr = EMUtil.getAntGender(cand).name() + "="
+//				+ EMUtil.getGender(pronoun).name();
+//		superFea.configure(pStr, nStr, gStr, aStr, context, cand, pro, part);
+//
+//		String svm = superFea.getSVMFormatString();
+//		svm = "-1 " + svm;
+//		Datum<String, String> testIns = Dataset.svmLightLineToDatum(svm);
+//		// Datum<String, String> testIns =
+//		// EMUtil.svmlightToStanford(superFea.getFeas(), "-1");
+//		Counter<String> scores = classifier.scoresOf(testIns);
+//		Distribution<String> distr = Distribution
+//				.distributionFromLogisticCounter(scores);
+//		double prob = distr.getCount("+1");
+//		return prob;
+//	}
 
 	public void addEmptyCategoryNode(Mention zero) {
 		MyTreeNode V = zero.V;
@@ -842,11 +842,11 @@ public class ApplyEMNAACL {
 
 //		Common.outputHashMap(EMUtil.NEMap, "NEMAP");
 
-//		Common.outputHashSet(Context.ss, "miniS");
-//		Common.outputHashSet(Context.vs, "miniV");
+//		Common.outputHashSet(ContextNAACL.ss, "miniS");
+//		Common.outputHashSet(ContextNAACL.vs, "miniV");
 
-		// System.out.println(Context.svoStat.unigramAll);
-		// System.out.println(Context.svoStat.svoAll);
+		// System.out.println(ContextNAACL.svoStat.unigramAll);
+		// System.out.println(ContextNAACL.svoStat.svoAll);
 
 //		Common.outputLines(corrects, "EM.correct.all");
 		Common.pause("!!#");

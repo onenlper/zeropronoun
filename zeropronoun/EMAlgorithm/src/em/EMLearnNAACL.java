@@ -26,11 +26,11 @@ import edu.stanford.nlp.classify.Dataset;
 import edu.stanford.nlp.classify.LinearClassifier;
 import edu.stanford.nlp.classify.LinearClassifierFactory;
 import edu.stanford.nlp.ling.Datum;
-import em.ResolveGroup.Entry;
+import em.ResolveGroupNAACL.EntryNAACL;
 
 public class EMLearnNAACL {
 
-	// static HashMap<Context, Double> p_context_ = new HashMap<Context,
+	// static HashMap<ContextNAACL, Double> p_context_ = new HashMap<ContextNAACL,
 	// Double>();
 
 	static Parameter numberP;
@@ -57,7 +57,7 @@ public class EMLearnNAACL {
 	static int count = 0;
 
 	public static void init() {
-		// static HashMap<Context, Double> p_context_ = new HashMap<Context,
+		// static HashMap<ContextNAACL, Double> p_context_ = new HashMap<ContextNAACL,
 		// Double>();
 		numberP = new Parameter(1.0 / ((double) EMUtil.Number.values().length));
 		genderP = new Parameter(1.0 / ((double) EMUtil.Gender.values().length));
@@ -80,7 +80,7 @@ public class EMLearnNAACL {
 		contextSuper = new HashMap<String, double[]>();
 		qid = 0;
 		count = 0;
-		Context.contextCache.clear();
+		ContextNAACL.contextCache.clear();
 	}
 
 	static FileWriter feaWriter;
@@ -131,7 +131,7 @@ public class EMLearnNAACL {
 		return goldPart.getNameEntities();
 	}
 
-	public static ArrayList<ResolveGroup> extractGroups(CoNLLPart part) {
+	public static ArrayList<ResolveGroupNAACL> extractGroups(CoNLLPart part) {
 		// ArrayList<Element> goldNE = getChGoldNE(part);
 
 		HashMap<String, Integer> chainMap = EMUtil.formChainMap(part
@@ -139,7 +139,7 @@ public class EMLearnNAACL {
 		// System.out.println(chainMap.size());
 		// System.out.println(part.getChains().size());
 
-		ArrayList<ResolveGroup> groups = new ArrayList<ResolveGroup>();
+		ArrayList<ResolveGroupNAACL> groups = new ArrayList<ResolveGroupNAACL>();
 		for (int i = 0; i < part.getCoNLLSentences().size(); i++) {
 			CoNLLSentence s = part.getCoNLLSentences().get(i);
 			s.mentions = EMUtil.extractMention(s);
@@ -172,7 +172,7 @@ public class EMLearnNAACL {
 								- 1
 								));
 					}
-					ResolveGroup rg = new ResolveGroup(
+					ResolveGroupNAACL rg = new ResolveGroupNAACL(
 							EMUtil.getProIdx(m.extent));
 					Collections.sort(ants);
 					Collections.reverse(ants);
@@ -180,7 +180,7 @@ public class EMLearnNAACL {
 					// TODO
 
 					for (Mention ant : ants) {
-						ant.MI = Context.calMI(ant, m);
+						ant.MI = ContextNAACL.calMI(ant, m);
 						ant.isBest = false;
 					}
 
@@ -209,11 +209,11 @@ public class EMLearnNAACL {
 
 						String antSpeaker = part.getWord(ant.start).speaker;
 
-						Context context = Context
+						ContextNAACL context = ContextNAACL
 								.buildContext(ant, m, part, fs);
 
 						boolean sameSpeaker = proSpeaker.equals(antSpeaker);
-						Entry entry = new Entry(ant, context, sameSpeaker, fs);
+						EntryNAACL entry = new EntryNAACL(ant, context, sameSpeaker, fs);
 						rg.entries.add(entry);
 						count++;
 						Double d = contextPrior.get(context.toString());
@@ -284,63 +284,64 @@ public class EMLearnNAACL {
 		return groups;
 	}
 
-	private static void addMaxEnt(HashMap<String, Integer> chainMap,
-			Mention ant, Mention m, Context context, boolean sameSpeaker,
-			Entry entry, CoNLLPart part) {
-		boolean coref = chainMap.containsKey(m.toName())
-				&& chainMap.containsKey(ant.toName())
-				&& chainMap.get(m.toName()).intValue() == chainMap.get(
-						ant.toName()).intValue();
+//	private static void addMaxEnt(HashMap<String, Integer> chainMap,
+//			Mention ant, Mention m, ContextNAACL context, boolean sameSpeaker,
+//			EntryNAACL entry, CoNLLPart part) {
+//		boolean coref = chainMap.containsKey(m.toName())
+//				&& chainMap.containsKey(ant.toName())
+//				&& chainMap.get(m.toName()).intValue() == chainMap.get(
+//						ant.toName()).intValue();
+//
+//		String pStr = "";
+//		if (sameSpeaker) {
+//			pStr = entry.person.name() + "="
+//					+ EMUtil.getPerson(m.extent).name();
+//		} else {
+//			pStr = entry.person.name() + "!="
+//					+ EMUtil.getPerson(m.extent).name();
+//		}
+//		String nStr = entry.number.name() + "="
+//				+ EMUtil.getNumber(m.extent).name();
+//		String gStr = entry.gender.name() + "="
+//				+ EMUtil.getGender(m.extent).name();
+//		String aStr = entry.animacy.name() + "="
+//				+ EMUtil.getAnimacy(m.extent).name();
+//
+//		superFea.configure(pStr, nStr, gStr, aStr, context, m, ant, part);
+//
+//		String svm = superFea.getSVMFormatString();
+//		String label = "";
+//		if (coref) {
+//			label = "+1";
+//			svmRanks.add("2 qid:" + qid + " " + svm);
+//		} else {
+//			label = "-1";
+//			svmRanks.add("1 qid:" + qid + " " + svm);
+//		}
+//		svm = label + " " + svm;
+//		try {
+//			superviseFw.write(svm + "\n");
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//			Common.bangErrorPOS("!");
+//		}
+//		// TODO
+//		trainingData.add(Dataset.svmLightLineToDatum(svm));
+//		ArrayList<String> feas = superFea.getFeas();
+//		// if (!feas.get(feas.size() - 1).startsWith("0")) {
+//		// if (coref) {
+//		// match++;
+//		// }
+//		// XallX++;
+//		// }
+//		// trainingData.add(EMUtil.svmlightToStanford(superFea.getFeas(),
+//		// label));
+//	}
 
-		String pStr = "";
-		if (sameSpeaker) {
-			pStr = entry.person.name() + "="
-					+ EMUtil.getPerson(m.extent).name();
-		} else {
-			pStr = entry.person.name() + "!="
-					+ EMUtil.getPerson(m.extent).name();
-		}
-		String nStr = entry.number.name() + "="
-				+ EMUtil.getNumber(m.extent).name();
-		String gStr = entry.gender.name() + "="
-				+ EMUtil.getGender(m.extent).name();
-		String aStr = entry.animacy.name() + "="
-				+ EMUtil.getAnimacy(m.extent).name();
-
-		superFea.configure(pStr, nStr, gStr, aStr, context, m, ant, part);
-
-		String svm = superFea.getSVMFormatString();
-		String label = "";
-		if (coref) {
-			label = "+1";
-			svmRanks.add("2 qid:" + qid + " " + svm);
-		} else {
-			label = "-1";
-			svmRanks.add("1 qid:" + qid + " " + svm);
-		}
-		svm = label + " " + svm;
-		try {
-			superviseFw.write(svm + "\n");
-		} catch (Exception e) {
-			e.printStackTrace();
-			Common.bangErrorPOS("!");
-		}
-		// TODO
-		trainingData.add(Dataset.svmLightLineToDatum(svm));
-		ArrayList<String> feas = superFea.getFeas();
-		// if (!feas.get(feas.size() - 1).startsWith("0")) {
-		// if (coref) {
-		// match++;
-		// }
-		// XallX++;
-		// }
-		// trainingData.add(EMUtil.svmlightToStanford(superFea.getFeas(),
-		// label));
-	}
-
-	private static void extractCoNLL(ArrayList<ResolveGroup> groups) {
+	private static void extractCoNLL(ArrayList<ResolveGroupNAACL> groups) {
 		// CoNLLDocument d = new CoNLLDocument("train_auto_conll");
 		CoNLLDocument d = new CoNLLDocument("train_gold_conll");
+		System.out.println("READ IN>>>");
 		ArrayList<CoNLLPart> parts = new ArrayList<CoNLLPart>();
 		parts.addAll(d.getParts());
 		int i = parts.size();
@@ -363,7 +364,7 @@ public class EMLearnNAACL {
 
 	static int percent = 0;
 
-	private static void extractGigaword(ArrayList<ResolveGroup> groups)
+	private static void extractGigaword(ArrayList<ResolveGroupNAACL> groups)
 			throws Exception {
 
 		String folder = "/users/yzcchen/chen3/zeroEM/parser/";
@@ -438,13 +439,13 @@ public class EMLearnNAACL {
 		}
 	}
 
-	public static void estep(ArrayList<ResolveGroup> groups) {
-		for (ResolveGroup group : groups) {
+	public static void estep(ArrayList<ResolveGroupNAACL> groups) {
+		for (ResolveGroupNAACL group : groups) {
 			String pronoun = EMUtil.pronounList.get(group.pronoun);
 			double norm = 0;
-			for (Entry entry : group.entries) {
+			for (EntryNAACL entry : group.entries) {
 				String ant = entry.head;
-				Context context = entry.context;
+				ContextNAACL context = entry.context;
 				double p_person = 0;
 				if (entry.sameSpeaker) {
 					p_person = personP.getVal(entry.person.name(), EMUtil
@@ -491,13 +492,13 @@ public class EMLearnNAACL {
 				norm += entry.p;
 			}
 
-			for (Entry entry : group.entries) {
+			for (EntryNAACL entry : group.entries) {
 				entry.p = entry.p / norm;
 			}
 		}
 	}
 
-	public static void mstep(ArrayList<ResolveGroup> groups) {
+	public static void mstep(ArrayList<ResolveGroupNAACL> groups) {
 		genderP.resetCounts();
 		numberP.resetCounts();
 		animacyP.resetCounts();
@@ -505,13 +506,13 @@ public class EMLearnNAACL {
 		personQP.resetCounts();
 		fracContextCount.clear();
 
-		for (ResolveGroup group : groups) {
+		for (ResolveGroupNAACL group : groups) {
 			String pronoun = EMUtil.pronounList.get(group.pronoun);
 
-			for (Entry entry : group.entries) {
+			for (EntryNAACL entry : group.entries) {
 				double p = entry.p;
 				String ant = entry.head;
-				Context context = entry.context;
+				ContextNAACL context = entry.context;
 				numberP.addFracCount(entry.number.name(),
 						EMUtil.getNumber(pronoun).name(), p);
 				genderP.addFracCount(entry.gender.name(),
@@ -573,7 +574,7 @@ public class EMLearnNAACL {
 		superFea = new SuperviseFea(true, "supervise");
 		superviseFw = new FileWriter("supervise.train");
 
-		ArrayList<ResolveGroup> groups = new ArrayList<ResolveGroup>();
+		ArrayList<ResolveGroupNAACL> groups = new ArrayList<ResolveGroupNAACL>();
 
 		extractCoNLL(groups);
 		// extractGigaword(groups);
@@ -581,7 +582,7 @@ public class EMLearnNAACL {
 		Common.pause(groups.size());
 
 		HashMap<String, Double> map = new HashMap<String, Double>();
-		for(ResolveGroup rg : groups) {
+		for(ResolveGroupNAACL rg : groups) {
 			String pr = EMUtil.pronounList.get(rg.pronoun);
 			Double i = map.get(pr);
 			if(i==null) {
@@ -650,9 +651,9 @@ public class EMLearnNAACL {
 		modelOut.writeObject(fracContextCount);
 		modelOut.writeObject(contextPrior);
 
-		modelOut.writeObject(Context.ss);
-		modelOut.writeObject(Context.vs);
-		// modelOut.writeObject(Context.svoStat);
+		modelOut.writeObject(ContextNAACL.ss);
+		modelOut.writeObject(ContextNAACL.vs);
+		// modelOut.writeObject(ContextNAACL.svoStat);
 
 		modelOut.writeObject(contextSuper);
 
@@ -661,7 +662,7 @@ public class EMLearnNAACL {
 		// ObjectOutputStream svoStat = new ObjectOutputStream(new
 		// FileOutputStream(
 		// "/dev/shm/svoStat"));
-		// svoStat.writeObject(Context.svoStat);
+		// svoStat.writeObject(ContextNAACL.svoStat);
 		// svoStat.close();
 
 		// System.out.println(EMUtil.missed);
