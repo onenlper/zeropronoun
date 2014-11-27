@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,11 +22,7 @@ import model.CoNLL.CoNLLWord;
 import model.CoNLL.OntoCorefXMLReader;
 import model.syntaxTree.MyTreeNode;
 import util.Common;
-import edu.stanford.nlp.classify.Dataset;
 import edu.stanford.nlp.classify.LinearClassifier;
-import edu.stanford.nlp.ling.Datum;
-import edu.stanford.nlp.stats.Counter;
-import edu.stanford.nlp.stats.Distribution;
 import em.EMUtil.Grammatic;
 
 public class ApplyEMNAACL {
@@ -38,6 +35,12 @@ public class ApplyEMNAACL {
 	Parameter personP;
 	Parameter personQP;
 
+//	HashMap<String, Double> numberPrior = new HashMap<String, Double>();
+//	HashMap<String, Double> genderPrior = new HashMap<String, Double>();
+//	HashMap<String, Double> personPrior = new HashMap<String, Double>();
+//	HashMap<String, Double> personQPrior = new HashMap<String, Double>();
+//	HashMap<String, Double> animacyPrior = new HashMap<String, Double>();
+	
 	double contextOverall;
 
 	HashMap<String, Double> contextPrior;
@@ -57,8 +60,6 @@ public class ApplyEMNAACL {
 
 	SuperviseFea superFea;
 
-	HashMap<String, double[]> contextSuper;
-
 	@SuppressWarnings("unchecked")
 	public ApplyEMNAACL(String folder) {
 		this.folder = folder;
@@ -77,7 +78,13 @@ public class ApplyEMNAACL {
 			ContextNAACL.ss = (HashSet<String>) modelInput.readObject();
 			ContextNAACL.vs = (HashSet<String>) modelInput.readObject();
 			// ContextNAACL.svoStat = (SVOStat)modelInput.readObject();
-			contextSuper = (HashMap<String, double[]>) modelInput.readObject();
+			
+//			numberPrior = (HashMap<String, Double>) modelInput.readObject();
+//			genderPrior = (HashMap<String, Double>) modelInput.readObject();
+//			personPrior = (HashMap<String, Double>) modelInput.readObject();
+//			personQPrior = (HashMap<String, Double>) modelInput.readObject();
+//			animacyPrior = (HashMap<String, Double>) modelInput.readObject();
+			
 			modelInput.close();
 
 			classifier = LinearClassifier
@@ -228,9 +235,6 @@ public class ApplyEMNAACL {
 		}
 	}
 
-	public static ArrayList<String> goods = new ArrayList<String>();
-	public static ArrayList<String> bads = new ArrayList<String>();
-
 	double good = 0;
 	double bad = 0;
 
@@ -243,8 +247,9 @@ public class ApplyEMNAACL {
 
 		for (String file : files) {
 			System.out.println(file);
-			CoNLLDocument document = new CoNLLDocument(file.replace(
-					"auto_conll", "gold_conll"));
+			CoNLLDocument document = new CoNLLDocument(file
+					.replace("auto_conll", "gold_conll")
+					);
 			OntoCorefXMLReader.addGoldZeroPronouns(document, false);
 
 			for (int k = 0; k < document.getParts().size(); k++) {
@@ -330,7 +335,6 @@ public class ApplyEMNAACL {
 			ArrayList<Mention> cands = new ArrayList<Mention>();
 			boolean findFS = false;
 
-			ArrayList<String> taMSGs = new ArrayList<String>();
 			String taMSg = "";
 			String bestMSg = "";
 			for (int h = allCandidates.size() - 1; h >= 0; h--) {
@@ -364,7 +368,22 @@ public class ApplyEMNAACL {
 			}
 
 			boolean findBest = findBest(zero, cands);
-
+			String v = EMUtil.getFirstVerb(zero.V);
+			String o = EMUtil.getObjectNP(zero.V);
+			System.out.println(v + "@@@");
+//			int all = EMUtil.Number.values().length;
+//            HashMap<String, Double> anaphorConfNumber = selectRestriction("number", all, v, o);
+//
+//            all = EMUtil.Gender.values().length - 1;
+//            HashMap<String, Double> anaphorConfGender = selectRestriction("gender", all, v, o);
+//
+//            all = EMUtil.Person.values().length;
+//            HashMap<String, Double> anaphorConfPerson = selectRestriction("person", all, v, o);
+//
+//            all = EMUtil.Animacy.values().length - 1;
+//            HashMap<String, Double> anaphorConfAnimacy = selectRestriction("animacy", all, v, o);
+			
+            System.out.println("=================");
 			// if(zero.start==179) {
 			// for(Mention cand : cands) {
 			// System.out.println(cand.extent);
@@ -372,29 +391,27 @@ public class ApplyEMNAACL {
 			// Common.bangErrorPOS("");
 			// }
 			int chose = -1;
-			double votes[] = new double[cands.size()];
 			for (int m = 0; m < EMUtil.pronounList.size(); m++) {
 				String pronoun = EMUtil.pronounList.get(m);
 				zero.extent = pronoun;
-				double norm = 0;
 
-				double probs[] = new double[cands.size()];
-
+				HashMap<String, Double> anaphorConfNumber = new HashMap<String, Double>();
+				anaphorConfNumber.put(EMUtil.getNumber(pronoun).name(), 1.0);
+				
+				HashMap<String, Double> anaphorConfGender = new HashMap<String, Double>();
+				anaphorConfGender.put(EMUtil.getGender(pronoun).name(), 1.0);
+				
+				HashMap<String, Double> anaphorConfPerson = new HashMap<String, Double>();
+				anaphorConfPerson.put(EMUtil.getPerson(pronoun).name(), 1.0);
+				
+				HashMap<String, Double> anaphorConfAnimacy = new HashMap<String, Double>();
+				anaphorConfAnimacy.put(EMUtil.getAnimacy(pronoun).name(), 1.0);
+				
 				for (int i = 0; i < cands.size(); i++) {
 					Mention cand = cands.get(i);
 					if (cand.extent.isEmpty()) {
 						continue;
 					}
-
-					// if(cand.gram != EMUtil.Grammatic.subject) {
-					// continue;
-					// }
-					// if(!cand.isBest) {
-					// continue;
-					// }
-
-					// if(!cand.isFS)
-					// continue;
 
 					String antSpeaker = part.getWord(cand.start).speaker;
 					cand.sentenceID = part.getWord(cand.start).sentence
@@ -412,126 +429,60 @@ public class ApplyEMNAACL {
 							cand.isFS);
 					cand.msg = ContextNAACL.message;
 					cand.MI = ContextNAACL.MI;
-					if (cand.MI < -1) {
-						if (m == 0) {
-							if (coref) {
-								// System.out.println(coref);
-								// System.out.println(cand.msg);
-							} else {
-								// System.out.println(coref);
-								// System.out.println(cand.msg);
-							}
-						}
-						// continue;
-					}
-
-					if (m == 0) {
-						if (coref) {
-							goods.add(Double.toString(cand.MI));
-						} else {
-							bads.add(Double.toString(cand.MI));
-						}
-					}
 
 					boolean sameSpeaker = proSpeaker.equals(antSpeaker);
-					double p_person = 0;
-					if (sameSpeaker) {
-						p_person = personP.getVal(EMUtil.getAntPerson(ant)
-								.name(), EMUtil.getPerson(pronoun).name());
-					} else {
-						p_person = personQP.getVal(EMUtil.getAntPerson(ant)
-								.name(), EMUtil.getPerson(pronoun).name());
-					}
 					cand.person = EMUtil.getAntPerson(ant);
-					double p_number = numberP.getVal(EMUtil.getAntNumber(cand)
-							.name(), EMUtil.getNumber(pronoun).name());
 					cand.number = EMUtil.getAntNumber(cand);
-					double p_animacy = animacyP.getVal(
-							EMUtil.getAntAnimacy(cand).name(), EMUtil
-									.getAnimacy(pronoun).name());
 					cand.animacy = EMUtil.getAntAnimacy(cand);
-					double p_gender = genderP.getVal(EMUtil.getAntGender(cand)
-							.name(), EMUtil.getGender(pronoun).name());
 					cand.gender = EMUtil.getAntGender(cand);
-					// double p_number = numberP.getVal(cand.head,
-					// EMUtil.getNumber(pronoun).name());
-					// double p_animacy = animacyP.getVal(cand.head,
-					// EMUtil.getAnimacy(pronoun).name());
-					// double p_gender = genderP.getVal(cand.head,
-					// EMUtil.getGender(pronoun).name());
+					
+					double p_person = 0;
+					double p_number = 0;
+					double p_animacy = 0;
+					double p_gender = 0;
+					
+//					if (sameSpeaker) {
+//						p_person = personP.getVal(cand.person.name(), EMUtil.getPerson(pronoun).name());
+//					} else {
+//						p_person = personQP.getVal(cand.person.name(), EMUtil.getPerson(pronoun).name());
+//					}
+//					p_number = numberP.getVal(cand.number.name(), EMUtil.getNumber(pronoun).name());
+//					p_animacy = animacyP.getVal(cand.animacy.name(), EMUtil.getAnimacy(pronoun).name());
+//					p_gender = genderP.getVal(cand.gender.name(), EMUtil.getGender(pronoun).name());
+					
+					
+					if(sameSpeaker) {
+						p_person = getProb2(anaphorConfPerson, personP, cand.person.name());
+					} else {
+						p_person = getProb2(anaphorConfPerson, personQP, cand.person.name());
+					}
+					p_number = getProb2(anaphorConfNumber, numberP, cand.number.name());
+					p_animacy = getProb2(anaphorConfAnimacy, animacyP, cand.animacy.name());
+					p_gender = getProb2(anaphorConfGender, genderP, cand.gender.name());
+					
+//					(ArrayList<String> attris, HashMap<String, Double> anaphorConf, Parameter parameter, String candidateAtt)
 
 					double p_context = 0.0000000000000000000000000000000000000000000001;
 					if (fracContextCount.containsKey(context.toString())) {
-						p_context = (1.0 * EMUtil.alpha + fracContextCount
-								.get(context.toString()))
-								/ (2.0 * EMUtil.alpha + contextPrior
-										.get(context.toString()));
+						p_context = (1.0 * EMUtil.alpha + fracContextCount.get(context.toString()))
+								/ (2.0 * EMUtil.alpha + contextPrior.get(context.toString()));
 					} else {
 						p_context = 1.0 / 2.0;
 					}
 
-					// double p_context = 1;
-					// if(contextSuper.containsKey(context.toString())) {
-					// double[] s = contextSuper.get(context.toString());
-					// p_context = s[0]/(s[0]+s[1]);
-					// }
-
-//					double maxentP = this.getMaxEntProb(cand, zero,
-//							sameSpeaker, context, part);
-
-					double p2nd = p_person * p_number * p_gender * p_animacy
-							* p_context * 1;
-
-					if (pronoun.equals("它")) {
-						String msg = p_person + "\t" + p_number + "\t"
-								+ p_gender + "\t" + p_animacy + "\t"
-								+ p_context;
-						taMSGs.add(msg);
-					}
+					double p2nd = p_person * p_number * p_gender * p_animacy * p_context * 1;
 
 					double p = p2nd;
-					norm += p;
-					probs[i] = p;
-					// p = 1;
-					// System.out.println(p);
-
-					// p = maxentP;
 
 					if (p > maxP) {
 						antecedent = cand;
 						maxP = p;
-						overtPro = pronoun;
+//						overtPro = pronoun;
 						bestMSg = p_person + "\t" + p_number + "\t" + p_gender
 								+ "\t" + p_animacy + "\t" + p_context;
 						chose = i;
 					}
-					// if(coref) {
-					// antecedent = cand;
-					// }
 				}
-
-				// normalize
-				for (int i = 0; i < probs.length; i++) {
-					probs[i] = probs[i] / norm;
-				}
-
-				for (int i = 0; i < probs.length; i++) {
-					double prob = probs[i];
-					votes[i] += prob;
-				}
-			}
-
-			if (votes.length != 0) {
-				double maxProb = 0;
-				int maxIndex = -1;
-				for (int i = 0; i < votes.length; i++) {
-					double vote = votes[i];
-					if (vote > maxProb) {
-						maxProb = vote;
-						maxIndex = i;
-					}
-				}
-				// antecedent = cands.get(maxIndex);
 			}
 
 			if (antecedent != null) {
@@ -548,7 +499,6 @@ public class ApplyEMNAACL {
 				this.addEmptyCategoryNode(zero);
 				// System.out.println(zero.start);
 				// System.out.println(antecedent.extent);
-				taMSg = taMSGs.get(chose);
 			}
 			if (zero.antecedent != null
 					&& zero.antecedent.end != -1
@@ -660,6 +610,78 @@ public class ApplyEMNAACL {
 			}
 		}
 	}
+	
+	public static HashMap<String, Double> selectRestriction(String attri, int all, String v, String o) {
+        HashMap<Integer, Integer> map = null;
+        String key = v + " " + o;
+        if (attri.equals("number")) {
+        	if(o==null || o.isEmpty() || true)
+        		map = ContextNAACL.svoStat.numberStat.get(v);	
+        	else
+        		map = ContextNAACL.svoStat.numberStat2.get(key);
+        } else if (attri.equals("gender")) {
+        	if(o==null || o.isEmpty() || true)
+        		map = ContextNAACL.svoStat.genderStat.get(v);
+        	else
+        		map = ContextNAACL.svoStat.genderStat2.get(key);
+        } else if (attri.equals("person")) {
+        	if(o==null || o.isEmpty() || true)
+        		map = ContextNAACL.svoStat.personStat.get(v);
+        	else 
+        		map = ContextNAACL.svoStat.personStat2.get(key);
+        } else if (attri.equals("animacy")) {
+        	if(o==null || o.isEmpty() || true)
+        		map = ContextNAACL.svoStat.animacyStat.get(v);
+        	else
+        		map = ContextNAACL.svoStat.animacyStat2.get(key);
+        } else {
+        	Common.bangErrorPOS("No Such Attri");
+        }
+        double ret[] = new double[all];
+        if (map == null) {
+        	for (int i = 0; i < all; i++) {
+        		ret[i] = 1.0 / all;
+        	}
+        } else {
+        	double max =0;
+        	for(Integer k : map.keySet()) {
+        		max = Math.max(max, map.get(k));
+        	}
+        	double smoother = max/2.5;
+        	double overall = smoother * all;
+        	for (Integer k : map.keySet()) {
+        		overall += map.get(k);
+        	}
+        	for (int i = 0; i < all; i++) {
+        		double val = 0;
+        		if (map.containsKey(i)) {
+        			val = map.get(i);
+        		}
+        		ret[i] = (val+smoother) / overall;
+        	}
+        }
+        HashMap<String, Double> retMap = new HashMap<String, Double>();
+        for(int i=0;i<ret.length;i++) {
+        	double prob = ret[i];
+        	key = "";
+        	
+        	if(attri.equals("number")) {
+        		key = EMUtil.Number.values()[i].name();
+            } else if(attri.equals("person")) {
+            	key = EMUtil.Person.values()[i].name();
+            } else if(attri.equals("gender")) {
+            	key = EMUtil.Gender.values()[i].name();
+            } else if(attri.equals("animacy")) {
+            	key = EMUtil.Animacy.values()[i].name();
+            } else {
+            	Common.bangErrorPOS("No Such Attri");
+            }
+        	retMap.put(key, prob);
+        	System.out.println(key + "#" + prob);
+        }
+        System.out.println("---");
+        return retMap;
+}
 
 	protected void printResult(Mention zero, Mention systemAnte, CoNLLPart part) {
 		StringBuilder sb = new StringBuilder();
@@ -813,6 +835,66 @@ public class ApplyEMNAACL {
 		System.out.println("F-score: " + f * 100);
 	}
 
+	public static double getProb2(HashMap<String, Double> anaphorConf, Parameter parameter, String candidateAtt) {
+		double ret = 0;
+		for(String anaphorAtt : parameter.subKeys) {
+			double prob1 = 0;
+			if(anaphorConf.containsKey(anaphorAtt)) {
+				prob1 = anaphorConf.get(anaphorAtt);
+			}
+			double prob2 = parameter.getVal(candidateAtt, anaphorAtt);
+			ret += prob1 * prob2;
+		}
+		return ret;
+	}
+	
+	private double getProb(ArrayList<String> attris, HashMap<String, Double> candConf, HashMap<String, Double> anaConf, 
+			Parameter parameter, HashMap<String, Double> prior) {
+		System.out.println(candConf);
+		
+		double p_cand_tense = 0;
+		for(String tc : attris) {
+			double p1 = 0;
+			double p2 = 0;
+			if(candConf.containsKey(tc)) {
+				p1 = candConf.get(tc);
+			}
+			if(prior.containsKey(tc)) {
+				p2 = prior.get(tc);
+			}
+			p_cand_tense += p1 * p2;
+		}
+		
+		double p = 0;
+		for(String ta : attris.subList(0, attris.size()-1)) {
+			double p_ana_tense = 0;
+			if(anaConf.containsKey(ta)) {
+				p_ana_tense = anaConf.get(ta);
+			}
+			
+			double p_ta_cand = 0;
+			
+			for(String tc : attris) {
+				double p1 = 0;
+				double p2 = 0;
+				double p3 = 0;
+				
+				if(candConf.containsKey(tc)) {
+					p1 = candConf.get(tc);
+				}
+				p2 = parameter.getVal(tc, ta);
+				
+				if(prior.containsKey(tc)) {
+					p3 = prior.get(tc);
+				}
+				p_ta_cand += p1 * p2 * p3;
+			}
+			
+			p += p_ana_tense*p_ta_cand/p_cand_tense;
+		}
+		return p;
+	}
+	
 	static ArrayList<String> corrects = new ArrayList<String>();
 
 	public static void main(String args[]) {
@@ -836,9 +918,6 @@ public class ApplyEMNAACL {
 
 		// System.out.println(EMUtil.missed);
 		System.out.println(EMUtil.missed.size());
-
-		Common.outputLines(goods, "goods");
-		Common.outputLines(bads, "bas");
 
 //		Common.outputHashMap(EMUtil.NEMap, "NEMAP");
 

@@ -39,19 +39,25 @@ public class EMLearnNAACL {
 	static Parameter personQP;
 	static Parameter animacyP;
 
-	static Parameter gNumberP;
-	static Parameter gGenderP;
-	static Parameter gPersonP;
-	static Parameter gPersonQP;
-	static Parameter gAnimacyP;
+//	static Parameter gNumberP;
+//	static Parameter gGenderP;
+//	static Parameter gPersonP;
+//	static Parameter gPersonQP;
+//	static Parameter gAnimacyP;
 
 	static HashMap<String, Double> contextPrior;
 	static HashMap<String, Double> contextOverall;
 	static HashMap<String, Double> fracContextCount;
 	static List<Datum<String, String>> trainingData;
 	static ArrayList<String> svmRanks;
-	static HashMap<String, double[]> contextSuper;
 
+	
+//	static HashMap<String, Double> numberPrior = new HashMap<String, Double>();
+//	static HashMap<String, Double> genderPrior = new HashMap<String, Double>();
+//	static HashMap<String, Double> personPrior = new HashMap<String, Double>();
+//	static HashMap<String, Double> personQPrior = new HashMap<String, Double>();
+//	static HashMap<String, Double> animacyPrior = new HashMap<String, Double>();
+	
 	public static int qid = 0;
 
 	static int count = 0;
@@ -60,24 +66,40 @@ public class EMLearnNAACL {
 		// static HashMap<ContextNAACL, Double> p_context_ = new HashMap<ContextNAACL,
 		// Double>();
 		numberP = new Parameter(1.0 / ((double) EMUtil.Number.values().length));
+		numberP.subKeys.add(EMUtil.Number.single.name());
+		numberP.subKeys.add(EMUtil.Number.plural.name());
+		
 		genderP = new Parameter(1.0 / ((double) EMUtil.Gender.values().length));
+		genderP.subKeys.add(EMUtil.Gender.male.name());
+		genderP.subKeys.add(EMUtil.Gender.female.name());
+		genderP.subKeys.add(EMUtil.Gender.neuter.name());
+		
 		personP = new Parameter(1.0 / ((double) EMUtil.Person.values().length));
+		personP.subKeys.add(EMUtil.Person.first.name());
+		personP.subKeys.add(EMUtil.Person.second.name());
+		personP.subKeys.add(EMUtil.Person.third.name());
+		
 		personQP = new Parameter(1.0 / ((double) EMUtil.Person.values().length));
+		personQP.subKeys.add(EMUtil.Person.first.name());
+		personQP.subKeys.add(EMUtil.Person.second.name());
+		personQP.subKeys.add(EMUtil.Person.third.name());
+		
 		animacyP = new Parameter(
 				1.0 / ((double) EMUtil.Animacy.values().length));
+		animacyP.subKeys.add(EMUtil.Animacy.animate.name());
+		animacyP.subKeys.add(EMUtil.Animacy.unanimate.name());
 
-		gNumberP = new Parameter();
-		gGenderP = new Parameter();
-		gPersonP = new Parameter();
-		gPersonQP = new Parameter();
-		gAnimacyP = new Parameter();
+//		gNumberP = new Parameter();
+//		gGenderP = new Parameter();
+//		gPersonP = new Parameter();
+//		gPersonQP = new Parameter();
+//		gAnimacyP = new Parameter();
 
 		contextPrior = new HashMap<String, Double>();
 		contextOverall = new HashMap<String, Double>();
 		fracContextCount = new HashMap<String, Double>();
 		trainingData = new ArrayList<Datum<String, String>>();
 		svmRanks = new ArrayList<String>();
-		contextSuper = new HashMap<String, double[]>();
 		qid = 0;
 		count = 0;
 		ContextNAACL.contextCache.clear();
@@ -172,8 +194,7 @@ public class EMLearnNAACL {
 								- 1
 								));
 					}
-					ResolveGroupNAACL rg = new ResolveGroupNAACL(
-							EMUtil.getProIdx(m.extent));
+					ResolveGroupNAACL rg = new ResolveGroupNAACL(m.extent);
 					Collections.sort(ants);
 					Collections.reverse(ants);
 					boolean findFirstSubj = false;
@@ -214,6 +235,16 @@ public class EMLearnNAACL {
 
 						boolean sameSpeaker = proSpeaker.equals(antSpeaker);
 						EntryNAACL entry = new EntryNAACL(ant, context, sameSpeaker, fs);
+						
+//						addOne(entry.number.name(), numberPrior);
+//						addOne(entry.gender.name(), genderPrior);
+//						if(sameSpeaker) {
+//							addOne(entry.person.name(), personPrior);
+//						} else {
+//							addOne(entry.person.name(), personQPrior);
+//						}
+//						addOne(entry.animacy.name(), animacyPrior);
+						
 						rg.entries.add(entry);
 						count++;
 						Double d = contextPrior.get(context.toString());
@@ -228,17 +259,17 @@ public class EMLearnNAACL {
 								&& chainMap.get(m.toName()).intValue() == chainMap
 										.get(ant.toName()).intValue();
 
-						double[] contextStat = contextSuper.get(context
-								.toString());
-						if (contextStat == null) {
-							contextStat = new double[2];
-							contextSuper.put(context.toString(), contextStat);
-						}
-						if (coref) {
-							contextStat[0]++;
-						} else {
-							contextStat[1]++;
-						}
+//						double[] contextStat = contextSuper.get(context
+//								.toString());
+//						if (contextStat == null) {
+//							contextStat = new double[2];
+//							contextSuper.put(context.toString(), contextStat);
+//						}
+//						if (coref) {
+//							contextStat[0]++;
+//						} else {
+//							contextStat[1]++;
+//						}
 
 						String pronoun = m.extent;
 
@@ -249,21 +280,20 @@ public class EMLearnNAACL {
 //									.getGender(pronoun).name(), 1);
 //							gAnimacyP.addFracCount(entry.animacy.name(), EMUtil
 //									.getAnimacy(pronoun).name(), 1);
-							
-							gNumberP.addFracCount(entry.head, EMUtil
-									.getNumber(pronoun).name(), 1);
-							gGenderP.addFracCount(entry.head, EMUtil
-									.getGender(pronoun).name(), 1);
-							gAnimacyP.addFracCount(entry.head, EMUtil
-									.getAnimacy(pronoun).name(), 1);
-							
-							if (sameSpeaker) {
-								gPersonP.addFracCount(entry.person.name(),
-										EMUtil.getPerson(pronoun).name(), 1);
-							} else {
-								gPersonQP.addFracCount(entry.person.name(),
-										EMUtil.getPerson(pronoun).name(), 1);
-							}
+//							gNumberP.addFracCount(entry.head, EMUtil
+//									.getNumber(pronoun).name(), 1);
+//							gGenderP.addFracCount(entry.head, EMUtil
+//									.getGender(pronoun).name(), 1);
+//							gAnimacyP.addFracCount(entry.head, EMUtil
+//									.getAnimacy(pronoun).name(), 1);
+//							
+//							if (sameSpeaker) {
+//								gPersonP.addFracCount(entry.person.name(),
+//										EMUtil.getPerson(pronoun).name(), 1);
+//							} else {
+//								gPersonQP.addFracCount(entry.person.name(),
+//										EMUtil.getPerson(pronoun).name(), 1);
+//							}
 						}
 
 //						addMaxEnt(chainMap, ant, m, context, sameSpeaker,
@@ -271,19 +301,113 @@ public class EMLearnNAACL {
 					}
 					groups.add(rg);
 
-					try {
-						extractGuessPronounFea(m, s, part);
-					} catch (Exception e) {
-						System.out.println(s.getText());
-						System.out.println(m.extent);
-						System.exit(1);
-					}
+//					try {
+//						extractGuessPronounFea(m, s, part);
+//					} catch (Exception e) {
+//						System.out.println(s.getText());
+//						System.out.println(m.extent);
+//						System.exit(1);
+//					}
 				}
 			}
 		}
 		return groups;
 	}
+	
+	public static ArrayList<ResolveGroupNAACL> extractZeroGroups(CoNLLPart part) {
+		ArrayList<ResolveGroupNAACL> groups = new ArrayList<ResolveGroupNAACL>();
+		
+		ArrayList<Mention> anaphorZeros = EMUtil.getAnaphorZeros(part
+				.getChains());
+//		ArrayList<Mention> anaphorZeros = ZeroDetect.getHeuristicZeros(part);
+		Collections.sort(anaphorZeros);
+		for(Mention m : anaphorZeros) {
+			String proSpeaker = part.getWord(m.start).speaker;
+			
+			m.s = part.getWord(m.start).sentence;
+			ArrayList<Mention> ants = new ArrayList<Mention>();
+			int sid = m.s.getSentenceIdx(); 
+			if(sid >= 2) {
+				ants.addAll(part.getCoNLLSentences().get(sid-2).mentions);
+			}
+			if(sid >= 1) {
+				ants.addAll(part.getCoNLLSentences().get(sid-1).mentions);
+			}
+			for(Mention ant : m.s.mentions) {
+				if(ant.end<m.start) {
+					ants.add(ant);
+				}
+			}
+			
+			EMUtil.assignVNode(m, part);
+			
+			ResolveGroupNAACL rg = new ResolveGroupNAACL(m.extent);
+			Collections.sort(ants);
+			Collections.reverse(ants);
+			boolean findFirstSubj = false;
+			// TODO
 
+			for (Mention ant : ants) {
+				ant.MI = ContextNAACL.calMI(ant, m);
+				ant.isBest = false;
+			}
+
+			ApplyEM.findBest(m, ants);
+
+			for (int k = 0; k < ants.size(); k++) {
+				Mention ant = ants.get(k);
+				// add antecedents
+				boolean fs = false;
+				if (!findFirstSubj
+						&& ant.gram == EMUtil.Grammatic.subject
+				// && !ant.s.getWord(ant.headInS).posTag.equals("NT")
+				) {
+					findFirstSubj = true;
+					fs = true;
+				}
+
+				String antSpeaker = part.getWord(ant.start).speaker;
+
+				ContextNAACL context = ContextNAACL
+						.buildContext(ant, m, part, fs);
+
+				boolean sameSpeaker = proSpeaker.equals(antSpeaker);
+				EntryNAACL entry = new EntryNAACL(ant, context, sameSpeaker, fs);
+				
+//				addOne(entry.number.name(), numberPrior);
+//				addOne(entry.gender.name(), genderPrior);
+//				if(sameSpeaker) {
+//					addOne(entry.person.name(), personPrior);
+//				} else {
+//					addOne(entry.person.name(), personQPrior);
+//				}
+//				addOne(entry.animacy.name(), animacyPrior);
+				
+				rg.entries.add(entry);
+				count++;
+				Double d = contextPrior.get(context.toString());
+				if (d == null) {
+					contextPrior.put(context.toString(), 1.0);
+				} else {
+					contextPrior.put(context.toString(),
+							1.0 + d.doubleValue());
+				}
+			}
+			groups.add(rg);
+			
+		}
+		
+		return groups;
+	}
+
+	private static void addOne(String key, HashMap<String, Double> map) {
+		if (map.containsKey(key)) {
+			map.put(key, map.get(key) + 1.0);
+		} else {
+			map.put(key, 1.0);
+		}
+	}
+	
 //	private static void addMaxEnt(HashMap<String, Integer> chainMap,
 //			Mention ant, Mention m, ContextNAACL context, boolean sameSpeaker,
 //			EntryNAACL entry, CoNLLPart part) {
@@ -339,7 +463,7 @@ public class EMLearnNAACL {
 //	}
 
 	private static void extractCoNLL(ArrayList<ResolveGroupNAACL> groups) {
-		// CoNLLDocument d = new CoNLLDocument("train_auto_conll");
+//		 CoNLLDocument d = new CoNLLDocument("train_auto_conll");
 		CoNLLDocument d = new CoNLLDocument("train_gold_conll");
 		System.out.println("READ IN>>>");
 		ArrayList<CoNLLPart> parts = new ArrayList<CoNLLPart>();
@@ -359,6 +483,21 @@ public class EMLearnNAACL {
 				groups.addAll(extractGroups(part));
 			}
 			// System.out.println(i--);
+		}
+//		buildPrior(numberPrior);
+//		buildPrior(genderPrior);
+//		buildPrior(personPrior);
+//		buildPrior(personQPrior);
+//		buildPrior(animacyPrior);
+	}
+	
+	private static void buildPrior(HashMap<String, Double> priorMap) {
+		double all = 0;
+		for (String key : priorMap.keySet()) {
+			all += priorMap.get(key);
+		}
+		for(String key : priorMap.keySet()) {
+			priorMap.put(key, priorMap.get(key) / all);
 		}
 	}
 
@@ -441,32 +580,21 @@ public class EMLearnNAACL {
 
 	public static void estep(ArrayList<ResolveGroupNAACL> groups) {
 		for (ResolveGroupNAACL group : groups) {
-			String pronoun = EMUtil.pronounList.get(group.pronoun);
 			double norm = 0;
 			for (EntryNAACL entry : group.entries) {
-				String ant = entry.head;
 				ContextNAACL context = entry.context;
 				double p_person = 0;
 				if (entry.sameSpeaker) {
-					p_person = personP.getVal(entry.person.name(), EMUtil
-							.getPerson(pronoun).name());
+					p_person = ApplyEMNAACL.getProb2(group.personConf, personP, entry.person.name());
+					
 				} else {
-					p_person = personQP.getVal(entry.person.name(), EMUtil
-							.getPerson(pronoun).name());
+					p_person = ApplyEMNAACL.getProb2(group.personConf, personQP, entry.person.name());
+					
 				}
-				double p_number = numberP.getVal(entry.number.name(), EMUtil
-						.getNumber(pronoun).name());
-				double p_gender = genderP.getVal(entry.gender.name(), EMUtil
-						.getGender(pronoun).name());
-				double p_animacy = animacyP.getVal(entry.animacy.name(), EMUtil
-						.getAnimacy(pronoun).name());
 
-//				double p_number = numberP.getVal(entry.head, EMUtil
-//						.getNumber(pronoun).name());
-//				double p_gender = genderP.getVal(entry.head, EMUtil
-//						.getGender(pronoun).name());
-//				double p_animacy = animacyP.getVal(entry.head, EMUtil
-//						.getAnimacy(pronoun).name());
+				double p_number = ApplyEMNAACL.getProb2(group.numberConf, numberP, entry.number.name());
+				double p_gender = ApplyEMNAACL.getProb2(group.genderConf, genderP, entry.gender.name());
+				double p_animacy = ApplyEMNAACL.getProb2(group.animacyConf, animacyP, entry.animacy.name());
 				
 				double p_context = 1;
 
@@ -507,39 +635,45 @@ public class EMLearnNAACL {
 		fracContextCount.clear();
 
 		for (ResolveGroupNAACL group : groups) {
-			String pronoun = EMUtil.pronounList.get(group.pronoun);
-
+			String pronoun = group.pronoun;
 			for (EntryNAACL entry : group.entries) {
 				double p = entry.p;
 				String ant = entry.head;
 				ContextNAACL context = entry.context;
-				numberP.addFracCount(entry.number.name(),
-						EMUtil.getNumber(pronoun).name(), p);
-				genderP.addFracCount(entry.gender.name(),
-						EMUtil.getGender(pronoun).name(), p);
-				animacyP.addFracCount(entry.animacy.name(),
-						EMUtil.getAnimacy(pronoun).name(), p);
 				
-//				numberP.addFracCount(entry.head,
-//						EMUtil.getNumber(pronoun).name(), p);
-//				genderP.addFracCount(entry.head,
-//						EMUtil.getGender(pronoun).name(), p);
-//				animacyP.addFracCount(entry.head,
-//						EMUtil.getAnimacy(pronoun).name(), p);
+				for(String aa : group.numberConf.keySet()) {
+					double pa = group.numberConf.get(aa);
+					numberP.addFracCount(entry.number.name(), aa, pa * p);	
+				}
+				
+				for(String aa : group.genderConf.keySet()) {
+					double pa = group.genderConf.get(aa);
+					genderP.addFracCount(entry.gender.name(), aa, pa * p);
+				}
+				
+				for(String aa : group.animacyConf.keySet()) {
+					double pa = group.animacyConf.get(aa);
+					animacyP.addFracCount(entry.animacy.name(), aa, pa * p);
+				}
+				
+				
 				if (entry.sameSpeaker) {
-					personP.addFracCount(entry.person.name(),
-							EMUtil.getPerson(pronoun).name(), p);
+					for(String aa : group.personConf.keySet()) {
+						double pa = group.personConf.get(aa);
+						personP.addFracCount(entry.person.name(), aa, pa * p);
+					}
 				} else {
-					personQP.addFracCount(entry.person.name(), EMUtil
-							.getPerson(pronoun).name(), p);
+					for(String aa : group.personConf.keySet()) {
+						double pa = group.personConf.get(aa);
+						personQP.addFracCount(entry.person.name(), aa, pa * p);
+					}
 				}
 
 				Double d = fracContextCount.get(context.toString());
 				if (d == null) {
 					fracContextCount.put(context.toString(), p);
 				} else {
-					fracContextCount.put(context.toString(), d.doubleValue()
-							+ p);
+					fracContextCount.put(context.toString(), d.doubleValue() + p);
 				}
 			}
 		}
@@ -583,7 +717,7 @@ public class EMLearnNAACL {
 
 		HashMap<String, Double> map = new HashMap<String, Double>();
 		for(ResolveGroupNAACL rg : groups) {
-			String pr = EMUtil.pronounList.get(rg.pronoun);
+			String pr = rg.pronoun;
 			Double i = map.get(pr);
 			if(i==null) {
 				map.put(pr, 1.0);
@@ -622,17 +756,17 @@ public class EMLearnNAACL {
 		personP.printParameter("personP");
 		personQP.printParameter("personQP");
 
-		gGenderP.setVals();
-		gNumberP.setVals();
-		gAnimacyP.setVals();
-		gPersonP.setVals();
-		gPersonQP.setVals();
-
-		gNumberP.printParameter("gnumberP");
-		gGenderP.printParameter("ggenderP");
-		gAnimacyP.printParameter("ganimacyP");
-		gPersonP.printParameter("gpersonP");
-		gPersonQP.printParameter("gpersonQP");
+//		gGenderP.setVals();
+//		gNumberP.setVals();
+//		gAnimacyP.setVals();
+//		gPersonP.setVals();
+//		gPersonQP.setVals();
+//
+//		gNumberP.printParameter("gnumberP");
+//		gGenderP.printParameter("ggenderP");
+//		gAnimacyP.printParameter("ganimacyP");
+//		gPersonP.printParameter("gpersonP");
+//		gPersonQP.printParameter("gpersonQP");
 
 		ObjectOutputStream modelOut = new ObjectOutputStream(
 				new FileOutputStream("EMModel"));
@@ -655,7 +789,11 @@ public class EMLearnNAACL {
 		modelOut.writeObject(ContextNAACL.vs);
 		// modelOut.writeObject(ContextNAACL.svoStat);
 
-		modelOut.writeObject(contextSuper);
+//		modelOut.writeObject(numberPrior);
+//		modelOut.writeObject(genderPrior);
+//		modelOut.writeObject(personPrior);
+//		modelOut.writeObject(personQPrior);
+//		modelOut.writeObject(animacyPrior);
 
 		modelOut.close();
 

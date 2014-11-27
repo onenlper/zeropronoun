@@ -71,7 +71,7 @@ public class ContextNAACL implements Serializable {
                 return this.feaL;
         }
 
-        public static SVOStat svoStat;
+        public static SVOStatNAACL svoStat;
         static short[] feas = new short[18];
         public static ContextNAACL buildContext(Mention ant, Mention pronoun,
                         CoNLLPart part, boolean isFS) {
@@ -235,7 +235,7 @@ public class ContextNAACL implements Serializable {
 
         public static double calMI2(Mention ant, Mention pronoun) {
                 if (svoStat == null) {
-                        svoStat = new SVOStat();
+                        svoStat = new SVOStatNAACL();
                         svoStat.loadMIInfo();
                 }
                 String v = EMUtil.getFirstVerb(pronoun.V);
@@ -289,8 +289,8 @@ public class ContextNAACL implements Serializable {
 //                      try {
 //                              modelInput = new ObjectInputStream(new FileInputStream(
 //                                              "/dev/shm/svoStat"));
-//                              svoStat = (SVOStat) modelInput.readObject();
-                                 svoStat = new SVOStat();
+//                              svoStat = (SVOStatNAACL) modelInput.readObject();
+                                 svoStat = new SVOStatNAACL();
                                  svoStat.loadMIInfo();
 //                      } catch (FileNotFoundException e) {
 //                              // TODO Auto-generated catch block
