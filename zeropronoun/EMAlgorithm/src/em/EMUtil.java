@@ -1,26 +1,26 @@
 	package em;
 	
 	import java.util.ArrayList;
-	import java.util.Arrays;
-	import java.util.Collections;
-	import java.util.HashMap;
-	import java.util.HashSet;
-	import java.util.List;
-	import java.util.Set;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 	
 	import model.Element;
-	import model.Entity;
-	import model.GraphNode;
-	import model.Mention;
-	import model.CoNLL.CoNLLDocument;
-	import model.CoNLL.CoNLLPart;
-	import model.CoNLL.CoNLLSentence;
-	import model.CoNLL.CoNLLWord;
-	import model.syntaxTree.MyTree;
-	import model.syntaxTree.MyTreeNode;
-	import util.Common;
-	import edu.stanford.nlp.ling.BasicDatum;
-	import edu.stanford.nlp.ling.Datum;
+import model.Entity;
+import model.GraphNode;
+import model.Mention;
+import model.CoNLL.CoNLLDocument;
+import model.CoNLL.CoNLLPart;
+import model.CoNLL.CoNLLSentence;
+import model.CoNLL.CoNLLWord;
+import model.syntaxTree.MyTree;
+import model.syntaxTree.MyTreeNode;
+import util.Common;
+import edu.stanford.nlp.ling.BasicDatum;
+import edu.stanford.nlp.ling.Datum;
 	
 	public class EMUtil {
 	
@@ -1056,6 +1056,9 @@
 				// }
 			}
 			// System.out.println(head + " " + ret.name() + " " + mention.NE);
+//			if(ret==Animacy.unknown) {
+//				ret = Animacy.animate;
+//			}
 			return ret;
 		}
 	
@@ -2018,5 +2021,51 @@
 		public static void main(String args[]) {
 			// loadMeassure();
 			System.out.println(measures.size());
+		}
+		
+		public static double getP_C(Mention ant, Mention m, CoNLLPart part, String pronoun) {
+			if(true) {
+				return 1;
+			}
+			double mi = ContextNAACL.calMI(ant, m);
+			if(mi<-0.1) {
+				return 0.00000001;
+			}
+			String animacy = EMUtil.getAntAnimacy(ant).name();
+			String person = EMUtil.getAntPerson(ant.head).name();
+			String gender = EMUtil.getAntGender(ant).name();
+			String number = EMUtil.getAntNumber(ant).name();
+			
+//			if(animacy.equals(Animacy.unknown.name())) {
+//				animacy = Animacy.animate.name();
+//			}
+//			if(gender.equals(Gender.unknown)) {
+//				gender = Gender.male.name();
+//			}
+			
+//			String animacy = EMUtil.getAnimacy(pronoun).name();
+//			String person = EMUtil.getPerson(pronoun).name();
+//			String gender = EMUtil.getGender(pronoun).name();
+//			String number = EMUtil.getNumber(pronoun).name();
+			
+			String v = EMUtil.getFirstVerb(m.V);
+			String o = EMUtil.getObjectNP(m.V);
+			
+			HashMap<String, Double> anaphorConfNumber = ApplyEMNAACL.selectRestriction("number", 2, v, o);
+			HashMap<String, Double> anaphorConfGender = ApplyEMNAACL.selectRestriction("gender", 3, v, o);
+			HashMap<String, Double> anaphorConfPerson = ApplyEMNAACL.selectRestriction("person", 3, v, o);
+			HashMap<String, Double> anaphorConfAnimacy = ApplyEMNAACL.selectRestriction("animacy", 2, v, o);
+			
+			Double personP = anaphorConfPerson.get(person);
+			Double numberP = anaphorConfNumber.get(number);
+			Double genderP = anaphorConfGender.get(gender);
+			Double animacyP = anaphorConfAnimacy.get(animacy);
+			
+			return 1 
+//					* numberP
+//					* personP
+//					* genderP 
+//					* animacyP
+					;
 		}
 	}
