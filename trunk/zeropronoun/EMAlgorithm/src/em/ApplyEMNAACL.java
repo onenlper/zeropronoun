@@ -60,6 +60,12 @@ public class ApplyEMNAACL {
 
 	SuperviseFea superFea;
 
+	static ArrayList<HashMap<String, Double>> multiFracContextsProbl0;
+	static ArrayList<HashMap<String, Double>> multiFracContextsProbl1;
+	
+	static double pl0 = 0;
+	static double pl1 = 0;
+	
 	@SuppressWarnings("unchecked")
 	public ApplyEMNAACL(String folder) {
 		this.folder = folder;
@@ -84,6 +90,11 @@ public class ApplyEMNAACL {
 //			personPrior = (HashMap<String, Double>) modelInput.readObject();
 //			personQPrior = (HashMap<String, Double>) modelInput.readObject();
 //			animacyPrior = (HashMap<String, Double>) modelInput.readObject();
+			
+			multiFracContextsProbl0 = (ArrayList<HashMap<String, Double>>)modelInput.readObject();
+			multiFracContextsProbl1 = (ArrayList<HashMap<String, Double>>)modelInput.readObject();
+			pl0 = (Double)modelInput.readObject();
+			pl1 = (Double)modelInput.readObject();
 			
 			modelInput.close();
 
@@ -441,6 +452,8 @@ public class ApplyEMNAACL {
 					double p_animacy = 0;
 					double p_gender = 0;
 					
+					double p_c = EMUtil.getP_C(cand, zero, part, pronoun);
+					
 //					if (sameSpeaker) {
 //						p_person = personP.getVal(cand.person.name(), EMUtil.getPerson(pronoun).name());
 //					} else {
@@ -470,7 +483,28 @@ public class ApplyEMNAACL {
 						p_context = 1.0 / 2.0;
 					}
 
-					double p2nd = p_person * p_number * p_gender * p_animacy * p_context * 1;
+					double p_context_l1 = pl1;
+					double p_context_l0 = pl0;
+					
+					for(int g=0;g<ContextNAACL.getSubContext().size();g++) {
+						int pos[] = ContextNAACL.getSubContext().get(g);
+						String key = context.getKey(g);
+						if(multiFracContextsProbl1.get(g).containsKey(key)) {
+							p_context_l1 *= multiFracContextsProbl1.get(g).get(key);
+						} else {
+							p_context_l1 *= ContextNAACL.normConstant.get(g);
+						}
+						
+						if(multiFracContextsProbl0.get(g).containsKey(key)) {
+							p_context_l0 *= multiFracContextsProbl0.get(g).get(key);
+						} else {
+							p_context_l0 *= ContextNAACL.normConstant.get(g);
+						}
+					}
+					
+					p_context = p_context_l1/(p_context_l1 + p_context_l0);
+					
+					double p2nd = p_person * p_number * p_gender * p_animacy * p_context * 1 * p_c;
 
 					double p = p2nd;
 
@@ -647,7 +681,7 @@ public class ApplyEMNAACL {
         	for(Integer k : map.keySet()) {
         		max = Math.max(max, map.get(k));
         	}
-        	double smoother = max/2.5;
+        	double smoother = max/5;
         	double overall = smoother * all;
         	for (Integer k : map.keySet()) {
         		overall += map.get(k);
@@ -677,9 +711,26 @@ public class ApplyEMNAACL {
             	Common.bangErrorPOS("No Such Attri");
             }
         	retMap.put(key, prob);
-        	System.out.println(key + "#" + prob);
+//        	System.out.println(key + "#" + prob);
         }
-        System.out.println("---");
+//        System.out.println("---");
+        
+//        String maxKey = "";
+//        double maxProb = 0;
+//        for(String k : retMap.keySet()) {
+//        	if(retMap.get(k)>=maxProb) {
+//        		maxProb = retMap.get(k);
+//        		maxKey = k;
+//        	}
+//        }
+//        for(String k : retMap.keySet()) {
+//        	if(k.equals(maxKey)) {
+//        		retMap.put(k, 1.0);
+//        	} else {
+//        		retMap.put(k, 0.0);
+//        	}
+//        }
+        
         return retMap;
 }
 
