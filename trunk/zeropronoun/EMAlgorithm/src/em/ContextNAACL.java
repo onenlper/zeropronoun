@@ -32,6 +32,56 @@ public class ContextNAACL implements Serializable {
 
         String feaL;
 
+        private static ArrayList<int[]> subContext;
+
+    	public static ArrayList<Integer> normConstant = new ArrayList<Integer>();
+
+    	public static ArrayList<int[]> getSubContext() {
+    		if (subContext != null) {
+    			return subContext;
+    		}
+    		subContext = new ArrayList<int[]>();
+//    		int[] a = { 0, 1 };
+//    		subContext.add(a);
+    		
+//    		int[] b = { 1, 2 };
+//    		subContext.add(b);
+//    		int[] c = { 2, 3 };
+//    		subContext.add(c);
+//    		int[] d = { 3, 4 };
+//    		subContext.add(d);
+//    		int[] e = { 4, 5 };
+//    		subContext.add(e);
+//    		int[] f = { 5, 6 };
+//    		subContext.add(f);
+//    		int[] g = { 6, 7 };
+//    		subContext.add(g);
+    		
+    		int[] h = { 0, 8 };
+    		subContext.add(h);
+//    		int[] i = { 6, 7 };
+//    		subContext.add(i);
+    		
+//    		normConstant.add(2);
+    		
+//    		normConstant.add(2);
+//    		normConstant.add(3);
+//    		normConstant.add(3);
+//    		normConstant.add(2);
+//    		normConstant.add(2);
+//    		normConstant.add(3);
+//    		normConstant.add(2);
+//    		normConstant.add(2);
+    		normConstant.add(2000);
+
+//    		normConstant.add((int) cap);
+//    		 int[] g = {6, 7};
+//    		 subContext.add(g);
+//    		 normConstant.add(2);
+
+    		return subContext;
+    	}
+        
         public static HashMap<String, ContextNAACL> contextCache = new HashMap<String, ContextNAACL>();
 
         public static ContextNAACL getContext(short[] feas) {
@@ -43,7 +93,7 @@ public class ContextNAACL implements Serializable {
                                                 + "  Fea:" + i);
                         }
                         // feaL += Math.pow(10, i) * feas[i];
-                        sb.append(feas[i]);
+                        sb.append(feas[i]).append("#");
                 }
                 if (contextCache.containsKey(sb.toString())) {
                         return contextCache.get(sb.toString());
@@ -182,36 +232,42 @@ public class ContextNAACL implements Serializable {
                         }
                 }
                 // maximum 18 features because of the restriction of Long
-                feas[15] = senDis;
-
+                feas[0] = senDis;
 //               moreFea(antPos, proPos, antSynactic, antType, nearest, NPClause,
 //               VPClause, feas);
 
-                feas[6] = antNP;
-                feas[7] = antVP;
-
-                feas[8] = proNP;
-                feas[9] = proVP;
-                feas[10] = proStart;
-
-                feas[13] = sameVerb;
-
+                feas[1] = antNP;
+                feas[2] = antVP;
+                
+                feas[3] = proNP;
+                feas[4] = proVP;
+                
+                feas[5] = proStart;
+                feas[6] = sameVerb;
+                
+                
+                
+                
                 if (isFS && MI > 0) {
-                        feas[0] = 1;
+                        feas[7] = 1;
                 } else if (ant.isBest) {
-                        feas[0] = 2;
+                        feas[7] = 2;
                 } else if (ant.s == ant.s && ant.gram == Grammatic.object
                                 && ant.end + 2 == pronoun.start
                                 && part.getWord(ant.end + 1).word.equals("，") && pronoun.MI > 0) {
 //                      feas[0] = 3;
 //                      Common.bangErrorPOS("!!");
                 } else {
-                        feas[0] = 0;
+                        feas[7] = 0;
                 }
 
                 return ContextNAACL.getContext(feas);
         }
 
+        
+        
+        
+        
         private static void moreFea(short antPos, short proPos, short antSynactic,
                         short antType, short nearest, short NPClause, short VPClause,
                         short[] feas) {
@@ -281,8 +337,8 @@ public class ContextNAACL implements Serializable {
         }
 
         public static double calMI(Mention ant, Mention pronoun) {
-//               if(true)
-//               return 1;
+               if(true)
+               return 1;
                 if (svoStat == null) {
                         long start = System.currentTimeMillis();
                         ObjectInputStream modelInput;
@@ -405,4 +461,16 @@ public class ContextNAACL implements Serializable {
                         }
                 }
         }
+        
+        public String getKey(int i) {
+    		// return this.toString().substring(subContext.get(i)[0],
+    		// subContext.get(i)[1]);
+    		String tks[] = this.toString().split("#");
+    		StringBuilder sb = new StringBuilder();
+    		for (int m = subContext.get(i)[0]; m < subContext.get(i)[1]; m++) {
+    			sb.append(tks[m]).append("#");
+    		}
+    		return sb.toString();
+    	}
+        
 }
