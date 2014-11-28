@@ -19,6 +19,7 @@ import model.CoNLL.CoNLLDocument;
 import model.CoNLL.CoNLLPart;
 import model.CoNLL.CoNLLSentence;
 import model.CoNLL.CoNLLWord;
+import model.CoNLL.OntoCorefXMLReader;
 import model.syntaxTree.MyTree;
 import model.syntaxTree.MyTreeNode;
 import util.Common;
@@ -50,6 +51,18 @@ public class EMLearnNAACL {
 	static HashMap<String, Double> fracContextCount;
 	static List<Datum<String, String>> trainingData;
 	static ArrayList<String> svmRanks;
+	
+	static double countl0 = 0;
+	static double countl1 = 0;
+	
+	static double pl0 = 0;
+	static double pl1 = 0;
+	
+	static ArrayList<HashMap<String, Double>> multiFracContextsCountl0 = new ArrayList<HashMap<String, Double>>();
+	static ArrayList<HashMap<String, Double>> multiFracContextsCountl1 = new ArrayList<HashMap<String, Double>>();
+	
+	static ArrayList<HashMap<String, Double>> multiFracContextsProbl0 = new ArrayList<HashMap<String, Double>>();
+	static ArrayList<HashMap<String, Double>> multiFracContextsProbl1 = new ArrayList<HashMap<String, Double>>();
 
 	
 //	static HashMap<String, Double> numberPrior = new HashMap<String, Double>();
@@ -103,6 +116,14 @@ public class EMLearnNAACL {
 		qid = 0;
 		count = 0;
 		ContextNAACL.contextCache.clear();
+		
+		
+		for(int i=0;i<ContextNAACL.getSubContext().size();i++) {
+			multiFracContextsCountl0.add(new HashMap<String, Double>());
+			multiFracContextsCountl1.add(new HashMap<String, Double>());
+			multiFracContextsProbl0.add(new HashMap<String, Double>());
+			multiFracContextsProbl1.add(new HashMap<String, Double>());
+		}
 	}
 
 	static FileWriter feaWriter;
@@ -164,9 +185,6 @@ public class EMLearnNAACL {
 		ArrayList<ResolveGroupNAACL> groups = new ArrayList<ResolveGroupNAACL>();
 		for (int i = 0; i < part.getCoNLLSentences().size(); i++) {
 			CoNLLSentence s = part.getCoNLLSentences().get(i);
-			s.mentions = EMUtil.extractMention(s);
-
-			EMUtil.assignNE(s.mentions, part.getNameEntities());
 
 			ArrayList<Mention> precedMs = new ArrayList<Mention>();
 
@@ -235,6 +253,8 @@ public class EMLearnNAACL {
 
 						boolean sameSpeaker = proSpeaker.equals(antSpeaker);
 						EntryNAACL entry = new EntryNAACL(ant, context, sameSpeaker, fs);
+						
+						entry.p_c = EMUtil.getP_C(ant, m, part, m.extent);
 						
 //						addOne(entry.number.name(), numberPrior);
 //						addOne(entry.gender.name(), genderPrior);
@@ -340,8 +360,10 @@ public class EMLearnNAACL {
 			}
 			
 			EMUtil.assignVNode(m, part);
+			String v = EMUtil.getFirstVerb(m.V);
+			String o = EMUtil.getObjectNP(m.V);
 			
-			ResolveGroupNAACL rg = new ResolveGroupNAACL(m.extent);
+			
 			Collections.sort(ants);
 			Collections.reverse(ants);
 			boolean findFirstSubj = false;
@@ -351,6 +373,15 @@ public class EMLearnNAACL {
 				ant.MI = ContextNAACL.calMI(ant, m);
 				ant.isBest = false;
 			}
+			
+			HashMap<String, Double> anaphorConfNumber = ApplyEMNAACL.selectRestriction("number", 2, v, o);
+			HashMap<String, Double> anaphorConfGender = ApplyEMNAACL.selectRestriction("gender", 3, v, o);
+			HashMap<String, Double> anaphorConfPerson = ApplyEMNAACL.selectRestriction("person", 3, v, o);
+			HashMap<String, Double> anaphorConfAnimacy = ApplyEMNAACL.selectRestriction("animacy", 2, v, o);
+			
+			ResolveGroupNAACL rg = new ResolveGroupNAACL(anaphorConfAnimacy, anaphorConfGender, anaphorConfPerson,
+					anaphorConfNumber);
+			
 
 			ApplyEM.findBest(m, ants);
 
@@ -394,9 +425,7 @@ public class EMLearnNAACL {
 				}
 			}
 			groups.add(rg);
-			
 		}
-		
 		return groups;
 	}
 
@@ -464,26 +493,53 @@ public class EMLearnNAACL {
 
 	private static void extractCoNLL(ArrayList<ResolveGroupNAACL> groups) {
 //		 CoNLLDocument d = new CoNLLDocument("train_auto_conll");
-		CoNLLDocument d = new CoNLLDocument("train_gold_conll");
+//		CoNLLDocument d = new CoNLLDocument("train_gold_conll");
 		System.out.println("READ IN>>>");
-		ArrayList<CoNLLPart> parts = new ArrayList<CoNLLPart>();
-		parts.addAll(d.getParts());
-		int i = parts.size();
 
 		int docNo = 0;
 		String previousDoc = "";
+		int partNo = 0;
+		ArrayList<String> files = Common.getLines("chinese_list_all_train");
+		for (String file : files) {
+//			System.out.println(file);
+			CoNLLDocument document = new CoNLLDocument(file
+					.replace("auto_conll", "gold_conll")
+					);
+			OntoCorefXMLReader.addGoldZeroPronouns(document, false);
+		
+			for (CoNLLPart part : document.getParts()) {
+				
+				
+				for (int i = 0; i < part.getCoNLLSentences().size(); i++) {
+					CoNLLSentence s = part.getCoNLLSentences().get(i);
+					s.mentions = EMUtil.extractMention(s);
 
-		for (CoNLLPart part : parts) {
-			// System.out.println(part.docName + " " + part.getPartID());
-			if (!part.docName.equals(previousDoc)) {
-				docNo++;
-				previousDoc = part.docName;
-			}
-			if (docNo % 10 < percent) {
+					EMUtil.assignNE(s.mentions, part.getNameEntities());
+				}
+				
+				partNo += 1;
+				// System.out.println(part.docName + " " + part.getPartID());
+				if (!part.docName.equals(previousDoc)) {
+					docNo++;
+					previousDoc = part.docName;
+				}
+//				if (docNo % 10 < percent) {
 				groups.addAll(extractGroups(part));
+				
+//				if(partNo%1==0)
+//				groups.addAll(extractZeroGroups(part));
 			}
-			// System.out.println(i--);
 		}
+		
+		for(ResolveGroupNAACL group : groups) {
+			countl0 += group.entries.size() - 1;
+			countl1 += 1;
+		}
+		
+		pl0 = countl0/(countl0 + countl1);
+		pl1 = countl1/(countl0 + countl1);
+		
+		
 //		buildPrior(numberPrior);
 //		buildPrior(genderPrior);
 //		buildPrior(personPrior);
@@ -607,10 +663,35 @@ public class EMLearnNAACL {
 //					p_context = 1.0 / 2592.0;
 					p_context = 1.0 / 2;
 				}
+				
+				double p_context_l1 = pl1;
+				double p_context_l0 = pl0;
+				
+				for(int i=0;i<ContextNAACL.getSubContext().size();i++) {
+					int pos[] = ContextNAACL.getSubContext().get(i);
+					String key = context.getKey(i);
+					if(key.equals("-")) {
+						System.out.println(context.toString());
+						Common.bangErrorPOS("!!!");
+					}
+					if(multiFracContextsProbl1.get(i).containsKey(key)) {
+						p_context_l1 *= multiFracContextsProbl1.get(i).get(key);
+					} else {
+						p_context_l1 *= ContextNAACL.normConstant.get(i);
+					}
+					
+					if(multiFracContextsProbl0.get(i).containsKey(key)) {
+						p_context_l0 *= multiFracContextsProbl0.get(i).get(key);
+					} else {
+						p_context_l0 *= ContextNAACL.normConstant.get(i);
+					}
+				}
+				
+				p_context = p_context_l1/(p_context_l1 + p_context_l0);
 
 				// System.out.println(p_context);
 
-				entry.p = 1 * 
+				entry.p = 1 * entry.p_c * 
 						p_person * 
 						p_number * 
 						p_gender * 
@@ -634,11 +715,16 @@ public class EMLearnNAACL {
 		personQP.resetCounts();
 		fracContextCount.clear();
 
+		for(int i=0;i<multiFracContextsCountl1.size();i++) {
+			multiFracContextsCountl0.get(i).clear();
+			multiFracContextsCountl1.get(i).clear();
+			multiFracContextsProbl0.get(i).clear();
+			multiFracContextsProbl1.get(i).clear();
+		}
+		
 		for (ResolveGroupNAACL group : groups) {
-			String pronoun = group.pronoun;
 			for (EntryNAACL entry : group.entries) {
 				double p = entry.p;
-				String ant = entry.head;
 				ContextNAACL context = entry.context;
 				
 				for(String aa : group.numberConf.keySet()) {
@@ -675,6 +761,27 @@ public class EMLearnNAACL {
 				} else {
 					fracContextCount.put(context.toString(), d.doubleValue() + p);
 				}
+				
+				for(int i=0;i<ContextNAACL.getSubContext().size();i++) {
+					int ps[] = ContextNAACL.getSubContext().get(i);
+					String key = context.getKey(i);
+					double l1 = p;
+					double l0 = 1 - p;
+					
+					Double cl0 = multiFracContextsCountl0.get(i).get(key); 
+					if(cl0==null) {
+						multiFracContextsCountl0.get(i).put(key, l0);
+					} else {
+						multiFracContextsCountl0.get(i).put(key, l0 + cl0.doubleValue());
+					}
+					
+					Double cl1 = multiFracContextsCountl1.get(i).get(key); 
+					if(cl1==null) {
+						multiFracContextsCountl1.get(i).put(key, l1);
+					} else {
+						multiFracContextsCountl1.get(i).put(key, l1 + cl1.doubleValue());
+					}
+				}
 			}
 		}
 		genderP.setVals();
@@ -682,6 +789,27 @@ public class EMLearnNAACL {
 		animacyP.setVals();
 		personP.setVals();
 		personQP.setVals();
+		
+		for(int i=0;i<ContextNAACL.getSubContext().size();i++) {
+
+			for(String key : multiFracContextsCountl1.get(i).keySet()) {
+				
+				double contextcountl0 = 1;
+				if(multiFracContextsCountl0.get(i).containsKey(key)) {
+					contextcountl0 += multiFracContextsCountl0.get(i).get(key);
+				}
+				double pcountl0 = contextcountl0/(countl0 + ContextNAACL.normConstant.get(i));
+				
+				double contextcountl1 = 1;
+				if(multiFracContextsCountl1.get(i).containsKey(key)) {
+					contextcountl1 += multiFracContextsCountl1.get(i).get(key);
+				}
+				double pcountl1 = contextcountl1/(countl1 + ContextNAACL.normConstant.get(i));
+				
+				multiFracContextsProbl0.get(i).put(key, pcountl0);
+				multiFracContextsProbl1.get(i).put(key, pcountl1);
+			}
+		}
 	}
 
 	public static void main(String args[]) throws Exception {
@@ -787,6 +915,27 @@ public class EMLearnNAACL {
 
 		modelOut.writeObject(ContextNAACL.ss);
 		modelOut.writeObject(ContextNAACL.vs);
+		
+		modelOut.writeObject(multiFracContextsProbl0);
+		modelOut.writeObject(multiFracContextsProbl1);
+		modelOut.writeObject(pl0);
+		modelOut.writeObject(pl1);
+		
+		for(int i=0;i<multiFracContextsProbl1.size();i++) {
+			ArrayList<String> output = new ArrayList<String>();
+			for(String key : multiFracContextsProbl1.get(i).keySet()) {
+				output.add(key + ":\t" + multiFracContextsProbl1.get(i).get(key));
+			}
+			Common.outputLines(output, "probl1_.sub" + i);
+		}
+		
+		for(int i=0;i<multiFracContextsProbl0.size();i++) {
+			ArrayList<String> output = new ArrayList<String>();
+			for(String key : multiFracContextsProbl0.get(i).keySet()) {
+				output.add(key + ":\t" + multiFracContextsProbl0.get(i).get(key));
+			}
+			Common.outputLines(output, "probl0_.sub" + i);
+		}
 		// modelOut.writeObject(ContextNAACL.svoStat);
 
 //		modelOut.writeObject(numberPrior);
