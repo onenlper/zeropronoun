@@ -4,6 +4,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import util.Common;
+
 import model.Mention;
 import em.EMUtil.Animacy;
 import em.EMUtil.Gender;
@@ -44,7 +46,19 @@ public class ResolveGroupNAACL implements Serializable {
 			genderConf.put(gender, 1.0);
 			personConf.put(person, 1.0);
 			numberConf.put(number, 1.0);
+		} else {
+			Common.bangErrorPOS("");
 		}
+		
+		this.entries = new ArrayList<EntryNAACL>();
+	}
+	
+	public ResolveGroupNAACL(HashMap<String, Double> animacyConf, HashMap<String, Double> genderConf,
+			HashMap<String, Double> personConf, HashMap<String, Double> numberConf) {
+		this.animacyConf = animacyConf;
+		this.genderConf = genderConf;
+		this.personConf = personConf;
+		this.numberConf = numberConf;
 		
 		this.entries = new ArrayList<EntryNAACL>();
 	}
@@ -61,6 +75,8 @@ public class ResolveGroupNAACL implements Serializable {
 		Gender gender;
 		Person person;
 		Number number;
+		
+		double p_c;
 		
 		double p;
 		boolean sameSpeaker;
