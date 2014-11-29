@@ -7,7 +7,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,6 +23,7 @@ import model.syntaxTree.MyTreeNode;
 import util.Common;
 import edu.stanford.nlp.classify.LinearClassifier;
 import em.EMUtil.Grammatic;
+import em.EMUtil.Person;
 
 public class ApplyEMNAACL {
 
@@ -348,6 +348,10 @@ public class ApplyEMNAACL {
 
 			String taMSg = "";
 			String bestMSg = "";
+			HashSet<String> genders = new HashSet<String>();
+			HashSet<String> numbers = new HashSet<String>();
+			HashSet<String> animacys = new HashSet<String>();
+			HashSet<String> persons = new HashSet<String>();
 			for (int h = allCandidates.size() - 1; h >= 0; h--) {
 				Mention cand = allCandidates.get(h);
 				String antSpeaker = part.getWord(cand.start).speaker;
@@ -376,34 +380,56 @@ public class ApplyEMNAACL {
 
 					cands.add(cand);
 				}
+				if(cand.end!=-1) {
+					genders.add(EMUtil.getAntGender(cand).name());
+					numbers.add(EMUtil.getAntNumber(cand).name());
+					animacys.add(EMUtil.getAntAnimacy(cand).name());
+					
+					Person p = EMUtil.getAntPerson(cand.extent);
+					
+					boolean sameSpeaker = proSpeaker.equals(antSpeaker);
+					if(!sameSpeaker) {
+						if(p==Person.first) {
+							p = Person.second;
+						} 
+						if(p==Person.second) {
+							p = Person.first;
+						}
+					}
+					persons.add(p.name());
+				}
 			}
 
 			boolean findBest = findBest(zero, cands);
 			String v = EMUtil.getFirstVerb(zero.V);
 			String o = EMUtil.getObjectNP(zero.V);
-			System.out.println(v + "@@@");
+//			System.out.println(v + "@@@");
 //			int all = EMUtil.Number.values().length;
-//            HashMap<String, Double> anaphorConfNumber = selectRestriction("number", all, v, o);
+//            HashMap<String, Double> anaphorConfNumber = selectRestriction("number", all, v, o, numbers);
 //
 //            all = EMUtil.Gender.values().length - 1;
-//            HashMap<String, Double> anaphorConfGender = selectRestriction("gender", all, v, o);
+//            HashMap<String, Double> anaphorConfGender = selectRestriction("gender", all, v, o, genders);
 //
 //            all = EMUtil.Person.values().length;
-//            HashMap<String, Double> anaphorConfPerson = selectRestriction("person", all, v, o);
+//            HashMap<String, Double> anaphorConfPerson = selectRestriction("person", all, v, o, persons);
 //
 //            all = EMUtil.Animacy.values().length - 1;
-//            HashMap<String, Double> anaphorConfAnimacy = selectRestriction("animacy", all, v, o);
+//            HashMap<String, Double> anaphorConfAnimacy = selectRestriction("animacy", all, v, o, animacys);
 			
-            System.out.println("=================");
-			// if(zero.start==179) {
-			// for(Mention cand : cands) {
-			// System.out.println(cand.extent);
-			// }
-			// Common.bangErrorPOS("");
-			// }
+//            System.out.println("=================");
 			int chose = -1;
-			for (int m = 0; m < EMUtil.pronounList.size(); m++) {
+			String pro = "" ;
+			Mention correctAnte = null;
+			boolean findOracle = false;
+			outer: for (int m = 0; m < EMUtil.pronounList.size(); m++) {
 				String pronoun = EMUtil.pronounList.get(m);
+				
+				
+				String gender = EMUtil.getGender(pronoun).name();
+				String number = EMUtil.getNumber(pronoun).name();
+				String animacy = EMUtil.getAnimacy(pronoun).name();
+				String person = EMUtil.getPerson(pronoun).name();
+				
 				zero.extent = pronoun;
 
 				HashMap<String, Double> anaphorConfNumber = new HashMap<String, Double>();
@@ -417,6 +443,9 @@ public class ApplyEMNAACL {
 				
 				HashMap<String, Double> anaphorConfAnimacy = new HashMap<String, Double>();
 				anaphorConfAnimacy.put(EMUtil.getAnimacy(pronoun).name(), 1.0);
+				
+				Mention localBestCand = null;
+				double localBestProb = 0;
 				
 				for (int i = 0; i < cands.size(); i++) {
 					Mention cand = cands.get(i);
@@ -452,7 +481,7 @@ public class ApplyEMNAACL {
 					double p_animacy = 0;
 					double p_gender = 0;
 					
-					double p_c = EMUtil.getP_C(cand, zero, part, pronoun);
+					double p_c = EMUtil.getP_C(cand, zero, part, "");
 					
 //					if (sameSpeaker) {
 //						p_person = personP.getVal(cand.person.name(), EMUtil.getPerson(pronoun).name());
@@ -502,7 +531,7 @@ public class ApplyEMNAACL {
 						}
 					}
 					
-					p_context = p_context_l1/(p_context_l1 + p_context_l0);
+//					p_context = p_context_l1/(p_context_l1 + p_context_l0);
 					
 					double p2nd = p_person * p_number * p_gender * p_animacy * p_context * 1 * p_c;
 
@@ -515,9 +544,53 @@ public class ApplyEMNAACL {
 						bestMSg = p_person + "\t" + p_number + "\t" + p_gender
 								+ "\t" + p_animacy + "\t" + p_context;
 						chose = i;
+						pro = pronoun;
+					}
+					
+					if(p>localBestProb) {
+						localBestProb = p;
+						localBestCand = cand;
+					}
+				}
+				if(localBestCand!=null) {
+					boolean coref = chainMap.containsKey(zero.toName())
+							&& chainMap.containsKey(localBestCand.toName())
+							&& chainMap.get(zero.toName()).intValue() == chainMap
+									.get(localBestCand.toName()).intValue();
+					if(coref) {
+						findOracle = true;
+						correctAnte = localBestCand;
+						System.out.println(pronoun + "\t:" + localBestCand.extent + "\t" + localBestCand.toName());
 					}
 				}
 			}
+			System.out.println("----------");
+			if(antecedent!=null && findOracle) {
+				System.out.println(pro + "\t:" + antecedent.extent + "\t" + antecedent.toName());
+				boolean coref = chainMap.containsKey(zero.toName())
+						&& chainMap.containsKey(antecedent.toName())
+						&& chainMap.get(zero.toName()).intValue() == chainMap
+								.get(antecedent.toName()).intValue();
+				
+				StringBuilder sb = new StringBuilder();
+				CoNLLWord w = part.getWord(zero.start);
+				CoNLLSentence s = w.getSentence();
+				int idInS = w.indexInSentence;
+				for(int i=-5;i<=5;i++) {
+					int id = idInS + i;
+					if(id>=0 && id<s.words.size()) {
+						if(i==0) {
+							sb.append("*pro*");
+						}
+						sb.append(s.getWords().get(id).word);
+					}
+				}
+				System.out.println(sb.toString());
+				System.out.println("Verb:\t" + v);
+				System.out.println(coref);
+//				antecedent = correctAnte;
+			}
+			System.out.println("=======================");
 
 			if (antecedent != null) {
 				if (antecedent.end != -1) {
@@ -560,18 +633,18 @@ public class ApplyEMNAACL {
 				// System.out.println("Right!!! " + good + "/" + bad);
 				// System.out.println(zero.antecedent.msg);
 				// if(!zero.antecedent.isFS) {
-				System.out.println("==========");
-				System.out.println("Correct!!! " + good + "/" + bad);
-				if (zero.antecedent != null) {
-					System.out.println(zero.antecedent.extent + ":"
-							+ zero.antecedent.NE + "#" + zero.antecedent.number
-							+ "#" + zero.antecedent.gender + "#"
-							+ zero.antecedent.person + "#"
-							+ zero.antecedent.animacy);
-					System.out.println(zero);
-					printResult(zero, zero.antecedent, part);
-					System.out.println(overtPro + "#");
-				}
+//				System.out.println("==========");
+//				System.out.println("Correct!!! " + good + "/" + bad);
+//				if (zero.antecedent != null) {
+//					System.out.println(zero.antecedent.extent + ":"
+//							+ zero.antecedent.NE + "#" + zero.antecedent.number
+//							+ "#" + zero.antecedent.gender + "#"
+//							+ zero.antecedent.person + "#"
+//							+ zero.antecedent.animacy);
+//					System.out.println(zero);
+//					printResult(zero, zero.antecedent, part);
+//					System.out.println(overtPro + "#");
+//				}
 				// System.out.println(overtPro + "#" + bestMSg);
 				// System.out.println("它: " + taMSg);
 				// }
@@ -592,26 +665,26 @@ public class ApplyEMNAACL {
 				// System.out.println(antecedent.extent + "BAD !");
 				// }
 				bad++;
-				System.out.println("==========");
-				System.out.println("Error??? " + good + "/" + bad);
-				if (zero.antecedent != null) {
-					System.out.println(zero.antecedent.extent + ":"
-							+ zero.antecedent.NE + "#" + zero.antecedent.number
-							+ "#" + zero.antecedent.gender + "#"
-							+ zero.antecedent.person + "#"
-							+ zero.antecedent.animacy);
-					System.out.println(zero);
-					printResult(zero, zero.antecedent, part);
-					System.out.println(overtPro + "#" + bestMSg);
-					System.out.println("它: " + taMSg);
-				}
+//				System.out.println("==========");
+//				System.out.println("Error??? " + good + "/" + bad);
+//				if (zero.antecedent != null) {
+//					System.out.println(zero.antecedent.extent + ":"
+//							+ zero.antecedent.NE + "#" + zero.antecedent.number
+//							+ "#" + zero.antecedent.gender + "#"
+//							+ zero.antecedent.person + "#"
+//							+ zero.antecedent.animacy);
+//					System.out.println(zero);
+//					printResult(zero, zero.antecedent, part);
+//					System.out.println(overtPro + "#" + bestMSg);
+//					System.out.println("它: " + taMSg);
+//				}
 			}
 			String conllPath = file;
 			int aa = conllPath.indexOf(anno);
 			int bb = conllPath.indexOf(".");
 			String middle = conllPath.substring(aa + anno.length(), bb);
 			String path = prefix + middle + suffix;
-			System.out.println(path);
+//			System.out.println(path);
 			// System.out.println("=== " + file);
 			EMUtil.addEmptyCategoryNode(zero);
 
@@ -645,7 +718,7 @@ public class ApplyEMNAACL {
 		}
 	}
 	
-	public static HashMap<String, Double> selectRestriction(String attri, int all, String v, String o) {
+	public static HashMap<String, Double> selectRestriction(String attri, int all, String v, String o, HashSet<String> set) {
         HashMap<Integer, Integer> map = null;
         String key = v + " " + o;
         if (attri.equals("number")) {
