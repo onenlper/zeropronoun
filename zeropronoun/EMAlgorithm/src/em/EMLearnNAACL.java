@@ -11,6 +11,7 @@ import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import model.Element;
@@ -27,6 +28,7 @@ import edu.stanford.nlp.classify.Dataset;
 import edu.stanford.nlp.classify.LinearClassifier;
 import edu.stanford.nlp.classify.LinearClassifierFactory;
 import edu.stanford.nlp.ling.Datum;
+import em.EMUtil.Person;
 import em.ResolveGroupNAACL.EntryNAACL;
 
 public class EMLearnNAACL {
@@ -369,22 +371,70 @@ public class EMLearnNAACL {
 			boolean findFirstSubj = false;
 			// TODO
 
+			HashSet<String> genders = new HashSet<String>();
+			HashSet<String> numbers = new HashSet<String>();
+			HashSet<String> animacys = new HashSet<String>();
+			HashSet<String> persons = new HashSet<String>();
+			
 			for (Mention ant : ants) {
 				ant.MI = ContextNAACL.calMI(ant, m);
 				ant.isBest = false;
+				
+				genders.add(EMUtil.getAntGender(ant).name());
+				numbers.add(EMUtil.getAntNumber(ant).name());
+				animacys.add(EMUtil.getAntAnimacy(ant).name());
+				Person p = EMUtil.getAntPerson(ant.extent);
+				
+				String antSpeaker = part.getWord(ant.start).speaker;
+				boolean sameSpeaker = proSpeaker.equals(antSpeaker);
+				if(!sameSpeaker) {
+					if(p==Person.first) {
+						p = Person.second;
+					} 
+					if(p==Person.second) {
+						p = Person.first;
+					}
+				}
+				persons.add(p.name());
 			}
+			HashMap<String, Double> anaphorConfNumber = new HashMap<String, Double>();
+			HashMap<String, Double> anaphorConfGender = new HashMap<String, Double>();
+			HashMap<String, Double> anaphorConfPerson = new HashMap<String, Double>();
+			HashMap<String, Double> anaphorConfAnimacy = new HashMap<String, Double>();
 			
-			HashMap<String, Double> anaphorConfNumber = ApplyEMNAACL.selectRestriction("number", 2, v, o);
-			HashMap<String, Double> anaphorConfGender = ApplyEMNAACL.selectRestriction("gender", 3, v, o);
-			HashMap<String, Double> anaphorConfPerson = ApplyEMNAACL.selectRestriction("person", 3, v, o);
-			HashMap<String, Double> anaphorConfAnimacy = ApplyEMNAACL.selectRestriction("animacy", 2, v, o);
+			anaphorConfNumber = ApplyEMNAACL.selectRestriction("number", 2, v, o, numbers);
+			anaphorConfGender = ApplyEMNAACL.selectRestriction("gender", 3, v, o, genders);
+			anaphorConfPerson = ApplyEMNAACL.selectRestriction("person", 3, v, o, persons);
+			anaphorConfAnimacy = ApplyEMNAACL.selectRestriction("animacy", 2, v, o, animacys);
+
+			ApplyEM.findBest(m, ants);
+			for(Mention t : m.entity.mentions) {
+				if(t.end==-1) {
+					continue;
+				}
+				t.head = part.getWord(t.end).word;
+				StringBuilder sb = new StringBuilder();
+				for(int i=t.start;i<=t.end;i++) {
+					sb.append(part.getWord(i).word);
+				}
+				t.extent = sb.toString();
+			}
+//			String numberGold = EMUtil.inferNumber(m.entity.mentions).name();
+//			String genderGold = EMUtil.inferGender(m.entity.mentions).name();
+//			String personGold = EMUtil.inferPerson(m.entity.mentions, m, part).name();
+//			String animacyGold = EMUtil.inferAnimacy(m.entity.mentions).name();
+//			anaphorConfNumber.clear();
+//			anaphorConfGender.clear();
+//			anaphorConfPerson.clear();
+//			anaphorConfAnimacy.clear();
+//			anaphorConfNumber.put(numberGold, 1.0);
+//			anaphorConfGender.put(genderGold, 1.0);
+//			anaphorConfPerson.put(personGold, 1.0);
+//			anaphorConfAnimacy.put(animacyGold, 1.0);
 			
 			ResolveGroupNAACL rg = new ResolveGroupNAACL(anaphorConfAnimacy, anaphorConfGender, anaphorConfPerson,
 					anaphorConfNumber);
 			
-
-			ApplyEM.findBest(m, ants);
-
 			for (int k = 0; k < ants.size(); k++) {
 				Mention ant = ants.get(k);
 				// add antecedents
@@ -404,6 +454,7 @@ public class EMLearnNAACL {
 
 				boolean sameSpeaker = proSpeaker.equals(antSpeaker);
 				EntryNAACL entry = new EntryNAACL(ant, context, sameSpeaker, fs);
+				entry.p_c = EMUtil.getP_C(ant, m, part, m.extent);
 				
 //				addOne(entry.number.name(), numberPrior);
 //				addOne(entry.gender.name(), genderPrior);
@@ -645,7 +696,6 @@ public class EMLearnNAACL {
 					
 				} else {
 					p_person = ApplyEMNAACL.getProb2(group.personConf, personQP, entry.person.name());
-					
 				}
 
 				double p_number = ApplyEMNAACL.getProb2(group.numberConf, numberP, entry.number.name());
@@ -686,8 +736,7 @@ public class EMLearnNAACL {
 						p_context_l0 *= ContextNAACL.normConstant.get(i);
 					}
 				}
-				
-				p_context = p_context_l1/(p_context_l1 + p_context_l0);
+//				p_context = p_context_l1/(p_context_l1 + p_context_l0);
 
 				// System.out.println(p_context);
 
@@ -698,6 +747,7 @@ public class EMLearnNAACL {
 						p_animacy *
 						p_context * 
 						1;
+				
 				norm += entry.p;
 			}
 

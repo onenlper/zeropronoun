@@ -41,10 +41,10 @@ public class ContextNAACL implements Serializable {
     			return subContext;
     		}
     		subContext = new ArrayList<int[]>();
-//    		int[] a = { 0, 1 };
-//    		subContext.add(a);
+    		int[] a = { 0, 8 };
+    		subContext.add(a);
     		
-//    		int[] b = { 1, 2 };
+//    		int[] b = { 1, 7 };
 //    		subContext.add(b);
 //    		int[] c = { 2, 3 };
 //    		subContext.add(c);
@@ -57,12 +57,11 @@ public class ContextNAACL implements Serializable {
 //    		int[] g = { 6, 7 };
 //    		subContext.add(g);
     		
-    		int[] h = { 0, 8 };
-    		subContext.add(h);
+//    		int[] h = { 7, 8 };
+//    		subContext.add(h);
 //    		int[] i = { 6, 7 };
 //    		subContext.add(i);
     		
-//    		normConstant.add(2);
     		
 //    		normConstant.add(2);
 //    		normConstant.add(3);
@@ -72,7 +71,7 @@ public class ContextNAACL implements Serializable {
 //    		normConstant.add(3);
 //    		normConstant.add(2);
 //    		normConstant.add(2);
-    		normConstant.add(2000);
+    		normConstant.add(100);
 
 //    		normConstant.add((int) cap);
 //    		 int[] g = {6, 7};

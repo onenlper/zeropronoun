@@ -2024,13 +2024,17 @@ import edu.stanford.nlp.ling.Datum;
 		}
 		
 		public static double getP_C(Mention ant, Mention m, CoNLLPart part, String pronoun) {
-			if(true) {
+			double mi = ContextNAACL.calMI(ant, m);
+//			if(mi<-0.1) {
+//				return 0.00000001;
+//			}
+//			if(ant.gram!=Grammatic.subject && mi<0) {
+//				return 0.0001;
+//			} else 
+			if(true){
 				return 1;
 			}
-			double mi = ContextNAACL.calMI(ant, m);
-			if(mi<-0.1) {
-				return 0.00000001;
-			}
+			
 			String animacy = EMUtil.getAntAnimacy(ant).name();
 			String person = EMUtil.getAntPerson(ant.head).name();
 			String gender = EMUtil.getAntGender(ant).name();
@@ -2051,15 +2055,15 @@ import edu.stanford.nlp.ling.Datum;
 			String v = EMUtil.getFirstVerb(m.V);
 			String o = EMUtil.getObjectNP(m.V);
 			
-			HashMap<String, Double> anaphorConfNumber = ApplyEMNAACL.selectRestriction("number", 2, v, o);
-			HashMap<String, Double> anaphorConfGender = ApplyEMNAACL.selectRestriction("gender", 3, v, o);
-			HashMap<String, Double> anaphorConfPerson = ApplyEMNAACL.selectRestriction("person", 3, v, o);
-			HashMap<String, Double> anaphorConfAnimacy = ApplyEMNAACL.selectRestriction("animacy", 2, v, o);
-			
-			Double personP = anaphorConfPerson.get(person);
-			Double numberP = anaphorConfNumber.get(number);
-			Double genderP = anaphorConfGender.get(gender);
-			Double animacyP = anaphorConfAnimacy.get(animacy);
+//			HashMap<String, Double> anaphorConfNumber = ApplyEMNAACL.selectRestriction("number", 2, v, o);
+//			HashMap<String, Double> anaphorConfGender = ApplyEMNAACL.selectRestriction("gender", 3, v, o);
+//			HashMap<String, Double> anaphorConfPerson = ApplyEMNAACL.selectRestriction("person", 3, v, o);
+//			HashMap<String, Double> anaphorConfAnimacy = ApplyEMNAACL.selectRestriction("animacy", 2, v, o);
+//			
+//			Double personP = anaphorConfPerson.get(person);
+//			Double numberP = anaphorConfNumber.get(number);
+//			Double genderP = anaphorConfGender.get(gender);
+//			Double animacyP = anaphorConfAnimacy.get(animacy);
 			
 			return 1 
 //					* numberP
