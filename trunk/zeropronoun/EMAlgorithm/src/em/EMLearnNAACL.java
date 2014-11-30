@@ -22,6 +22,7 @@ import model.CoNLL.CoNLLDocument;
 import model.CoNLL.CoNLLPart;
 import model.CoNLL.CoNLLSentence;
 import model.CoNLL.CoNLLWord;
+import model.CoNLL.OntoCorefXMLReader;
 import model.syntaxTree.MyTree;
 import model.syntaxTree.MyTreeNode;
 import util.Common;
@@ -243,12 +244,12 @@ public class EMLearnNAACL {
 					// Common.pause("");
 
 					sortBySalience(ants, m, part, entityCorefMap);
-//					if(ants.size()!=0) {
+					if(ants.size()!=0) {
 //						ants.get(0).isFS = true;
-//						for(int t=1;t<ants.size();++) {
+						for(int t=1;t<ants.size();t++) {
 //							ants.get(t).isFS = false;
-//						}
-//					}
+						}
+					}
 					
 					Collections.sort(ants);
 					Collections.reverse(ants);
@@ -256,22 +257,22 @@ public class EMLearnNAACL {
 					for (int k = 0; k < ants.size(); k++) {
 						Mention ant = ants.get(k);
 						// add antecedents
-						boolean fs = false;
+						ant.isFS = false;
 						if (!findFirstSubj
 								&& ant.gram == EMUtil.Grammatic.subject
 						// && !ant.s.getWord(ant.headInS).posTag.equals("NT")
 						) {
 							findFirstSubj = true;
-							fs = true;
+							ant.isFS = true;
 						}
 
 						String antSpeaker = part.getWord(ant.start).speaker;
 
 						ContextNAACL context = ContextNAACL
-								.buildContext(ant, m, part, fs);
+								.buildContext(ant, m, part, ant.isFS);
 
 						boolean sameSpeaker = proSpeaker.equals(antSpeaker);
-						EntryNAACL entry = new EntryNAACL(ant, context, sameSpeaker, fs);
+						EntryNAACL entry = new EntryNAACL(ant, context, sameSpeaker, ant.isFS);
 						
 						entry.p_c = EMUtil.getP_C(ant, m, part, m.extent);
 						
@@ -419,10 +420,10 @@ public class EMLearnNAACL {
 			HashMap<String, Double> anaphorConfPerson = new HashMap<String, Double>();
 			HashMap<String, Double> anaphorConfAnimacy = new HashMap<String, Double>();
 			
-			anaphorConfNumber = ApplyEMNAACL.selectRestriction("number", 2, v, o, numbers);
-			anaphorConfGender = ApplyEMNAACL.selectRestriction("gender", 3, v, o, genders);
-			anaphorConfPerson = ApplyEMNAACL.selectRestriction("person", 3, v, o, persons);
-			anaphorConfAnimacy = ApplyEMNAACL.selectRestriction("animacy", 2, v, o, animacys);
+//			anaphorConfNumber = ApplyEMNAACL.selectRestriction("number", 2, v, o, numbers);
+//			anaphorConfGender = ApplyEMNAACL.selectRestriction("gender", 3, v, o, genders);
+//			anaphorConfPerson = ApplyEMNAACL.selectRestriction("person", 3, v, o, persons);
+//			anaphorConfAnimacy = ApplyEMNAACL.selectRestriction("animacy", 2, v, o, animacys);
 
 			ApplyEM.findBest(m, ants);
 			for(Mention t : m.entity.mentions) {
@@ -436,18 +437,29 @@ public class EMLearnNAACL {
 				}
 				t.extent = sb.toString();
 			}
-//			String numberGold = EMUtil.inferNumber(m.entity.mentions).name();
-//			String genderGold = EMUtil.inferGender(m.entity.mentions).name();
-//			String personGold = EMUtil.inferPerson(m.entity.mentions, m, part).name();
-//			String animacyGold = EMUtil.inferAnimacy(m.entity.mentions).name();
-//			anaphorConfNumber.clear();
-//			anaphorConfGender.clear();
-//			anaphorConfPerson.clear();
-//			anaphorConfAnimacy.clear();
-//			anaphorConfNumber.put(numberGold, 1.0);
-//			anaphorConfGender.put(genderGold, 1.0);
-//			anaphorConfPerson.put(personGold, 1.0);
-//			anaphorConfAnimacy.put(animacyGold, 1.0);
+			String numberGold = EMUtil.inferNumber(m.entity.mentions).name();
+			String genderGold = EMUtil.inferGender(m.entity.mentions).name();
+			String personGold = EMUtil.inferPerson(m.entity.mentions, m, part).name();
+			String animacyGold = EMUtil.inferAnimacy(m.entity.mentions).name();
+			anaphorConfNumber.clear();
+			anaphorConfGender.clear();
+			anaphorConfPerson.clear();
+			anaphorConfAnimacy.clear();
+			anaphorConfNumber.put(numberGold, 1.0);
+			anaphorConfGender.put(genderGold, 1.0);
+			anaphorConfPerson.put(personGold, 1.0);
+			anaphorConfAnimacy.put(animacyGold, 1.0);
+			
+			sortBySalience(ants, m, part, entityCorefMap);
+			if(ants.size()!=0) {
+				ants.get(0).isFS = true;
+				for(int t=1;t<ants.size();t++) {
+					ants.get(t).isFS = false;
+				}
+			}
+			
+			Collections.sort(ants);
+			Collections.reverse(ants);
 			
 			ResolveGroupNAACL rg = new ResolveGroupNAACL(anaphorConfAnimacy, anaphorConfGender, anaphorConfPerson,
 					anaphorConfNumber);
@@ -455,22 +467,22 @@ public class EMLearnNAACL {
 			for (int k = 0; k < ants.size(); k++) {
 				Mention ant = ants.get(k);
 				// add antecedents
-				boolean fs = false;
+//				ant.isFS = false;
 				if (!findFirstSubj
 						&& ant.gram == EMUtil.Grammatic.subject
 				// && !ant.s.getWord(ant.headInS).posTag.equals("NT")
 				) {
 					findFirstSubj = true;
-					fs = true;
+//					ant.isFS = true;
 				}
 
 				String antSpeaker = part.getWord(ant.start).speaker;
 
 				ContextNAACL context = ContextNAACL
-						.buildContext(ant, m, part, fs);
+						.buildContext(ant, m, part, ant.isFS);
 
 				boolean sameSpeaker = proSpeaker.equals(antSpeaker);
-				EntryNAACL entry = new EntryNAACL(ant, context, sameSpeaker, fs);
+				EntryNAACL entry = new EntryNAACL(ant, context, sameSpeaker, ant.isFS);
 				entry.p_c = EMUtil.getP_C(ant, m, part, m.extent);
 				
 //				addOne(entry.number.name(), numberPrior);
@@ -581,18 +593,16 @@ public class EMLearnNAACL {
 		String conllFn = "train_gold_conll";
 //		String conllFn = "train_auto_conll";
 		
-		CoNLLDocument document = new CoNLLDocument(conllFn);
+
 		HashMap<String, HashMap<String, Entity>> entityCorefMaps = loadEntityCorefMap(conllFn + ".coref");
 		
 		System.out.println("READ IN>>>");
 		int partNo = 0;
-		
-//		int docNo = 0;
-//		String previousDoc = "";
 
+		CoNLLDocument document = new CoNLLDocument(conllFn);
+		
 //		ArrayList<String> files = Common.getLines("chinese_list_all_train");
 //		for (String file : files) {
-////			System.out.println(file);
 //			CoNLLDocument document = new CoNLLDocument(file
 //					.replace("auto_conll", "gold_conll")
 //					);
