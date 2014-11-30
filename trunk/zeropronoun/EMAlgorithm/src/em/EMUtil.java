@@ -2024,6 +2024,12 @@ import edu.stanford.nlp.ling.Datum;
 		}
 		
 		public static double getP_C(Mention ant, Mention m, CoNLLPart part, String pronoun) {
+//			if(true){
+//			return 1;
+//		}
+			if(EMUtil.train) {
+				return 1;
+			}
 			double mi = ContextNAACL.calMI(ant, m);
 //			if(mi<-0.1) {
 //				return 0.00000001;
@@ -2031,9 +2037,16 @@ import edu.stanford.nlp.ling.Datum;
 //			if(ant.gram!=Grammatic.subject && mi<0) {
 //				return 0.0001;
 //			} else 
-			if(true){
+			if(ant.salienceID==0) {
 				return 1;
+			} else if(ant.salienceID<3) {
+				return 1;
+			} else if(ant.salienceID<4) {
+				return .00001;
+			} else if(true){
+				return 0;
 			}
+			
 			
 			String animacy = EMUtil.getAntAnimacy(ant).name();
 			String person = EMUtil.getAntPerson(ant.head).name();

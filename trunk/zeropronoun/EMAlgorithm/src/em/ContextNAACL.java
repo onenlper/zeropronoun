@@ -336,8 +336,8 @@ public class ContextNAACL implements Serializable {
         }
 
         public static double calMI(Mention ant, Mention pronoun) {
-               if(true)
-               return 1;
+//               if(true)
+//               return 1;
                 if (svoStat == null) {
                         long start = System.currentTimeMillis();
                         ObjectInputStream modelInput;

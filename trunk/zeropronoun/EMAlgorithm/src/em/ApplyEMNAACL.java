@@ -415,12 +415,29 @@ public class ApplyEMNAACL {
 			}
 //			System.out.println(zero.toName() + "################");
 			EMLearnNAACL.sortBySalience(cands, zero, part, entityCorefMap);
-			if(cands.size()!=0) {
-//				cands.get(0).isFS = true;
+			
+//			for(int i=0;i<cands.size();i++) {
+//				Mention cand = cands.get(i);
+//				
+//				boolean coref = chainMap.containsKey(zero.toName())
+//						&& chainMap.containsKey(cand.toName())
+//						&& chainMap.get(zero.toName()).intValue() == chainMap
+//								.get(cand.toName()).intValue();
+////				if(coref) {
+//				if(cand.MI>0) {
+//					antecedent = cand;
+//					break;
+//				}
+//			}
+			if(cands.size()!=0 && antecedent == null) {
+//				antecedent = cands.get(0);
+//				cands.clear();
+				cands.get(0).isFS = true;
 				for(int i=1;i<cands.size();i++) {
-//					cands.get(i).isFS = false;
+					cands.get(i).isFS = false;
 				}
 			}
+//			cands.clear();
 			
 			Collections.sort(cands);
 			Collections.reverse(cands);
@@ -449,6 +466,12 @@ public class ApplyEMNAACL {
 			outer: for (int m = 0; m < EMUtil.pronounList.size(); m++) {
 				String pronoun = EMUtil.pronounList.get(m);
 				
+//				String pName = part.getPartName();
+//				if(!pName.startsWith("tc") && !pName.startsWith("bc") && !pName.startsWith("bn")) {
+//					if(pronoun.equals("你") || pronoun.equals("我") || pronoun.equals("你们") || pronoun.equals("我们")) {
+//						continue;
+//					}
+//				}
 				
 				String gender = EMUtil.getGender(pronoun).name();
 				String number = EMUtil.getNumber(pronoun).name();
@@ -620,7 +643,6 @@ public class ApplyEMNAACL {
 				System.out.println(sb.toString());
 				System.out.println("Verb:\t" + v);
 				System.out.println(coref);
-//				antecedent = correctAnte;
 			}
 			System.out.println("=======================");
 
