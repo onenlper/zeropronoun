@@ -10,24 +10,25 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
 import model.Element;
+import model.Entity;
 import model.Mention;
 import model.CoNLL.CoNLLDocument;
 import model.CoNLL.CoNLLPart;
 import model.CoNLL.CoNLLSentence;
 import model.CoNLL.CoNLLWord;
-import model.CoNLL.OntoCorefXMLReader;
 import model.syntaxTree.MyTree;
 import model.syntaxTree.MyTreeNode;
 import util.Common;
-import edu.stanford.nlp.classify.Dataset;
 import edu.stanford.nlp.classify.LinearClassifier;
 import edu.stanford.nlp.classify.LinearClassifierFactory;
 import edu.stanford.nlp.ling.Datum;
+import em.EMUtil.Grammatic;
 import em.EMUtil.Person;
 import em.ResolveGroupNAACL.EntryNAACL;
 
@@ -196,7 +197,7 @@ public class EMLearnNAACL {
 			if (i >= 1) {
 				precedMs.addAll(part.getCoNLLSentences().get(i - 1).mentions);
 			}
-
+			
 			for (int j = 0; j < s.mentions.size(); j++) {
 				Mention m = s.mentions.get(j);
 
@@ -210,6 +211,11 @@ public class EMLearnNAACL {
 					ArrayList<Mention> ants = new ArrayList<Mention>();
 					ants.addAll(precedMs);
 					if (j > 0) {
+//						for(Mention t : s.mentions) {
+//							if(t.end<m.start) {
+//								ants.add(t);
+//							}
+//						}
 						ants.addAll(s.mentions.subList(0, j
 								- 1
 								));
@@ -236,6 +242,8 @@ public class EMLearnNAACL {
 					// }
 					// Common.pause("");
 
+//					sortBySalience(ants, m, part, entityCorefMap);
+					
 					for (int k = 0; k < ants.size(); k++) {
 						Mention ant = ants.get(k);
 						// add antecedents
@@ -542,45 +550,64 @@ public class EMLearnNAACL {
 //		// label));
 //	}
 
+	public static HashMap<String, Entity> entityCorefMap; 
+	
+	public static HashMap<String, HashMap<String, Entity>> loadEntityCorefMap(String fn) {
+		HashMap<String, HashMap<String, Entity>> maps = new HashMap<String, HashMap<String, Entity>>();
+		CoNLLDocument doc = new CoNLLDocument(fn);
+		for(CoNLLPart part : doc.getParts()) {
+			String partName = part.getPartName();
+			HashMap<String, Entity> entityMap = new HashMap<String, Entity>();
+			maps.put(partName, entityMap);
+			for(Entity entity:part.getChains()) {
+				for(Mention m : entity.mentions) {
+					entityMap.put(m.toName(), entity);
+				}
+			}
+		}
+		return maps;
+	}
+	
 	private static void extractCoNLL(ArrayList<ResolveGroupNAACL> groups) {
-//		 CoNLLDocument d = new CoNLLDocument("train_auto_conll");
-//		CoNLLDocument d = new CoNLLDocument("train_gold_conll");
+		String conllFn = "train_gold_conll";
+//		String conllFn = "train_auto_conll";
+		
+		CoNLLDocument document = new CoNLLDocument(conllFn);
+		HashMap<String, HashMap<String, Entity>> entityCorefMaps = loadEntityCorefMap(conllFn + ".coref");
+		
 		System.out.println("READ IN>>>");
-
-		int docNo = 0;
-		String previousDoc = "";
 		int partNo = 0;
-		ArrayList<String> files = Common.getLines("chinese_list_all_train");
-		for (String file : files) {
-//			System.out.println(file);
-			CoNLLDocument document = new CoNLLDocument(file
-					.replace("auto_conll", "gold_conll")
-					);
-			OntoCorefXMLReader.addGoldZeroPronouns(document, false);
+		
+//		int docNo = 0;
+//		String previousDoc = "";
+
+//		ArrayList<String> files = Common.getLines("chinese_list_all_train");
+//		for (String file : files) {
+////			System.out.println(file);
+//			CoNLLDocument document = new CoNLLDocument(file
+//					.replace("auto_conll", "gold_conll")
+//					);
+//			OntoCorefXMLReader.addGoldZeroPronouns(document, false);
 		
 			for (CoNLLPart part : document.getParts()) {
 				
+				entityCorefMap = entityCorefMaps.get(part.getPartName());
 				
 				for (int i = 0; i < part.getCoNLLSentences().size(); i++) {
 					CoNLLSentence s = part.getCoNLLSentences().get(i);
 					s.mentions = EMUtil.extractMention(s);
-
 					EMUtil.assignNE(s.mentions, part.getNameEntities());
 				}
 				
 				partNo += 1;
 				// System.out.println(part.docName + " " + part.getPartID());
-				if (!part.docName.equals(previousDoc)) {
-					docNo++;
-					previousDoc = part.docName;
-				}
 //				if (docNo % 10 < percent) {
 				groups.addAll(extractGroups(part));
 				
 //				if(partNo%1==0)
 //				groups.addAll(extractZeroGroups(part));
 			}
-		}
+//		}
 		
 		for(ResolveGroupNAACL group : groups) {
 			countl0 += group.entries.size() - 1;
@@ -812,26 +839,26 @@ public class EMLearnNAACL {
 					fracContextCount.put(context.toString(), d.doubleValue() + p);
 				}
 				
-				for(int i=0;i<ContextNAACL.getSubContext().size();i++) {
-					int ps[] = ContextNAACL.getSubContext().get(i);
-					String key = context.getKey(i);
-					double l1 = p;
-					double l0 = 1 - p;
-					
-					Double cl0 = multiFracContextsCountl0.get(i).get(key); 
-					if(cl0==null) {
-						multiFracContextsCountl0.get(i).put(key, l0);
-					} else {
-						multiFracContextsCountl0.get(i).put(key, l0 + cl0.doubleValue());
-					}
-					
-					Double cl1 = multiFracContextsCountl1.get(i).get(key); 
-					if(cl1==null) {
-						multiFracContextsCountl1.get(i).put(key, l1);
-					} else {
-						multiFracContextsCountl1.get(i).put(key, l1 + cl1.doubleValue());
-					}
-				}
+//				for(int i=0;i<ContextNAACL.getSubContext().size();i++) {
+//					int ps[] = ContextNAACL.getSubContext().get(i);
+//					String key = context.getKey(i);
+//					double l1 = p;
+//					double l0 = 1 - p;
+//					
+//					Double cl0 = multiFracContextsCountl0.get(i).get(key); 
+//					if(cl0==null) {
+//						multiFracContextsCountl0.get(i).put(key, l0);
+//					} else {
+//						multiFracContextsCountl0.get(i).put(key, l0 + cl0.doubleValue());
+//					}
+//					
+//					Double cl1 = multiFracContextsCountl1.get(i).get(key); 
+//					if(cl1==null) {
+//						multiFracContextsCountl1.get(i).put(key, l1);
+//					} else {
+//						multiFracContextsCountl1.get(i).put(key, l1 + cl1.doubleValue());
+//					}
+//				}
 			}
 		}
 		genderP.setVals();
@@ -862,6 +889,79 @@ public class EMLearnNAACL {
 		}
 	}
 
+	public static void sortBySalience(ArrayList<Mention> cands, Mention anaphor, CoNLLPart part, HashMap<String, Entity> entityCorefMap) {
+//		System.out.println("============");
+		for(Mention cand : cands) {
+			if(cand.sysEntity!=null) {
+				cand.sysEntity.score = 0;
+			}
+//			System.out.println(cand.toName());
+		}
+//		System.out.println("----");
+//		System.out.println(anaphor.toName());
+		for(Entity e : entityCorefMap.values()) {
+			e.score = 0;
+		}
+		
+		Collections.sort(cands);
+		double decayConstant = 0.5;
+		int anaphorSID = part.getWord(anaphor.getStart()).getSentence().getSentenceIdx(); 
+		for(int i=0;i<=anaphorSID;i++) {
+			CoNLLSentence s = part.getCoNLLSentences().get(i);
+			ArrayList<Mention> mentions = s.mentions;
+			
+			for(Mention m : mentions) {
+				if(m.start >= anaphor.start) {
+					continue;
+				}
+				Entity e = null;
+				e = entityCorefMap.get(m.toName());
+				
+				if(e==null) {
+					e = new Entity();
+					entityCorefMap.put(m.toName(), e);
+				}
+				m.sysEntity = e;
+				double decay = Math.pow(decayConstant, anaphorSID - s.getSentenceIdx());
+				
+				if(m.gram==Grammatic.subject) {
+					e.score += 4.0 * decay;
+				} else if(m.gram==Grammatic.object) {
+					e.score += 2.0 * decay;
+				} else {
+					e.score += 1.0 * decay;
+				}
+			}
+		}
+//		System.out.println("@@");
+		for(Mention cand : cands) {
+			if(cand.sysEntity==null) {
+//				System.out.println(cand.toName());
+			}
+		}
+		Collections.sort(cands, new SalienceComparator());
+	}
+	
+	public static class SalienceComparator implements Comparator<Mention> {
+
+		@Override
+		public int compare(Mention m1, Mention m2) {
+			// TODO Auto-generated method stub
+			if(m1.sysEntity.score>m2.sysEntity.score) {
+				return 1;
+			} else if(m1.sysEntity.score < m2.sysEntity.score) {
+				return -1;
+			} else {
+				if(m1.end!=-1 && m2.end!=-1) {
+					return m2.end - m1.end;
+				} else {
+					return m2.start - m1.start;
+				}
+			}
+		}
+		
+	}
+	
 	public static void main(String args[]) throws Exception {
 		// percent = 0;
 		// while(percent<=9) {
