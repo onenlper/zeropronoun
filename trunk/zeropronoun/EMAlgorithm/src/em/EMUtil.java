@@ -2024,9 +2024,9 @@ import edu.stanford.nlp.ling.Datum;
 		}
 		
 		public static double getP_C(Mention ant, Mention m, CoNLLPart part, String pronoun) {
-//			if(true){
-//			return 1;
-//		}
+			if(true){
+			return 1;
+		}
 			if(EMUtil.train) {
 				return 1;
 			}

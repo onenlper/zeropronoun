@@ -245,20 +245,29 @@ public class ContextNAACL implements Serializable {
                 feas[6] = sameVerb;
                 
                 
+                if(ant.salienceID==0 && MI>0) {
+                	feas[7] = 0;
+                } else{
+                	feas[7] = 1;
+                } 
                 
-                
-                if (isFS && MI > 0) {
-                        feas[7] = 1;
-                } else if (ant.isBest) {
-                        feas[7] = 2;
-                } else if (ant.s == ant.s && ant.gram == Grammatic.object
-                                && ant.end + 2 == pronoun.start
-                                && part.getWord(ant.end + 1).word.equals("，") && pronoun.MI > 0) {
-//                      feas[0] = 3;
-//                      Common.bangErrorPOS("!!");
-                } else {
-                        feas[7] = 0;
-                }
+//                if(MI>0) {
+//                	feas[8] = 0;
+//                } else {
+//                	feas[8] = 1;
+//                }
+//                if (isFS && MI > 0) {
+//                        feas[7] = 1;
+//                } else if (ant.isBest) {
+//                        feas[7] = 2;
+//                } else if (ant.s == ant.s && ant.gram == Grammatic.object
+//                                && ant.end + 2 == pronoun.start
+//                                && part.getWord(ant.end + 1).word.equals("，") && pronoun.MI > 0) {
+////                      feas[0] = 3;
+////                      Common.bangErrorPOS("!!");
+//                } else {
+//                        feas[7] = 0;
+//                }
 
                 return ContextNAACL.getContext(feas);
         }

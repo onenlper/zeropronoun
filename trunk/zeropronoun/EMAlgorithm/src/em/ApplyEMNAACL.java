@@ -429,9 +429,9 @@ public class ApplyEMNAACL {
 //					break;
 //				}
 //			}
-			if(cands.size()!=0 && antecedent == null) {
+			
+			if(cands.size()!=0) {
 //				antecedent = cands.get(0);
-//				cands.clear();
 				cands.get(0).isFS = true;
 				for(int i=1;i<cands.size();i++) {
 					cands.get(i).isFS = false;
@@ -461,8 +461,6 @@ public class ApplyEMNAACL {
 //            System.out.println("=================");
 			int chose = -1;
 			String pro = "" ;
-			Mention correctAnte = null;
-			boolean findOracle = false;
 			outer: for (int m = 0; m < EMUtil.pronounList.size(); m++) {
 				String pronoun = EMUtil.pronounList.get(m);
 				
@@ -492,8 +490,8 @@ public class ApplyEMNAACL {
 				HashMap<String, Double> anaphorConfAnimacy = new HashMap<String, Double>();
 				anaphorConfAnimacy.put(EMUtil.getAnimacy(pronoun).name(), 1.0);
 				
-				Mention localBestCand = null;
-				double localBestProb = 0;
+//				Mention localBestCand = null;
+//				double localBestProb = 0;
 				
 				for (int i = 0; i < cands.size(); i++) {
 					Mention cand = cands.get(i);
@@ -595,56 +593,57 @@ public class ApplyEMNAACL {
 						pro = pronoun;
 					}
 					
-					if(p>localBestProb) {
-						localBestProb = p;
-						localBestCand = cand;
-					}
+//					if(p>localBestProb) {
+//						localBestProb = p;
+//						localBestCand = cand;
+//					}
 				}
-				if(localBestCand!=null) {
-					boolean coref = chainMap.containsKey(zero.toName())
-							&& chainMap.containsKey(localBestCand.toName())
-							&& chainMap.get(zero.toName()).intValue() == chainMap
-									.get(localBestCand.toName()).intValue();
-					if(coref) {
-						findOracle = true;
-						correctAnte = localBestCand;
-						System.out.println(pronoun + "\t:" + localBestCand.extent + "\t" + localBestCand.toName());
-					}
-				}
+//				if(localBestCand!=null) {
+//					boolean coref = chainMap.containsKey(zero.toName())
+//							&& chainMap.containsKey(localBestCand.toName())
+//							&& chainMap.get(zero.toName()).intValue() == chainMap
+//									.get(localBestCand.toName()).intValue();
+//					if(coref) {
+//						findOracle = true;
+//						correctAnte = localBestCand;
+//						System.out.println(pronoun + "\t:" + localBestCand.extent + "\t" + localBestCand.toName());
+//					}
+//				}
 			}
 			System.out.println("----------");
 			
 			CoNLLWord w = part.getWord(zero.start);
 			CoNLLSentence s = w.getSentence();
+			
 			s.mentions.add(zero);
 			Collections.sort(s.mentions);
 			
-			if(antecedent!=null && findOracle) {
-				System.out.println(pro + "\t:" + antecedent.extent + "\t" + antecedent.toName());
-				boolean coref = chainMap.containsKey(zero.toName())
-						&& chainMap.containsKey(antecedent.toName())
-						&& chainMap.get(zero.toName()).intValue() == chainMap
-								.get(antecedent.toName()).intValue();
-				
-				StringBuilder sb = new StringBuilder();
-				zero.sysEntity = antecedent.sysEntity;
-				entityCorefMap.put(zero.toName(), zero.sysEntity);
-				
-				int idInS = w.indexInSentence;
-				for(int i=-5;i<=5;i++) {
-					int id = idInS + i;
-					if(id>=0 && id<s.words.size()) {
-						if(i==0) {
-							sb.append("*pro*");
-						}
-						sb.append(s.getWords().get(id).word);
-					}
-				}
-				System.out.println(sb.toString());
-				System.out.println("Verb:\t" + v);
-				System.out.println(coref);
-			}
-			System.out.println("=======================");
+//			if(antecedent!=null
+////					&& findOracle
+//					) {
+//				System.out.println(pro + "\t:" + antecedent.extent + "\t" + antecedent.toName());
+//				boolean coref = chainMap.containsKey(zero.toName())
+//						&& chainMap.containsKey(antecedent.toName())
+//						&& chainMap.get(zero.toName()).intValue() == chainMap
+//								.get(antecedent.toName()).intValue();
+//				
+//				StringBuilder sb = new StringBuilder();
+//				
+//				int idInS = w.indexInSentence;
+//				for(int i=-5;i<=5;i++) {
+//					int id = idInS + i;
+//					if(id>=0 && id<s.words.size()) {
+//						if(i==0) {
+//							sb.append("*pro*");
+//						}
+//						sb.append(s.getWords().get(id).word);
+//					}
+//				}
+//				System.out.println(sb.toString());
+//				System.out.println("Verb:\t" + v);
+//				System.out.println(coref);
+//			}
+//			System.out.println("=======================");
 
 			if (antecedent != null) {
 				if (antecedent.end != -1) {
@@ -652,6 +651,7 @@ public class ApplyEMNAACL {
 				} else {
 					zero.antecedent = antecedent.antecedent;
 				}
+				 
 				zero.extent = antecedent.extent;
 				zero.head = antecedent.head;
 				zero.gram = Grammatic.subject;
