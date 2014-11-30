@@ -940,7 +940,6 @@ public class EMLearnNAACL {
 			subjectScore = 5;
 			objectScore = 1;
 			otherScore = 1;
-			
 		} else if(part.getPartName().startsWith("tc")) {
 			decayConstant = 0.45;
 			subjectScore = 5;
