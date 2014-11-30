@@ -243,6 +243,13 @@ public class EMLearnNAACL {
 					// Common.pause("");
 
 					sortBySalience(ants, m, part, entityCorefMap);
+//					if(ants.size()!=0) {
+//						ants.get(0).isFS = true;
+//						for(int t=1;t<ants.size();++) {
+//							ants.get(t).isFS = false;
+//						}
+//					}
+					
 					Collections.sort(ants);
 					Collections.reverse(ants);
 					
@@ -906,7 +913,7 @@ public class EMLearnNAACL {
 		}
 		
 		Collections.sort(cands);
-		double decayConstant = 0.5;
+		double decayConstant = 0.1;
 		int anaphorSID = part.getWord(anaphor.getStart()).getSentence().getSentenceIdx(); 
 		for(int i=0;i<=anaphorSID;i++) {
 			CoNLLSentence s = part.getCoNLLSentences().get(i);
@@ -935,13 +942,9 @@ public class EMLearnNAACL {
 				}
 			}
 		}
-//		System.out.println("@@");
-		for(Mention cand : cands) {
-			if(cand.sysEntity==null) {
-//				System.out.println(cand.toName());
-			}
-		}
+		
 		Collections.sort(cands, new SalienceComparator());
+		Collections.reverse(cands);
 	}
 	
 	public static class SalienceComparator implements Comparator<Mention> {
@@ -955,9 +958,9 @@ public class EMLearnNAACL {
 				return -1;
 			} else {
 				if(m1.end!=-1 && m2.end!=-1) {
-					return m2.end - m1.end;
+					return m1.end - m2.end;
 				} else {
-					return m2.start - m1.start;
+					return m1.start - m2.start;
 				}
 			}
 		}
