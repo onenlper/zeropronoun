@@ -211,14 +211,14 @@ public class EMLearnNAACL {
 					ArrayList<Mention> ants = new ArrayList<Mention>();
 					ants.addAll(precedMs);
 					if (j > 0) {
-//						for(Mention t : s.mentions) {
-//							if(t.end<m.start) {
-//								ants.add(t);
-//							}
-//						}
-						ants.addAll(s.mentions.subList(0, j
-								- 1
-								));
+						for(Mention t : s.mentions) {
+							if(t.end<m.start) {
+								ants.add(t);
+							}
+						}
+//						ants.addAll(s.mentions.subList(0, j
+//								- 1
+//								));
 					}
 					ResolveGroupNAACL rg = new ResolveGroupNAACL(m.extent);
 					Collections.sort(ants);
@@ -242,7 +242,9 @@ public class EMLearnNAACL {
 					// }
 					// Common.pause("");
 
-//					sortBySalience(ants, m, part, entityCorefMap);
+					sortBySalience(ants, m, part, entityCorefMap);
+					Collections.sort(ants);
+					Collections.reverse(ants);
 					
 					for (int k = 0; k < ants.size(); k++) {
 						Mention ant = ants.get(k);
