@@ -248,24 +248,31 @@ public class ApplyEMNAACL {
 
 	double good = 0;
 	double bad = 0;
+	
+	HashMap<String, Entity> entityCorefMap;
 
 	public void test() {
 		ArrayList<String> files = Common.getLines("chinese_list_" + folder
 				+ "_development");
 
+		String tag = "gold_conll";
+//		String tag = "auto_conll";
+		HashMap<String, HashMap<String, Entity>> entityCorefMaps = EMLearnNAACL.loadEntityCorefMap("dev_" + tag + ".coref");
+		
 		ArrayList<ArrayList<Mention>> corefResults = new ArrayList<ArrayList<Mention>>();
 		ArrayList<ArrayList<Entity>> goldEntities = new ArrayList<ArrayList<Entity>>();
 
 		for (String file : files) {
 			System.out.println(file);
 			CoNLLDocument document = new CoNLLDocument(file
-					.replace("auto_conll", "gold_conll")
+					.replace("auto_conll", tag)
 					);
 			OntoCorefXMLReader.addGoldZeroPronouns(document, false);
 
 			for (int k = 0; k < document.getParts().size(); k++) {
 				CoNLLPart part = document.getParts().get(k);
-
+				entityCorefMap = entityCorefMaps.get(part.getPartName());
+				
 				for (CoNLLSentence s : part.getCoNLLSentences()) {
 					for (CoNLLWord w : s.words) {
 						if (!w.speaker.equals("-")) {
@@ -288,6 +295,12 @@ public class ApplyEMNAACL {
 				ParseTreeMention ptm = new ParseTreeMention();
 				ArrayList<Mention> goldBoundaryNPMentions = ptm
 						.getMentions(part);
+				
+				Collections.sort(goldBoundaryNPMentions);
+				for(Mention m : goldBoundaryNPMentions) {
+					CoNLLSentence s = part.getWord(m.getStart()).sentence;
+					s.mentions.add(m);
+				}
 
 				Collections.sort(goldBoundaryNPMentions);
 
@@ -361,6 +374,7 @@ public class ApplyEMNAACL {
 				cand.isFS = false;
 				cand.isBest = false;
 				cand.MI = ContextNAACL.calMI(cand, zero);
+//				if (((cand.end < zero.start && cand.end!=-1) || (cand.end==-1 && cand.start<zero.start))
 				if (cand.start < zero.start
 						&& zero.sentenceID - cand.sentenceID <= 2) {
 					if (!findFS && cand.gram == EMUtil.Grammatic.subject
@@ -399,7 +413,11 @@ public class ApplyEMNAACL {
 					persons.add(p.name());
 				}
 			}
-
+//			System.out.println(zero.toName() + "################");
+//			EMLearnNAACL.sortBySalience(cands, zero, part, entityCorefMap);
+			
+//			Collections.sort(cands);
+			
 			boolean findBest = findBest(zero, cands);
 			String v = EMUtil.getFirstVerb(zero.V);
 			String o = EMUtil.getObjectNP(zero.V);
@@ -565,6 +583,12 @@ public class ApplyEMNAACL {
 				}
 			}
 			System.out.println("----------");
+			
+			CoNLLWord w = part.getWord(zero.start);
+			CoNLLSentence s = w.getSentence();
+			s.mentions.add(zero);
+			Collections.sort(s.mentions);
+			
 			if(antecedent!=null && findOracle) {
 				System.out.println(pro + "\t:" + antecedent.extent + "\t" + antecedent.toName());
 				boolean coref = chainMap.containsKey(zero.toName())
@@ -573,8 +597,9 @@ public class ApplyEMNAACL {
 								.get(antecedent.toName()).intValue();
 				
 				StringBuilder sb = new StringBuilder();
-				CoNLLWord w = part.getWord(zero.start);
-				CoNLLSentence s = w.getSentence();
+				zero.sysEntity = antecedent.sysEntity;
+				entityCorefMap.put(zero.toName(), zero.sysEntity);
+				
 				int idInS = w.indexInSentence;
 				for(int i=-5;i<=5;i++) {
 					int id = idInS + i;
