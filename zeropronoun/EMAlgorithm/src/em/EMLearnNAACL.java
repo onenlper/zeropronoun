@@ -245,9 +245,9 @@ public class EMLearnNAACL {
 
 					sortBySalience(ants, m, part, entityCorefMap);
 					if(ants.size()!=0) {
-//						ants.get(0).isFS = true;
+						ants.get(0).isFS = true;
 						for(int t=1;t<ants.size();t++) {
-//							ants.get(t).isFS = false;
+							ants.get(t).isFS = false;
 						}
 					}
 					
@@ -257,13 +257,13 @@ public class EMLearnNAACL {
 					for (int k = 0; k < ants.size(); k++) {
 						Mention ant = ants.get(k);
 						// add antecedents
-						ant.isFS = false;
+//						ant.isFS = false;
 						if (!findFirstSubj
 								&& ant.gram == EMUtil.Grammatic.subject
 						// && !ant.s.getWord(ant.headInS).posTag.equals("NT")
 						) {
 							findFirstSubj = true;
-							ant.isFS = true;
+//							ant.isFS = true;
 						}
 
 						String antSpeaker = part.getWord(ant.start).speaker;
@@ -909,6 +909,52 @@ public class EMLearnNAACL {
 	}
 
 	public static void sortBySalience(ArrayList<Mention> cands, Mention anaphor, CoNLLPart part, HashMap<String, Entity> entityCorefMap) {
+
+		double decayConstant = 0.1;
+		double subjectScore = 4;
+		double objectScore = 2;
+		double otherScore = 1;
+		
+		if(part.getPartName().startsWith("nw")) {
+			decayConstant = 0.3;
+			subjectScore = 4;
+			objectScore = 2;
+			otherScore = 1;
+		} else if(part.getPartName().startsWith("mz")) {
+			decayConstant = 0.25;
+			subjectScore = 3;
+			objectScore = 2;
+			otherScore = 1;
+		} else if(part.getPartName().startsWith("wb")) {
+			decayConstant = 0.1;
+			subjectScore = 4;
+			objectScore = 2;
+			otherScore = 1;
+		} else if(part.getPartName().startsWith("bn")) {
+			decayConstant = 0.15;
+			subjectScore = 4;
+			objectScore = 2;
+			otherScore = 1;
+		} else if(part.getPartName().startsWith("bc")) {
+			decayConstant = 0.45;
+			subjectScore = 5;
+			objectScore = 1;
+			otherScore = 1;
+			
+		} else if(part.getPartName().startsWith("tc")) {
+			decayConstant = 0.45;
+			subjectScore = 5;
+			objectScore = 4;
+			otherScore = 1;
+		} else {
+			Common.bangErrorPOS("");
+		}
+		
+//		decayConstant = 0.15;
+//		subjectScore = 4;
+//		objectScore = 2;
+//		otherScore = 1;
+		
 //		System.out.println("============");
 		for(Mention cand : cands) {
 			if(cand.sysEntity!=null) {
@@ -923,7 +969,6 @@ public class EMLearnNAACL {
 		}
 		
 		Collections.sort(cands);
-		double decayConstant = 0.1;
 		int anaphorSID = part.getWord(anaphor.getStart()).getSentence().getSentenceIdx(); 
 		for(int i=0;i<=anaphorSID;i++) {
 			CoNLLSentence s = part.getCoNLLSentences().get(i);
@@ -944,17 +989,20 @@ public class EMLearnNAACL {
 				double decay = Math.pow(decayConstant, anaphorSID - s.getSentenceIdx());
 				
 				if(m.gram==Grammatic.subject) {
-					e.score += 4.0 * decay;
+					e.score += subjectScore * decay;
 				} else if(m.gram==Grammatic.object) {
-					e.score += 2.0 * decay;
+					e.score += objectScore * decay;
 				} else {
-					e.score += 1.0 * decay;
+					e.score += otherScore * decay;
 				}
 			}
 		}
 		
 		Collections.sort(cands, new SalienceComparator());
 		Collections.reverse(cands);
+		for(int i=0;i<cands.size();i++) {
+			cands.get(i).salienceID = i;
+		}
 	}
 	
 	public static class SalienceComparator implements Comparator<Mention> {
