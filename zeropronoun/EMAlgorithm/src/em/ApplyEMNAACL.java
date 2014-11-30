@@ -415,6 +415,13 @@ public class ApplyEMNAACL {
 			}
 //			System.out.println(zero.toName() + "################");
 			EMLearnNAACL.sortBySalience(cands, zero, part, entityCorefMap);
+			if(cands.size()!=0) {
+//				cands.get(0).isFS = true;
+				for(int i=1;i<cands.size();i++) {
+//					cands.get(i).isFS = false;
+				}
+			}
+			
 			Collections.sort(cands);
 			Collections.reverse(cands);
 			
