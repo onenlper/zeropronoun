@@ -374,8 +374,8 @@ public class ApplyEMNAACL {
 				cand.isFS = false;
 				cand.isBest = false;
 				cand.MI = ContextNAACL.calMI(cand, zero);
-//				if (((cand.end < zero.start && cand.end!=-1) || (cand.end==-1 && cand.start<zero.start))
-				if (cand.start < zero.start
+				if (((cand.end < zero.start && cand.end!=-1) || (cand.end==-1 && cand.start<zero.start))
+//				if (cand.start < zero.start
 						&& zero.sentenceID - cand.sentenceID <= 2) {
 					if (!findFS && cand.gram == EMUtil.Grammatic.subject
 					// && !cand.s.getWord(cand.headInS).posTag.equals("NT")
@@ -414,9 +414,9 @@ public class ApplyEMNAACL {
 				}
 			}
 //			System.out.println(zero.toName() + "################");
-//			EMLearnNAACL.sortBySalience(cands, zero, part, entityCorefMap);
-			
-//			Collections.sort(cands);
+			EMLearnNAACL.sortBySalience(cands, zero, part, entityCorefMap);
+			Collections.sort(cands);
+			Collections.reverse(cands);
 			
 			boolean findBest = findBest(zero, cands);
 			String v = EMUtil.getFirstVerb(zero.V);
