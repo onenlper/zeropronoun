@@ -125,16 +125,77 @@ public class ApplyEMNAACLRule {
 			for (int h = allCandidates.size() - 1; h >= 0; h--) {
 				Mention cand = allCandidates.get(h);
 				if (((cand.end < zero.start && cand.end != -1) || (cand.end == -1 && cand.start < zero.start))
-						// if (cand.start < zero.start
 						&& zero.sentenceID - cand.sentenceID <= 2) {
 					cands.add(cand);
 				}
 			}
 			EMLearnNAACL.sortBySalience(cands, zero, part, entityCorefMap);
 
-			if (cands.size() != 0) {
-				antecedent = cands.get(0);
+			if(RuleUtil.zeroStartsSentence(zero, part)) {
+//				Recall: 8.873321657910099
+//				Precision: 51.178451178451176
+//				F-score: 15.124378109452739
+//				Coverage: 17.338003502626968
+				if (cands.size() != 0) {
+					antecedent = cands.get(0);
+				}
 			}
+			else if(RuleUtil.zeroAfterComma(zero, part)) {
+//				Recall: 14.010507880910684
+//				Precision: 42.47787610619469
+//				F-score: 21.071115013169447
+//				Coverage: 32.98307063631057
+				if (cands.size() != 0) {
+					antecedent = cands.get(0);
+				}
+			}
+			else if(RuleUtil.zeroAfterVerb(zero, part)) {
+//				Recall: 6.42148277875073
+//				Precision: 43.30708661417323
+//				F-score: 11.184544992374173
+//				Coverage: 14.827787507297138
+				if (cands.size() != 0) {
+					antecedent = cands.get(0);
+				}
+			}
+			else if(RuleUtil.zeroAfterNoun(zero, part)) {
+//				Recall: 3.852889667250438
+//				Precision: 46.15384615384615
+//				F-score: 7.112068965517242
+//				Coverage: 8.347927612375948
+				if (cands.size() != 0) {
+					antecedent = cands.get(0);
+				}
+			}  
+			else if(RuleUtil.zeroAfterCC(zero, part)) {
+//				Recall: 0.11675423234092236
+//				Precision: 20.0
+//				F-score: 0.2321532211259431
+//				Coverage: 0.5837711617046117
+				if (cands.size() != 0) {
+					antecedent = cands.get(0);
+				}
+			}
+			else if(RuleUtil.zeroAfterNN_P(zero, part)) {
+				if (cands.size() != 0) {
+					antecedent = cands.get(0);
+				}
+			}
+			else if(RuleUtil.zeroOnlyAfterAD_P_CS(zero, part)) {
+				if (cands.size() != 0) {
+					antecedent = cands.get(0);
+				}
+			}
+			else if(RuleUtil.zeroAfterQuota(zero, part)) {
+				if (cands.size() != 0) {
+					antecedent = cands.get(0);
+				}
+			}
+			else {
+				RuleUtil.printZero(zero, part);
+			}
+			
+			
 
 			CoNLLWord w = part.getWord(zero.start);
 			CoNLLSentence s = w.getSentence();
@@ -316,6 +377,8 @@ public class ApplyEMNAACLRule {
 		System.out.println("Recall: " + r * 100);
 		System.out.println("Precision: " + p * 100);
 		System.out.println("F-score: " + f * 100);
+		
+		System.out.println("Coverage: " + system/gold * 100);
 	}
 
 	public static void main(String args[]) {
