@@ -44,34 +44,30 @@ public class ContextNAACL implements Serializable {
     		int[] a = { 0, 8 };
     		subContext.add(a);
     		
-//    		int[] b = { 1, 7 };
-//    		subContext.add(b);
-//    		int[] c = { 2, 3 };
-//    		subContext.add(c);
-//    		int[] d = { 3, 4 };
-//    		subContext.add(d);
-//    		int[] e = { 4, 5 };
-//    		subContext.add(e);
-//    		int[] f = { 5, 6 };
-//    		subContext.add(f);
-//    		int[] g = { 6, 7 };
-//    		subContext.add(g);
-    		
-//    		int[] h = { 7, 8 };
-//    		subContext.add(h);
-//    		int[] i = { 6, 7 };
-//    		subContext.add(i);
+    		int[] b = { 1, 7 };
+    		subContext.add(b);
+    		int[] c = { 2, 3 };
+    		subContext.add(c);
+    		int[] d = { 3, 4 };
+    		subContext.add(d);
+    		int[] e = { 4, 5 };
+    		subContext.add(e);
+    		int[] f = { 5, 6 };
+    		subContext.add(f);
+    		int[] g = { 6, 7 };
+    		subContext.add(g);
+    		int[] h = { 7, 8 };
+    		subContext.add(h);
     		
     		
-//    		normConstant.add(2);
-//    		normConstant.add(3);
-//    		normConstant.add(3);
-//    		normConstant.add(2);
-//    		normConstant.add(2);
-//    		normConstant.add(3);
-//    		normConstant.add(2);
-//    		normConstant.add(2);
-    		normConstant.add(100);
+    		normConstant.add(2);
+    		normConstant.add(3);
+    		normConstant.add(3);
+    		normConstant.add(2);
+    		normConstant.add(2);
+    		normConstant.add(3);
+    		normConstant.add(2);
+    		normConstant.add(2);
 
 //    		normConstant.add((int) cap);
 //    		 int[] g = {6, 7};

@@ -858,26 +858,26 @@ public class EMLearnNAACL {
 					fracContextCount.put(context.toString(), d.doubleValue() + p);
 				}
 				
-//				for(int i=0;i<ContextNAACL.getSubContext().size();i++) {
-//					int ps[] = ContextNAACL.getSubContext().get(i);
-//					String key = context.getKey(i);
-//					double l1 = p;
-//					double l0 = 1 - p;
-//					
-//					Double cl0 = multiFracContextsCountl0.get(i).get(key); 
-//					if(cl0==null) {
-//						multiFracContextsCountl0.get(i).put(key, l0);
-//					} else {
-//						multiFracContextsCountl0.get(i).put(key, l0 + cl0.doubleValue());
-//					}
-//					
-//					Double cl1 = multiFracContextsCountl1.get(i).get(key); 
-//					if(cl1==null) {
-//						multiFracContextsCountl1.get(i).put(key, l1);
-//					} else {
-//						multiFracContextsCountl1.get(i).put(key, l1 + cl1.doubleValue());
-//					}
-//				}
+				for(int i=0;i<ContextNAACL.getSubContext().size();i++) {
+					int ps[] = ContextNAACL.getSubContext().get(i);
+					String key = context.getKey(i);
+					double l1 = p;
+					double l0 = 1 - p;
+					
+					Double cl0 = multiFracContextsCountl0.get(i).get(key); 
+					if(cl0==null) {
+						multiFracContextsCountl0.get(i).put(key, l0);
+					} else {
+						multiFracContextsCountl0.get(i).put(key, l0 + cl0.doubleValue());
+					}
+					
+					Double cl1 = multiFracContextsCountl1.get(i).get(key); 
+					if(cl1==null) {
+						multiFracContextsCountl1.get(i).put(key, l1);
+					} else {
+						multiFracContextsCountl1.get(i).put(key, l1 + cl1.doubleValue());
+					}
+				}
 			}
 		}
 		genderP.setVals();
