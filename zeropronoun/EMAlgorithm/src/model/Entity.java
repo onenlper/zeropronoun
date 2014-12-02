@@ -14,6 +14,8 @@ public class Entity implements Comparable<Entity>{
 	public String type;
 	public String subType;
 	public int entityIdx;
+	
+	public double score = 0;
 
 	public ArrayList<Mention> getMentions() {
 		return mentions;
