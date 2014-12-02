@@ -24,7 +24,7 @@ public class CoNLLSentence implements Serializable{
 	
 	public ArrayList<Element> namedEntities = new ArrayList<Element>();
 	
-	public ArrayList<Mention> mentions;
+	public ArrayList<Mention> mentions = new ArrayList<Mention>();
 	
 	public String getText() {
 		StringBuilder sb = new StringBuilder();
