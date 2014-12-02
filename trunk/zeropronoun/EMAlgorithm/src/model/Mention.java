@@ -21,6 +21,14 @@ public class Mention implements Comparable<Mention>, Serializable {
          */
         double th = 0.0;
 
+        public boolean isSub;
+        
+        public boolean isSubject;
+        
+        public boolean isObject;
+        
+        public int salienceID = 0;
+        
         public boolean isFake = false;
        
         public ArrayList<Unit> units = new ArrayList<Unit>();
@@ -54,6 +62,8 @@ public class Mention implements Comparable<Mention>, Serializable {
 
         public Entity entity;
 
+        public Entity sysEntity;
+        
         public Mention antecedent;
 
         public String msg;
